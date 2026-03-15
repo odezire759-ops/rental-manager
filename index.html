@@ -341,13 +341,22 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
+  <!-- Recent OTA Bookings -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📋 การจองล่าสุด 5 อันดับ</span><span id="ota-total-count" style="font-size:11px;color:var(--text3);"></span></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>Booking ID</th><th>Platform</th><th>ลูกค้า</th><th>โรงแรม</th><th>Check-in</th><th>Check-out</th><th>ยอด (THB)</th><th>Commission</th><th>สถานะ</th></tr></thead>
+    <tbody id="ota-recent-tbody"><tr><td colspan="9" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+    <div style="padding:8px 16px;font-size:10px;color:var(--text3);text-align:center;border-top:1px solid var(--border);">ข้อมูลจาก Supabase · อัปเดตอัตโนมัติ Real-time</div>
+  </div>
+
   <!-- Availability mini table -->
   <div class="card" style="margin-top:14px;">
     <div class="chdr">
       <span>📅 ตาราง Availability — แถว=ห้อง / คอลัมน์=วันที่</span>
       <div class="seg" id="dseg">
         <button class="sb" onclick="setDM('01',this)">ม.ค.</button>
-        <button class="sb active" onclick="setDM('02',this)">ก.พ.</button>
+        <button class="sb" onclick="setDM('02',this)">ก.พ.</button>
+        <button class="sb active" onclick="setDM('03',this)">มี.ค.</button>
         <button class="sb" onclick="setDM('all',this)">รวม</button>
       </div>
     </div>
@@ -568,28 +577,38 @@ const RATES={
   water:{apt:{rate:18,label:'อพาร์ทเม้นท์',icon:'🏢',cls:'rate-apt'},gov:{rate:13.9,label:'ประปา',icon:'🏛',cls:'rate-gov'}}
 };
 
-// Daily data from Excel (ม.ค.-ก.พ. 69) — with source
-const DAILY=[
-  {d:'2026-01-09',r:'722',p:720,s:'B'},{d:'2026-01-10',r:'722',p:720,s:'B'},{d:'2026-01-11',r:'722',p:720,s:'B'},
-  {d:'2026-01-16',r:'611',p:1090,s:'W'},{d:'2026-01-16',r:'619',p:700,s:'B'},{d:'2026-01-16',r:'623',p:620,s:'A'},{d:'2026-01-16',r:'718',p:1090,s:'W'},{d:'2026-01-16',r:'720',p:1090,s:'W'},
-  {d:'2026-01-19',r:'719',p:700,s:'B'},{d:'2026-01-20',r:'719',p:700,s:'B'},
-  {d:'2026-01-27',r:'719',p:1090,s:'W'},{d:'2026-01-27',r:'722',p:615,s:'A'},
-  {d:'2026-01-31',r:'611',p:1090,s:'W'},
-  {d:'2026-02-02',r:'613',p:600,s:'A'},{d:'2026-02-02',r:'623',p:600,s:'A'},{d:'2026-02-02',r:'711',p:700,s:'B'},
-  {d:'2026-02-03',r:'613',p:600,s:'A'},{d:'2026-02-03',r:'623',p:600,s:'A'},{d:'2026-02-03',r:'718',p:700,s:'B'},{d:'2026-02-03',r:'719',p:700,s:'B'},
-  {d:'2026-02-04',r:'613',p:600,s:'A'},{d:'2026-02-04',r:'623',p:600,s:'A'},{d:'2026-02-04',r:'711',p:700,s:'B'},
-  {d:'2026-02-05',r:'613',p:600,s:'A'},{d:'2026-02-05',r:'623',p:600,s:'A'},
-  {d:'2026-02-06',r:'613',p:600,s:'A'},
-  {d:'2026-02-09',r:'722',p:616,s:'A'},
-  {d:'2026-02-10',r:'712',p:700,s:'B'},{d:'2026-02-10',r:'722',p:616,s:'A'},
-  {d:'2026-02-11',r:'712',p:700,s:'B'},{d:'2026-02-11',r:'722',p:616,s:'A'},
-  {d:'2026-02-12',r:'617',p:1050,s:'C'},{d:'2026-02-12',r:'722',p:616,s:'A'},
-  {d:'2026-02-14',r:'712',p:1090,s:'W'},
-  {d:'2026-02-16',r:'723',p:700,s:'B'},
-  {d:'2026-02-18',r:'723',p:600,s:'A'},{d:'2026-02-19',r:'723',p:600,s:'A'},{d:'2026-02-20',r:'723',p:600,s:'A'},{d:'2026-02-21',r:'723',p:600,s:'A'},
-  {d:'2026-02-25',r:'723',p:700,s:'B'},
-  {d:'2026-02-26',r:'612',p:700,s:'B'},{d:'2026-02-27',r:'612',p:700,s:'B'},{d:'2026-02-28',r:'612',p:700,s:'B'},
-];
+// Daily booking data — loaded from ota_bookings table (real-time)
+let DAILY=[];
+
+async function loadOTAData(){
+  // Determine date range based on selected month filter
+  let gte,lte;
+  if(dailyM==='all'){
+    gte='2026-01-01';lte='2026-12-31';
+  }else{
+    const m=parseInt(dailyM);
+    gte=`2026-${dailyM}-01`;
+    const lastDay=new Date(2026,m,0).getDate();
+    lte=`2026-${dailyM}-${lastDay}`;
+  }
+  const{data,error}=await sb.from('ota_bookings').select('*').gte('check_in',gte).lte('check_in',lte).neq('status','CANCELLED').order('check_in');
+  if(error){console.error('OTA load error:',error.message);return;}
+  // Convert to DAILY format: each day a booking spans = 1 entry
+  DAILY=[];
+  (data||[]).forEach(b=>{
+    const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+    const nights=Math.max(1,Math.round((co-ci)/86400000));
+    const pricePerNight=nights>0?(b.total_amount||0)/nights:(b.total_amount||0);
+    const srcMap={Agoda:'A',Traveloka:'T','Booking.com':'B','Walk-in':'W',Other:'O'};
+    const s=srcMap[b.source]||'O';
+    // Add one entry per night
+    for(let i=0;i<nights;i++){
+      const d=new Date(ci);d.setDate(d.getDate()+i);
+      const ds=d.toISOString().split('T')[0];
+      DAILY.push({d:ds,r:b.room||'—',p:Math.round(pricePerNight),s,guest:b.guest_name,bid:b.booking_id,src:b.source});
+    }
+  });
+}
 
 // Dynamic floor grouping — built from actual Supabase data
 let FLOOR_ROOMS={};
@@ -622,7 +641,7 @@ function getFloorName(fl){
 
 let curMonth='2026-03',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'[]');
 let eEC=0,eWC=0;
-let dailyM='02',selRoom='',curDailyDate='';
+let dailyM='03',selRoom='',curDailyDate='';
 let activeSec='monthly';
 let masterRoomsLoaded=false;
 
@@ -640,7 +659,7 @@ async function init(){
   await loadMasterRooms();
   await loadMonth(curMonth);
   buildDateStrip();
-  renderDaily();
+  await renderDaily();
   loadBookings();
 }
 
@@ -672,14 +691,15 @@ function renderKPIBar(){
     // Daily KPIs
     const dd=getDD();
     const rev=dd.reduce((a,b)=>a+b.p,0);
-    const days=dailyM==='all'?59:dailyM==='02'?28:31;
-    const totalSlots=ALL_ROOMS.length*days;
+    const mInt=dailyM==='all'?0:parseInt(dailyM);
+    const days=dailyM==='all'?365:new Date(2026,mInt,0).getDate();
+    const totalSlots=Math.max(1,ALL_ROOMS.length*days);
     const occ=totalSlots?((dd.length/totalSlots)*100).toFixed(1):'0';
     const todayB=DAILY.filter(x=>x.d===curDailyDate);
     const srcCnt={};dd.forEach(x=>{srcCnt[x.s]=(srcCnt[x.s]||0)+1;});
     const topSrc=Object.entries(srcCnt).sort((a,b)=>b[1]-a[1])[0];
     el.innerHTML=`
-      <div class="kt ky"><div class="klbl">รายรับรายวันรวม</div><div class="kval y" id="dk-rev">฿${rev.toLocaleString('th-TH')}</div><div class="ksub">${dailyM==='all'?'ม.ค.–ก.พ.':dailyM==='01'?'ม.ค.':'ก.พ.'} 69</div></div>
+      <div class="kt ky"><div class="klbl">รายรับรายวันรวม</div><div class="kval y" id="dk-rev">฿${rev.toLocaleString('th-TH')}</div><div class="ksub">${dailyM==='all'?'ทั้งหมด':mL('2026-'+dailyM)||dailyM}</div></div>
       <div class="kt kb"><div class="klbl">จำนวนคืนรวม</div><div class="kval b">${dd.length}</div><div class="ksub">คืน</div></div>
       <div class="kt kg"><div class="klbl">Occupancy Rate</div><div class="kval g">${occ}%</div><div class="ksub">${dd.length}/${totalSlots} คืน</div></div>
       <div class="kt ko"><div class="klbl">ห้องเข้าพักวันนี้</div><div class="kval o">${todayB.length}</div><div class="ksub">${curDailyDate}</div></div>
@@ -937,7 +957,7 @@ async function showHist(){
 // ══════════════════════════════════
 function buildDateStrip(){
   const strip=document.getElementById('date-strip');
-  const m=dailyM==='all'?'02':dailyM;
+  const m=dailyM==='all'?String(new Date().getMonth()+1).padStart(2,'0'):dailyM;
   const year=2026,month=parseInt(m);
   const daysInMonth=new Date(year,month,0).getDate();
   const today=new Date().toISOString().split('T')[0];
@@ -965,11 +985,13 @@ function selectDate(ds){
   renderKPIBar();
 }
 function setDM(m,btn){dailyM=m;document.querySelectorAll('#dseg .sb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');buildDateStrip();renderDaily();}
-function getDD(){return dailyM==='all'?DAILY:DAILY.filter(x=>x.d.startsWith('2026-'+dailyM));}
+function getDD(){return dailyM==='all'?DAILY:DAILY.filter(x=>x.d.substring(5,7)===dailyM);}
 
-function renderDaily(){
+async function renderDaily(){
+  await loadOTAData();
   renderDailyCards();
   loadOTACards();
+  loadRecentOTABookings();
   const d=getDD();
   renderSrcBars(d);
   renderTopRooms(d);
@@ -1013,9 +1035,39 @@ async function loadOTACards(){
   document.getElementById('ota-co-count').textContent=` · ${(coToday||[]).length} ห้อง`;
 }
 
+// Load recent OTA bookings table
+async function loadRecentOTABookings(){
+  const{data,count}=await sb.from('ota_bookings').select('*',{count:'exact'}).order('created_at',{ascending:false}).limit(5);
+  const{count:totalCount}=await sb.from('ota_bookings').select('*',{count:'exact',head:true});
+  document.getElementById('ota-total-count').textContent=`ทั้งหมด ${totalCount||0} รายการ`;
+  const tb=document.getElementById('ota-recent-tbody');
+  if(!data?.length){tb.innerHTML='<tr><td colspan="9" class="empty">ไม่มีข้อมูล</td></tr>';return;}
+  const statusBadge=(s)=>{
+    if(s==='CANCELLED')return '<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">✗ ยกเลิก</span>';
+    if(s==='PREPAID')return '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">✓ PREPAID</span>';
+    return '<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">✓ New Booking</span>';
+  };
+  const srcBadge=(s)=>{
+    const m={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee']};
+    const c=m[s]||['#455a64','#eceff1'];
+    return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">${s}</span>`;
+  };
+  tb.innerHTML=data.map(b=>`<tr${b.status==='CANCELLED'?' style="opacity:.5;text-decoration:line-through;"':''}>
+    <td class="mono" style="font-size:11px;">${(b.booking_id||'').slice(-8)}</td>
+    <td>${srcBadge(b.source)}</td>
+    <td style="font-weight:600;">${b.guest_name}</td>
+    <td style="font-size:11px;">J.Residence</td>
+    <td style="font-size:11px;">${fmtD(b.check_in)}</td>
+    <td style="font-size:11px;">${fmtD(b.check_out)}</td>
+    <td class="mono" style="font-weight:700;">฿${Number(b.total_amount||0).toLocaleString()}</td>
+    <td class="mono" style="color:var(--danger);">฿${Number(b.commission||0).toLocaleString()}</td>
+    <td>${statusBadge(b.status)}</td>
+  </tr>`).join('');
+}
+
 // Realtime subscription for OTA bookings
 sb.channel('ota-realtime').on('postgres_changes',{event:'*',schema:'public',table:'ota_bookings'},()=>{
-  if(activeSec==='daily')loadOTACards();
+  if(activeSec==='daily'){loadOTACards();loadRecentOTABookings();renderDaily();}
 }).subscribe();
 
 function renderDailyCards(){
@@ -1070,12 +1122,12 @@ function renderDailyCards(){
 
 function renderAvailTable(data){
   const bmap={};data.forEach(x=>{bmap[x.d+'|'+x.r]=x.s;});
-  const months=dailyM==='all'?['01','02']:[dailyM];
-  const bookedRooms=[...new Set(data.map(x=>x.r))].sort();
+  const months=dailyM==='all'?['02','03']:[dailyM];
+  const bookedRooms=[...new Set(data.map(x=>x.r).filter(r=>r&&r!=='—'))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   if(!bookedRooms.length){document.getElementById('avail-wrap').innerHTML='<div class="empty">ไม่มีข้อมูล</div>';return;}
   let html='<table class="avail-table"><thead><tr><th>ห้อง</th>';
   const allDates=[];
-  months.forEach(m=>{const days=m==='02'?28:31;for(let d=1;d<=days;d++){allDates.push(`2026-${m}-${String(d).padStart(2,'0')}`);}});
+  months.forEach(m=>{const mInt=parseInt(m);const days=new Date(2026,mInt,0).getDate();for(let d=1;d<=days;d++){allDates.push(`2026-${m}-${String(d).padStart(2,'0')}`);}});
   const today=new Date().toISOString().split('T')[0];
   allDates.forEach(d=>{const day=new Date(d).getDate(),isToday=d===today;html+=`<th style="${isToday?'background:var(--gold);color:#1a1a2e;':''}">${day}</th>`;});
   html+='</tr></thead><tbody>';
