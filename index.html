@@ -833,16 +833,39 @@ function renderTopRooms(data){
 async function refreshAvailRooms(){
   const ci=document.getElementById('bci').value,co=document.getElementById('bco').value;
   if(!ci||!co)return;calcBT();
-  const{data}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',co);
-  const bookedSet=new Set((data||[]).map(x=>x.room));
+  
+  // 1) Get daily bookings that overlap
+  const{data:dailyBooked}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',co);
+  const dailyBookedSet=new Set((dailyBooked||[]).map(x=>x.room));
+  
+  // 2) Get monthly tenants — rooms with a tenant name in current month = occupied
+  const ciMonth=ci.substring(0,7); // e.g. "2026-03"
+  const{data:monthlyData}=await sb.from('monthly_charges').select('room,tenant_name').eq('month',ciMonth).eq('building','เจเรสซิเดนซ์');
+  const monthlyOccupied=new Set((monthlyData||[]).filter(r=>r.tenant_name&&r.tenant_name.trim()).map(r=>r.room));
+  
+  // 3) Combine: unavailable = daily booked OR monthly occupied
+  const unavailSet=new Set([...dailyBookedSet,...monthlyOccupied]);
+  
+  // 4) Daily-only rooms = all rooms minus monthly occupied
+  const dailyRooms=ALL_ROOMS.filter(r=>!monthlyOccupied.has(r));
+  const avail=dailyRooms.filter(r=>!dailyBookedSet.has(r));
+  const dailyBookedRooms=dailyRooms.filter(r=>dailyBookedSet.has(r));
+  
   const fmt=(d)=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});
   document.getElementById('avail-date-range').textContent=`${fmt(ci)} – ${fmt(co)}`;
-  const avail=ALL_ROOMS.filter(r=>!bookedSet.has(r)),booked=ALL_ROOMS.filter(r=>bookedSet.has(r));
+  
+  // Right panel: availability status
   document.getElementById('avail-rooms-status').innerHTML=`
-    <div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">✓ ว่าง (${avail.length} ห้อง)</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${avail.map(r=>`<span style="background:var(--sbg);color:var(--success);border:1px solid var(--success);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="selectBRoom('${r}')">${r}</span>`).join('')}</div></div>
-    ${booked.length?`<div><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px;">✗ จองแล้ว (${booked.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${booked.map(r=>`<span style="background:var(--dbg);color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}`;
-  document.getElementById('brooms').innerHTML=ALL_ROOMS.map(r=>{
-    const isB=bookedSet.has(r),isS=r===selRoom;
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">✓ ว่าง (${avail.length} ห้อง)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">${avail.map(r=>`<span style="background:var(--sbg);color:var(--success);border:1px solid var(--success);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="selectBRoom('${r}')">${r}</span>`).join('')}</div>
+    </div>
+    ${dailyBookedRooms.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px;">✗ จองรายวันแล้ว (${dailyBookedRooms.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${dailyBookedRooms.map(r=>`<span style="background:var(--dbg);color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}
+    ${monthlyOccupied.size?`<div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;">🏠 ห้องรายเดือน (${monthlyOccupied.size} ห้อง) — ไม่แสดงในจองรายวัน</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${[...monthlyOccupied].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(r=>`<span style="background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}`;
+  
+  // Left panel: room grid — show only daily-rentable rooms
+  document.getElementById('brooms').innerHTML=dailyRooms.map(r=>{
+    const isB=dailyBookedSet.has(r),isS=r===selRoom;
     return `<div class="broom${isB?' booked':''}${isS?' selected':''}" data-room="${r}" ${!isB?`onclick="selectBRoom('${r}')"`:''}><div class="bnum">${r}</div><div class="bstat">${isB?'จองแล้ว':'ว่าง'}</div></div>`;
   }).join('');
 }
