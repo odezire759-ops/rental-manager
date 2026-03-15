@@ -539,32 +539,46 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <div class="mhdr"><span class="mtitle" id="etitle">แก้ไขห้อง</span><button class="mclose" onclick="closeM('emod')">×</button></div>
     <div class="mbdy">
       <input type="hidden" id="eroom"><input type="hidden" id="emonth">
-      <div class="fsec">ข้อมูลผู้เช่า</div>
-      <div class="fg"><div class="fr"><label>ชื่อผู้เช่า</label><input type="text" id="ename"></div><div class="fr"><label>ค่าเช่า (฿)</label><input type="number" id="erent" oninput="calcET()"></div></div>
-      <div class="fsec">เรทค่าไฟ / ค่าน้ำ</div>
-      <div class="fg">
-        <div class="fr"><label>ประเภทเรทไฟ</label>
-          <select id="erate_elec" onchange="calcEM('e')">
-            <option value="apt">🏢 เรทอพาร์ทเม้นท์ (฿8.5/หน่วย)</option>
-            <option value="gov">🏛 เรทการไฟฟ้า (฿4.3/หน่วย)</option>
-          </select>
+      <!-- Shared: bed type (both daily + monthly) -->
+      <div class="fsec">ข้อมูลห้อง</div>
+      <div class="fg"><div class="fr"><label>ประเภทเตียง</label><select id="ebed"><option value="double">🛏 เตียงคู่ (Double)</option><option value="single">🛏 เตียงเดี่ยว (Single)</option><option value="twin">🛏🛏 เตียงแฝด (Twin)</option></select></div><div class="fr"><label>เบอร์โทร</label><input type="tel" id="ephone" placeholder="08x-xxx-xxxx"></div></div>
+      <!-- Monthly only sections -->
+      <div class="monthly-only">
+        <div class="fsec">ข้อมูลผู้เช่า</div>
+        <div class="fg"><div class="fr"><label>ชื่อผู้เช่า</label><input type="text" id="ename"></div><div class="fr"><label>ค่าเช่า (฿)</label><input type="number" id="erent" oninput="calcET()"></div></div>
+        <div class="fsec">สัญญา / สิ่งอำนวยความสะดวก</div>
+        <div class="fg"><div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="econtract_months" placeholder="12"></div><div class="fr"><label>วันหมดสัญญา</label><input type="date" id="econtract_end"></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="ehas_tv"> 📺 ทีวี</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="ehas_fridge"> 🧊 ตู้เย็น</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="ehas_motorcycle"> 🏍 มอเตอร์ไซค์</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="ehas_car"> 🚗 ที่จอดรถ</label>
         </div>
-        <div class="fr"><label>ประเภทเรทน้ำ</label>
-          <select id="erate_water" onchange="calcEM('w')">
-            <option value="apt">🏢 เรทอพาร์ทเม้นท์ (฿18/หน่วย)</option>
-            <option value="gov">🏛 เรทประปา (฿13.9/หน่วย)</option>
-          </select>
+        <div class="fsec">เรทค่าไฟ / ค่าน้ำ</div>
+        <div class="fg">
+          <div class="fr"><label>ประเภทเรทไฟ</label>
+            <select id="erate_elec" onchange="calcEM('e')">
+              <option value="apt">🏢 เรทอพาร์ทเม้นท์ (฿8.5/หน่วย)</option>
+              <option value="gov">🏛 เรทการไฟฟ้า (฿4.3/หน่วย)</option>
+            </select>
+          </div>
+          <div class="fr"><label>ประเภทเรทน้ำ</label>
+            <select id="erate_water" onchange="calcEM('w')">
+              <option value="apt">🏢 เรทอพาร์ทเม้นท์ (฿18/หน่วย)</option>
+              <option value="gov">🏛 เรทประปา (฿13.9/หน่วย)</option>
+            </select>
+          </div>
         </div>
+        <div class="fsec">มิเตอร์ไฟฟ้า</div>
+        <div class="fg3"><div class="fr"><label>ค่าเก่า</label><input type="number" id="eeold" oninput="calcEM('e')"></div><div class="fr"><label>ค่าใหม่</label><input type="number" id="eenew" oninput="calcEM('e')"></div><div class="fr"><label>ค่าไฟ (฿)</label><div class="cdisp" id="eecost">—</div></div></div>
+        <div class="fsec">มิเตอร์น้ำ</div>
+        <div class="fg3"><div class="fr"><label>ค่าเก่า</label><input type="number" id="ewold" oninput="calcEM('w')"></div><div class="fr"><label>ค่าใหม่</label><input type="number" id="ewnew" oninput="calcEM('w')"></div><div class="fr"><label>ค่าน้ำ (฿)</label><div class="cdisp" id="ewcost">—</div></div></div>
+        <div class="fsec">ค่าอื่นๆ</div>
+        <div class="fg"><div class="fr"><label>จอดรถ (฿)</label><input type="number" id="ecar" oninput="calcET()"></div><div class="fr"><label>จอดมอเตอร์ (฿)</label><input type="number" id="emoto" oninput="calcET()"></div><div class="fr"><label>ตู้เย็น (฿)</label><input type="number" id="efridge" oninput="calcET()"></div><div class="fr"><label>อื่นๆ (฿)</label><input type="number" id="eother" oninput="calcET()"></div></div>
+        <div class="fsec">สถานะ</div>
+        <div class="fr"><select id="estatus"><option value="paid">✅ ชำระแล้ว</option><option value="pending">⏳ ค้างชำระ</option></select></div>
+        <div class="totrow"><span class="lbl">ยอดรวม</span><span class="val" id="etot">฿ 0</span></div>
       </div>
-      <div class="fsec">มิเตอร์ไฟฟ้า</div>
-      <div class="fg3"><div class="fr"><label>ค่าเก่า</label><input type="number" id="eeold" oninput="calcEM('e')"></div><div class="fr"><label>ค่าใหม่</label><input type="number" id="eenew" oninput="calcEM('e')"></div><div class="fr"><label>ค่าไฟ (฿)</label><div class="cdisp" id="eecost">—</div></div></div>
-      <div class="fsec">มิเตอร์น้ำ</div>
-      <div class="fg3"><div class="fr"><label>ค่าเก่า</label><input type="number" id="ewold" oninput="calcEM('w')"></div><div class="fr"><label>ค่าใหม่</label><input type="number" id="ewnew" oninput="calcEM('w')"></div><div class="fr"><label>ค่าน้ำ (฿)</label><div class="cdisp" id="ewcost">—</div></div></div>
-      <div class="fsec">ค่าอื่นๆ</div>
-      <div class="fg"><div class="fr"><label>จอดรถ (฿)</label><input type="number" id="ecar" oninput="calcET()"></div><div class="fr"><label>จอดมอเตอร์ (฿)</label><input type="number" id="emoto" oninput="calcET()"></div><div class="fr"><label>ตู้เย็น (฿)</label><input type="number" id="efridge" oninput="calcET()"></div><div class="fr"><label>อื่นๆ (฿)</label><input type="number" id="eother" oninput="calcET()"></div></div>
-      <div class="fsec">สถานะ</div>
-      <div class="fr"><select id="estatus"><option value="paid">✅ ชำระแล้ว</option><option value="pending">⏳ ค้างชำระ</option></select></div>
-      <div class="totrow"><span class="lbl">ยอดรวม</span><span class="val" id="etot">฿ 0</span></div>
     </div>
     <div class="mftr"><button class="btn bg" onclick="closeM('emod')">ยกเลิก</button><button class="btn bd" onclick="showHist()">ประวัติ</button><button class="btn bp" onclick="saveEdit()">💾 บันทึก</button></div>
   </div>
@@ -835,15 +849,20 @@ function renderFloors(data){
               </div></div>`;}
             // Daily room
             if(isDaily){
+              const bedD=r.bed_type==='single'?'🛏เดี่ยว':r.bed_type==='twin'?'🛏🛏แฝด':'🛏คู่';
               return `<div class="rcard daily-room" draggable="true" data-room="${r.room}">
               <div class="rstripe daily"></div>
               <div class="rdot" style="background:#1565c0;box-shadow:0 0 4px #1565c0;"></div>
-              <div class="rtype-badge rtype-daily">📅 รายวัน</div>
+              <div style="display:flex;gap:4px;align-items:center;">
+                <div class="rtype-badge rtype-daily">📅 รายวัน</div>
+                <span class="gbadge">${bedD}</span>
+              </div>
               <div class="rnum">${r.room}</div>
               <div class="rname" style="color:#1565c0;">ห้องรายวัน</div>
               <div class="ramt" style="color:#1565c0;">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
               <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}</div>
               <div class="racts">
+                <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
                 <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠 เปลี่ยนรายเดือน</button>
               </div></div>`;
             }
@@ -853,16 +872,23 @@ function renderFloors(data){
             const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
             const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
             const hasTenant=r.tenant_name&&r.tenant_name.trim();
+            const bedTxt=r.bed_type==='single'?'🛏เดี่ยว':r.bed_type==='twin'?'🛏🛏แฝด':'🛏คู่';
+            const amenities=[r.has_tv?'📺':'',r.has_fridge?'🧊':'',r.has_motorcycle?'🏍':'',r.has_car?'🚗':''].filter(Boolean).join(' ');
             return `<div class="rcard" draggable="true" data-room="${r.room}">
               <div class="rstripe ${st}"></div><div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
-              <div class="rtype-badge rtype-monthly">🏠 รายเดือน</div>
+              <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                <div class="rtype-badge rtype-monthly">🏠 รายเดือน</div>
+                <span class="gbadge">${bedTxt}</span>
+              </div>
               <div class="rnum">${r.room}</div>
-              <div class="rname">${r.tenant_name||'—'}</div>
+              <div class="rname">${r.tenant_name||'—'}${r.phone?` · 📞${r.phone}`:''}</div>
               <div class="ramt">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
               <div class="rdet">
                 ${r.rent>0?`<span>เช่า ฿${r.rent.toLocaleString()}</span>`:''}
                 ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}"><span class="rate-icon">⚡</span>${eBadge.label}</span> ฿${Math.round(r.elec_cost).toLocaleString()}</div>`:''}
                 ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}"><span class="rate-icon">💧</span>${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
+                ${amenities?`<span>${amenities}</span>`:''}
+                ${r.contract_end?`<span>📄 หมดสัญญา ${fmtD(r.contract_end)}</span>`:''}
               </div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
@@ -946,13 +972,11 @@ async function setRoomType(room,newType){
 // ══════════════════════════════════
 function openEdit(room){
   const r=mData.find(x=>x.room===room);
-  // Block editing monthly details for daily rooms
-  if(r&&r.room_type==='daily'){
-    toast('ห้อง '+room+' เป็นห้องรายวัน — แจ้งเข้าได้เฉพาะรายวัน กรุณาใช้แท็บ "จองห้อง"','err');
-    return;
-  }
+  const isDaily=r&&r.room_type==='daily';
   document.getElementById('eroom').value=room;document.getElementById('emonth').value=curMonth;
-  document.getElementById('etitle').textContent=`แก้ไขห้อง ${room}`;
+  document.getElementById('etitle').textContent=`แก้ไขห้อง ${room}${isDaily?' (รายวัน)':''}`;
+  // Hide monthly-only sections for daily rooms
+  document.querySelectorAll('.monthly-only').forEach(el=>el.style.display=isDaily?'none':'');
   if(r){
     document.getElementById('ename').value=r.tenant_name||'';document.getElementById('erent').value=r.rent||0;
     document.getElementById('eeold').value=r.elec_old||'';document.getElementById('eenew').value=r.elec_new||'';
@@ -962,11 +986,22 @@ function openEdit(room){
     document.getElementById('estatus').value=r.status||'pending';
     document.getElementById('erate_elec').value=r.elec_rate_type||'apt';
     document.getElementById('erate_water').value=r.water_rate_type||'apt';
+    document.getElementById('ebed').value=r.bed_type||'double';
+    document.getElementById('ephone').value=r.phone||'';
+    document.getElementById('econtract_months').value=r.contract_months||'';
+    document.getElementById('econtract_end').value=r.contract_end||'';
+    document.getElementById('ehas_tv').checked=!!r.has_tv;
+    document.getElementById('ehas_fridge').checked=!!r.has_fridge;
+    document.getElementById('ehas_motorcycle').checked=!!r.has_motorcycle;
+    document.getElementById('ehas_car').checked=!!r.has_car;
     eEC=r.elec_cost||0;eWC=r.water_cost||0;
   } else {
-    ['ename','erent','eeold','eenew','ewold','ewnew','ecar','emoto','efridge','eother'].forEach(id=>document.getElementById(id).value='');
+    ['ename','erent','eeold','eenew','ewold','ewnew','ecar','emoto','efridge','eother','ephone','econtract_months','econtract_end'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('estatus').value='pending';
     document.getElementById('erate_elec').value='apt';document.getElementById('erate_water').value='apt';
+    document.getElementById('ebed').value='double';
+    document.getElementById('ehas_tv').checked=false;document.getElementById('ehas_fridge').checked=false;
+    document.getElementById('ehas_motorcycle').checked=false;document.getElementById('ehas_car').checked=false;
     eEC=0;eWC=0;
   }
   document.getElementById('eecost').textContent=Math.round(eEC).toLocaleString();
@@ -985,10 +1020,26 @@ function calcEM(t){
 function calcET(){const r=parseFloat(document.getElementById('erent').value)||0,ex=['ecar','emoto','efridge','eother'].reduce((a,id)=>a+(parseFloat(document.getElementById(id).value)||0),0);document.getElementById('etot').textContent='฿ '+Math.round(r+eEC+eWC+ex).toLocaleString('th-TH');}
 async function saveEdit(){
   const room=document.getElementById('eroom').value,month=document.getElementById('emonth').value,rent=parseFloat(document.getElementById('erent').value)||0,car=parseFloat(document.getElementById('ecar').value)||0,moto=parseFloat(document.getElementById('emoto').value)||0,fridge=parseFloat(document.getElementById('efridge').value)||0,other=parseFloat(document.getElementById('eother').value)||0,total=rent+eEC+eWC+car+moto+fridge+other;
-  // Preserve existing room_type
   const existing=mData.find(x=>x.room===room);
   const roomType=(existing&&existing.room_type)||'monthly';
-  const{error}=await sb.from('monthly_charges').upsert({month,room,building:'เจเรสซิเดนซ์',room_type:roomType,tenant_name:document.getElementById('ename').value,rent,elec_old:parseFloat(document.getElementById('eeold').value)||null,elec_new:parseFloat(document.getElementById('eenew').value)||null,elec_cost:eEC,elec_rate_type:document.getElementById('erate_elec').value,water_old:parseFloat(document.getElementById('ewold').value)||null,water_new:parseFloat(document.getElementById('ewnew').value)||null,water_cost:eWC,water_rate_type:document.getElementById('erate_water').value,parking_car:car,parking_moto:moto,fridge_fee:fridge,other,total,status:document.getElementById('estatus').value},{onConflict:'month,room'});
+  const rec={month,room,building:'เจเรสซิเดนซ์',room_type:roomType,
+    tenant_name:document.getElementById('ename').value,rent,
+    elec_old:parseFloat(document.getElementById('eeold').value)||null,elec_new:parseFloat(document.getElementById('eenew').value)||null,
+    elec_cost:eEC,elec_rate_type:document.getElementById('erate_elec').value,
+    water_old:parseFloat(document.getElementById('ewold').value)||null,water_new:parseFloat(document.getElementById('ewnew').value)||null,
+    water_cost:eWC,water_rate_type:document.getElementById('erate_water').value,
+    parking_car:car,parking_moto:moto,fridge_fee:fridge,other,total,
+    status:document.getElementById('estatus').value,
+    bed_type:document.getElementById('ebed').value,
+    phone:document.getElementById('ephone').value||null,
+    contract_months:parseInt(document.getElementById('econtract_months').value)||null,
+    contract_end:document.getElementById('econtract_end').value||null,
+    has_tv:document.getElementById('ehas_tv').checked,
+    has_fridge:document.getElementById('ehas_fridge').checked,
+    has_motorcycle:document.getElementById('ehas_motorcycle').checked,
+    has_car:document.getElementById('ehas_car').checked
+  };
+  const{error}=await sb.from('monthly_charges').upsert(rec,{onConflict:'month,room'});
   if(error){toast('Error: '+error.message,'err');return;}
   toast('บันทึกสำเร็จ ✓','ok');closeM('emod');await loadMonth(curMonth);
 }
