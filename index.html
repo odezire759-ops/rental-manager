@@ -346,7 +346,7 @@ async function runOCR(base64,mediaType){
     ?`Read this passport image. Return ONLY valid JSON, no markdown:\n{"surname_en":"","given_names_en":"","nationality":"","passport_no":"","date_of_birth":"","date_of_expiry":"","sex":"","country_code":""}`
     :`Read this Thai national ID card. Return ONLY valid JSON, no markdown:\n{"name_th":"","surname_th":"","name_en":"","surname_en":"","id_number":"","date_of_birth":"","date_of_expiry":"","address":""}`;
   try{
-    const PROXY='https://script.google.com/macros/s/AKfycbw5a_f6vH0ta_Fag4wE15BvySW94yHsRekogBxNRssg8X5DJFZjFXp1hCGu1_eEFD3JoA/exec';
+    const PROXY='https://script.google.com/macros/s/AKfycbwPsXoAfQyCIMLq4mCsL08ZX8FP3vU6NDfvx8wd0x9e1JEAD2r3s3LvFGuBmwQMSafo/exec';
     const res=await fetch(PROXY,{
       method:'POST',
       headers:{'Content-Type':'text/plain'},
