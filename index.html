@@ -131,6 +131,27 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .ota-ci2{background:#e8f0fe;border-color:#90caf9;}
 .ota-co{background:#fff1f1;border-color:#ef9a9a;}
 
+/* ══ DAILY GUEST CARDS ══ */
+.guest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.gcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:0;overflow:hidden;transition:all .15s;position:relative;}
+.gcard:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
+.gcard-top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);}
+.gcard-room{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--blue);}
+.gcard-src{display:flex;align-items:center;gap:6px;}
+.gcard-body{padding:12px 14px;}
+.gcard-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.gcard-info{font-size:11px;color:var(--text2);line-height:1.6;}
+.gcard-info span{display:inline-flex;align-items:center;gap:3px;}
+.gcard-price{text-align:right;margin-top:6px;font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--gold2);}
+.gcard-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.gbadge{padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;background:var(--shell);color:var(--text2);border:1px solid var(--border);}
+.gbadge.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.gcard.src-A .gcard-top{background:#fff8f0;border-bottom-color:#ffcc80;}
+.gcard.src-T .gcard-top{background:#fff5f5;border-bottom-color:#ef9a9a;}
+.gcard.src-B .gcard-top{background:#f0f4ff;border-bottom-color:#90caf9;}
+.gcard.src-W .gcard-top{background:#f0f7ff;border-bottom-color:#90caf9;}
+.gcard.src-O .gcard-top{background:#f5f5f5;}
+
 /* ══ CHECK-IN ROOM CARDS ══ */
 .ci-rcard{padding:10px 6px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
 .ci-rcard:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
@@ -296,65 +317,64 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   </div>
 </div>
 
-<!-- ═══ DAILY SECTION ═══ -->
+<!-- ═══ DAILY SECTION — REDESIGNED ═══ -->
 <div id="sec-daily" class="sec">
-  <div class="legend">
-    <div class="litem"><div class="ldot" style="background:var(--W-bg);border:1px solid var(--W);"></div><span style="color:var(--W);">Walk-in</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--A-bg);border:1px solid var(--A);"></div><span style="color:var(--A);">Agoda</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--B-bg);border:1px solid var(--B);"></div><span style="color:var(--B);">Booking.com</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--T-bg);border:1px solid var(--T);"></div><span style="color:var(--T);">Traveloka</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--C-bg);border:1px solid var(--C);"></div><span style="color:var(--C);">Central</span></div>
-    <div class="litem"><div class="ldot" style="background:#f0f0f0;border:1px solid #ccc;"></div><span style="color:var(--text3);">ว่าง</span></div>
-  </div>
 
-  <!-- OTA Check-in / Check-out Cards -->
-  <div id="ota-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
-    <div class="card" style="border-top:4px solid var(--success);">
-      <div class="chdr" style="background:#f1fdf6;"><span style="color:var(--success);">● Check-in วันนี้</span><span id="ota-ci-count" style="font-size:11px;color:var(--text3);"></span></div>
-      <div class="cbdy" id="ota-ci-today" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+  <!-- OTA Check-in/out strip -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="card" style="border-left:4px solid var(--success);border-top:none;">
+      <div class="chdr" style="background:#f1fdf6;padding:8px 14px;"><span style="color:var(--success);font-size:13px;">● Check-in วันนี้</span><span id="ota-ci-count" style="font-size:11px;color:var(--text3);margin-left:6px;"></span></div>
+      <div id="ota-ci-today" style="max-height:220px;overflow-y:auto;padding:10px;"><div class="loading">โหลด...</div></div>
     </div>
-    <div class="card" style="border-top:4px solid var(--blue);">
-      <div class="chdr" style="background:#e8f0fe;"><span style="color:var(--blue);">● Check-in พรุ่งนี้</span><span id="ota-ci2-count" style="font-size:11px;color:var(--text3);"></span></div>
-      <div class="cbdy" id="ota-ci-tomorrow" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+    <div class="card" style="border-left:4px solid var(--blue);border-top:none;">
+      <div class="chdr" style="background:#e8f0fe;padding:8px 14px;"><span style="color:var(--blue);font-size:13px;">● Check-in พรุ่งนี้</span><span id="ota-ci2-count" style="font-size:11px;color:var(--text3);margin-left:6px;"></span></div>
+      <div id="ota-ci-tomorrow" style="max-height:220px;overflow-y:auto;padding:10px;"><div class="loading">โหลด...</div></div>
     </div>
-    <div class="card" style="border-top:4px solid var(--danger);">
-      <div class="chdr" style="background:#fff1f1;"><span style="color:var(--danger);">● Check-out วันนี้</span><span id="ota-co-count" style="font-size:11px;color:var(--text3);"></span></div>
-      <div class="cbdy" id="ota-co-today" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+    <div class="card" style="border-left:4px solid var(--danger);border-top:none;">
+      <div class="chdr" style="background:#fff1f1;padding:8px 14px;"><span style="color:var(--danger);font-size:13px;">● Check-out วันนี้</span><span id="ota-co-count" style="font-size:11px;color:var(--text3);margin-left:6px;"></span></div>
+      <div id="ota-co-today" style="max-height:220px;overflow-y:auto;padding:10px;"><div class="loading">โหลด...</div></div>
     </div>
   </div>
 
   <!-- Date strip -->
   <div class="date-strip" id="date-strip"></div>
 
-  <!-- Daily floor cards -->
-  <div id="daily-floor-container"></div>
+  <!-- Room status for selected date — NO floor grouping, guests only -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr">
+      <span id="daily-date-title">📅 ห้องที่มีแขกเข้าพัก</span>
+      <span id="daily-room-summary" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+    <div id="daily-guest-grid" style="padding:14px;">
+      <div class="loading">กำลังโหลด...</div>
+    </div>
+  </div>
 
-  <!-- Charts row -->
-  <div class="g2" style="margin-top:14px;">
+  <!-- Charts + Recent bookings -->
+  <div class="g2">
     <div class="card">
-      <div class="chdr">📊 สัดส่วนแหล่งที่มา (เดือนนี้)</div>
+      <div class="chdr">📊 สัดส่วนแหล่งที่มา</div>
       <div class="cbdy"><div class="src-bars" id="src-bars"></div></div>
     </div>
     <div class="card">
-      <div class="chdr">🏆 Top ห้องพัก (เดือนนี้)</div>
+      <div class="chdr">🏆 Top ห้องรายรับ</div>
       <div class="cbdy" id="bar-wrap"></div>
     </div>
   </div>
 
-  <!-- Recent OTA Bookings -->
+  <!-- Recent OTA table -->
   <div class="card" style="margin-top:14px;">
-    <div class="chdr"><span>📋 การจองล่าสุด 5 อันดับ</span><span id="ota-total-count" style="font-size:11px;color:var(--text3);"></span></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>Booking ID</th><th>Platform</th><th>ลูกค้า</th><th>โรงแรม</th><th>Check-in</th><th>Check-out</th><th>ยอด (THB)</th><th>Commission</th><th>สถานะ</th></tr></thead>
-    <tbody id="ota-recent-tbody"><tr><td colspan="9" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
-    <div style="padding:8px 16px;font-size:10px;color:var(--text3);text-align:center;border-top:1px solid var(--border);">ข้อมูลจาก Supabase · อัปเดตอัตโนมัติ Real-time</div>
+    <div class="chdr"><span>📋 การจองล่าสุด</span><span id="ota-total-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>Booking ID</th><th>Platform</th><th>ลูกค้า</th><th>Check-in</th><th>Check-out</th><th>ยอด</th><th>Commission</th><th>สถานะ</th></tr></thead>
+    <tbody id="ota-recent-tbody"><tr><td colspan="8" class="loading">โหลด...</td></tr></tbody></table></div>
+    <div style="padding:6px 16px;font-size:10px;color:var(--text3);text-align:center;border-top:1px solid var(--border);">Real-time จาก Supabase</div>
   </div>
 
-  <!-- Availability mini table -->
+  <!-- Availability grid -->
   <div class="card" style="margin-top:14px;">
     <div class="chdr">
-      <span>📅 ตาราง Availability — แถว=ห้อง / คอลัมน์=วันที่</span>
+      <span>📅 Availability Grid</span>
       <div class="seg" id="dseg">
-        <button class="sb" onclick="setDM('01',this)">ม.ค.</button>
         <button class="sb" onclick="setDM('02',this)">ก.พ.</button>
         <button class="sb active" onclick="setDM('03',this)">มี.ค.</button>
         <button class="sb" onclick="setDM('all',this)">รวม</button>
@@ -678,7 +698,7 @@ async function loadMasterRooms(){
 // ══════════════════════════════════
 function renderKPIBar(){
   const el=document.getElementById('kpi-bar');
-  if(activeSec==='monthly'||activeSec==='booking'){
+  if(activeSec==='monthly'||activeSec==='booking'||activeSec==='checkin'){
     el.innerHTML=`
       <div class="kt ky"><div class="klbl">รายรับรวม</div><div class="kval y" id="k-rev">—</div><div class="ksub">บาท</div></div>
       <div class="kt kb"><div class="klbl">ห้องทั้งหมด</div><div class="kval b" id="k-tot">—</div><div class="ksub">ห้อง</div></div>
@@ -688,24 +708,60 @@ function renderKPIBar(){
       <div class="kt kb"><div class="klbl">ค่าน้ำรวม</div><div class="kval b" id="k-water">—</div><div class="ksub">บาท</div></div>`;
     if(mData.length)updateMonthlyKPI(mData);
   } else {
-    // Daily KPIs
-    const dd=getDD();
-    const rev=dd.reduce((a,b)=>a+b.p,0);
-    const mInt=dailyM==='all'?0:parseInt(dailyM);
-    const days=dailyM==='all'?365:new Date(2026,mInt,0).getDate();
-    const totalSlots=Math.max(1,ALL_ROOMS.length*days);
-    const occ=totalSlots?((dd.length/totalSlots)*100).toFixed(1):'0';
-    const todayB=DAILY.filter(x=>x.d===curDailyDate);
-    const srcCnt={};dd.forEach(x=>{srcCnt[x.s]=(srcCnt[x.s]||0)+1;});
-    const topSrc=Object.entries(srcCnt).sort((a,b)=>b[1]-a[1])[0];
+    // Daily KPIs — show loading, real data loaded by updateDailyKPI()
     el.innerHTML=`
-      <div class="kt ky"><div class="klbl">รายรับรายวันรวม</div><div class="kval y" id="dk-rev">฿${rev.toLocaleString('th-TH')}</div><div class="ksub">${dailyM==='all'?'ทั้งหมด':mL('2026-'+dailyM)||dailyM}</div></div>
-      <div class="kt kb"><div class="klbl">จำนวนคืนรวม</div><div class="kval b">${dd.length}</div><div class="ksub">คืน</div></div>
-      <div class="kt kg"><div class="klbl">Occupancy Rate</div><div class="kval g">${occ}%</div><div class="ksub">${dd.length}/${totalSlots} คืน</div></div>
-      <div class="kt ko"><div class="klbl">ห้องเข้าพักวันนี้</div><div class="kval o">${todayB.length}</div><div class="ksub">${curDailyDate}</div></div>
-      <div class="kt kp"><div class="klbl">แหล่งจองอันดับ 1</div><div class="kval p">${topSrc?SRC[topSrc[0]]?.label||topSrc[0]:'—'}</div><div class="ksub">${topSrc?topSrc[1]+' คืน':''}</div></div>
-      <div class="kt kb"><div class="klbl">ราคาเฉลี่ย/คืน</div><div class="kval b">฿${dd.length?Math.round(rev/dd.length).toLocaleString():'—'}</div><div class="ksub">บาท</div></div>`;
+      <div class="kt ky"><div class="klbl">รายรับรายวันรวม</div><div class="kval y" id="dk-rev">—</div><div class="ksub" id="dk-period">โหลด...</div></div>
+      <div class="kt kb"><div class="klbl">จำนวนคืนรวม</div><div class="kval b" id="dk-nights">—</div><div class="ksub">คืน</div></div>
+      <div class="kt kg"><div class="klbl">Occupancy Rate</div><div class="kval g" id="dk-occ">—%</div><div class="ksub" id="dk-occ-sub"></div></div>
+      <div class="kt ko"><div class="klbl">ห้องเข้าพักวันนี้</div><div class="kval o" id="dk-today">—</div><div class="ksub">${curDailyDate}</div></div>
+      <div class="kt kp"><div class="klbl">แหล่งจองอันดับ 1</div><div class="kval p" id="dk-topsrc">—</div><div class="ksub" id="dk-topsrc-sub"></div></div>
+      <div class="kt kb"><div class="klbl">ราคาเฉลี่ย/คืน</div><div class="kval b" id="dk-avg">—</div><div class="ksub">บาท</div></div>`;
   }
+}
+
+// Async update for daily KPIs — queries ota_bookings directly
+async function updateDailyKPI(){
+  // Get all bookings for the selected month
+  let gte,lte;
+  if(dailyM==='all'){gte='2026-01-01';lte='2026-12-31';}
+  else{const m=parseInt(dailyM);gte=`2026-${dailyM}-01`;lte=`2026-${dailyM}-${new Date(2026,m,0).getDate()}`;}
+  
+  const{data:monthBookings}=await sb.from('ota_bookings').select('*').gte('check_in',gte).lte('check_in',lte).neq('status','CANCELLED');
+  const bookings=monthBookings||[];
+  
+  // Calculate nights (sum of nights per booking)
+  let totalNights=0,totalRev=0;
+  bookings.forEach(b=>{
+    const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+    totalNights+=Math.max(1,Math.round((co-ci)/86400000));
+    totalRev+=Number(b.total_amount)||0;
+  });
+  
+  // Today's guests
+  const today=new Date().toISOString().split('T')[0];
+  const{data:todayGuests}=await sb.from('ota_bookings').select('id').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED');
+  
+  // Source breakdown
+  const srcCnt={};bookings.forEach(b=>{srcCnt[b.source]=(srcCnt[b.source]||0)+1;});
+  const topSrc=Object.entries(srcCnt).sort((a,b)=>b[1]-a[1])[0];
+  
+  // Occupancy
+  const dailyRoomCount=ALL_ROOMS.length||85;
+  const daysInMonth=dailyM==='all'?365:new Date(2026,parseInt(dailyM),0).getDate();
+  const totalSlots=Math.max(1,dailyRoomCount*daysInMonth);
+  const occ=((totalNights/totalSlots)*100).toFixed(1);
+  
+  // Update DOM
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  s('dk-rev','฿'+Math.round(totalRev).toLocaleString());
+  s('dk-period',dailyM==='all'?'ทั้งหมด':(mL('2026-'+dailyM)||dailyM));
+  s('dk-nights',totalNights);
+  s('dk-occ',occ+'%');
+  s('dk-occ-sub',`${totalNights}/${totalSlots} คืน`);
+  s('dk-today',(todayGuests||[]).length);
+  s('dk-topsrc',topSrc?topSrc[0]:'—');
+  s('dk-topsrc-sub',topSrc?topSrc[1]+' booking':'');
+  s('dk-avg',totalNights?'฿'+Math.round(totalRev/totalNights).toLocaleString():'—');
 }
 function updateMonthlyKPI(d){
   const rev=d.reduce((a,r)=>a+(r.total||0),0),paid=d.filter(r=>r.status==='paid').length,pend=d.filter(r=>r.status==='pending').length;
@@ -977,26 +1033,26 @@ function buildDateStrip(){
   }
   strip.innerHTML=html;
 }
-function selectDate(ds){
+async function selectDate(ds){
   curDailyDate=ds;
-  document.querySelectorAll('.dday').forEach(el=>{el.classList.toggle('active',el.querySelector('.dn')&&el.onclick.toString().includes(ds));});
   buildDateStrip();
-  renderDailyCards();
-  renderKPIBar();
+  await renderDailyCards();
+  await updateDailyKPI();
 }
 function setDM(m,btn){dailyM=m;document.querySelectorAll('#dseg .sb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');buildDateStrip();renderDaily();}
 function getDD(){return dailyM==='all'?DAILY:DAILY.filter(x=>x.d.substring(5,7)===dailyM);}
 
 async function renderDaily(){
   await loadOTAData();
-  renderDailyCards();
+  renderKPIBar();
+  await updateDailyKPI();
+  await renderDailyCards();
   loadOTACards();
   loadRecentOTABookings();
   const d=getDD();
   renderSrcBars(d);
   renderTopRooms(d);
   renderAvailTable(d);
-  renderKPIBar();
 }
 
 // OTA Check-in/Check-out cards
@@ -1070,54 +1126,51 @@ sb.channel('ota-realtime').on('postgres_changes',{event:'*',schema:'public',tabl
   if(activeSec==='daily'){loadOTACards();loadRecentOTABookings();renderDaily();}
 }).subscribe();
 
-function renderDailyCards(){
-  const c=document.getElementById('daily-floor-container');
-  const dayData=DAILY.filter(x=>x.d===curDailyDate);
-  const bookMap={};dayData.forEach(x=>bookMap[x.r]=x);
+async function renderDailyCards(){
+  const c=document.getElementById('daily-guest-grid');
   const dateStr=new Date(curDailyDate).toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('daily-date-title').textContent=`📅 ${dateStr}`;
+  c.innerHTML='<div class="loading">กำลังโหลด...</div>';
   
-  let html=`<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-    <span>📅 ${dateStr}</span>
-    <span style="font-size:11px;color:var(--text3);font-weight:500;">${dayData.length} ห้องเข้าพัก / ${ALL_ROOMS.length} ห้อง</span>
-  </div>`;
+  // Query ota_bookings where curDailyDate is between check_in and check_out
+  const{data:guests,error}=await sb.from('ota_bookings').select('*').lte('check_in',curDailyDate).gt('check_out',curDailyDate).neq('status','CANCELLED').order('guest_name');
   
-  // Use floor map from monthly data; if empty fall back to grouping daily rooms
-  let floorMap=FLOOR_ROOMS;
-  if(!Object.keys(floorMap).length){
-    floorMap={};
-    DAILY.forEach(x=>{const fl=getFloor(x.r);if(!floorMap[fl])floorMap[fl]=[];if(!floorMap[fl].includes(x.r))floorMap[fl].push(x.r);});
-    for(const fl in floorMap) floorMap[fl].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  if(error){c.innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
+  if(!guests||!guests.length){
+    c.innerHTML='<div class="empty" style="padding:30px;">ไม่มีแขกเข้าพักในวันนี้</div>';
+    document.getElementById('daily-room-summary').textContent='0 ห้อง';
+    return;
   }
-  const sortedFloors=Object.keys(floorMap).sort((a,b)=>parseInt(a)-parseInt(b));
   
-  for(const floor of sortedFloors){
-    const rooms=floorMap[floor];
-    const booked=rooms.filter(r=>bookMap[r]);
-    const vacantCount=rooms.length-booked.length;
-    html+=`<div class="floor-sec">
-      <div class="floor-hdr" onclick="toggleFloor(this,'df_${floor}')">
-        <span class="arrow">▼</span>
-        <span class="floor-tag">${getFloorName(floor)}</span>
-        <span class="floor-count">(${rooms.length} ห้อง)</span>
-        <div class="floor-stats">
-          <span class="fg">● ${booked.length} เข้าพัก</span>
-          <span style="color:var(--text3);">○ ${vacantCount} ว่าง</span>
-          ${booked.length?`<span class="fb">฿${booked.reduce((a,r)=>a+bookMap[r].p,0).toLocaleString()}</span>`:''}
-        </div>
+  const srcBadge=(s)=>{
+    const m={Agoda:['#e65100','#fff3e0','A'],Traveloka:['#b71c1c','#ffebee','T'],'Booking.com':['#0d47a1','#e3f2fd','B'],'Walk-in':['#1a73e8','#e8f0fe','W']};
+    const cl=m[s]||['#455a64','#eceff1','O'];
+    return `<span style="background:${cl[1]};color:${cl[0]};padding:3px 10px;border-radius:4px;font-size:10px;font-weight:800;">${s}</span>`;
+  };
+  const srcCls=(s)=>({Agoda:'src-A',Traveloka:'src-T','Booking.com':'src-B','Walk-in':'src-W'}[s]||'src-O');
+  
+  const totalRev=guests.reduce((a,b)=>a+(Number(b.total_amount)||0),0);
+  document.getElementById('daily-room-summary').textContent=`${guests.length} ห้อง · ฿${Math.round(totalRev).toLocaleString()}`;
+  
+  c.innerHTML=`<div class="guest-grid">${guests.map(b=>{
+    const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+    const nights=Math.max(1,Math.round((co-ci)/86400000));
+    const bed=b.bed_type==='single'?'🛏 เตียงเดี่ยว':b.bed_type==='twin'?'🛏🛏 เตียงแฝด':'🛏 เตียงคู่';
+    return `<div class="gcard ${srcCls(b.source)}">
+      <div class="gcard-top">
+        <div class="gcard-room">${b.room||'—'}</div>
+        <div class="gcard-src">${srcBadge(b.source)}</div>
       </div>
-      <div class="floor-body">
-        <div class="rgrid">
-          ${rooms.map(rm=>{
-            const b=bookMap[rm];
-            if(!b) return `<div class="dcard vacant"><div class="dstripe" style="background:var(--border2);"></div><div class="dnum">${rm}</div><div class="dguest">ว่าง</div></div>`;
-            const sc=SRC[b.s]||SRC.O;
-            return `<div class="dcard"><div class="dstripe" style="background:${sc.color};"></div><div class="dsrc-tag"><span class="src src-${b.s}">${sc.label}</span></div><div class="dnum">${rm}</div><div class="dprice" style="color:${sc.color};">฿${b.p.toLocaleString()}</div><div class="dguest">${b.s==='W'?'Walk-in':'OTA Guest'}</div></div>`;
-          }).join('')}
+      <div class="gcard-body">
+        <div class="gcard-name">${b.guest_name}</div>
+        <div class="gcard-info">
+          <span>📅 ${fmtD(b.check_in)} → ${fmtD(b.check_out)}</span> · <span>🌙 ${nights} คืน</span><br>
+          <span>🏷 ${b.room_type||'Deluxe Room'}</span> · <span>${bed}</span>
         </div>
+        <div class="gcard-price">฿${Number(b.total_amount||0).toLocaleString()}</div>
       </div>
     </div>`;
-  }
-  c.innerHTML=html;
+  }).join('')}</div>`;
 }
 
 function renderAvailTable(data){
