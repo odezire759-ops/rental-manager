@@ -256,13 +256,28 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .bg{background:var(--white);color:var(--text2);}.bg:hover{background:var(--shell);}
 .bd{background:var(--white);color:var(--danger);border-color:var(--danger);}.bd:hover{background:var(--danger);color:#fff;}
 
-/* ══ AVAILABILITY MINI GRID ══ */
-.avail-table{border-collapse:collapse;font-size:10px;white-space:nowrap;}
-.avail-table th{padding:4px 5px;text-align:center;background:var(--shell);border:1px solid var(--border);font-size:9px;font-weight:700;color:var(--text2);}
-.avail-table td{padding:3px 4px;text-align:center;border:1px solid var(--border);min-width:24px;font-weight:600;font-size:10px;}
-.ac-vacant{background:#fafafa;color:var(--text3);}
-.ac-W{background:var(--W-bg);color:var(--W);}.ac-A{background:var(--A-bg);color:var(--A);}.ac-B{background:var(--B-bg);color:var(--B);}
-.ac-T{background:var(--T-bg);color:var(--T);}.ac-C{background:var(--C-bg);color:var(--C);}.ac-O{background:var(--O-bg);color:var(--O);}
+/* ══ GANTT AVAILABILITY GRID ══ */
+.gantt-wrap{width:100%;overflow-x:auto;}
+.gantt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.gantt-hdr{position:sticky;top:0;z-index:2;background:var(--white);}
+.gantt-hdr td{text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:0;border-bottom:2px solid var(--border);vertical-align:bottom;}
+.gantt-hdr .gh-day{padding:2px 0;font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.gantt-hdr .gh-dow{font-size:8px;text-transform:uppercase;color:var(--text3);letter-spacing:.05em;}
+.gantt-hdr .gh-today{background:var(--gold);color:#1a1a2e;border-radius:4px;margin:0 1px;padding:2px 0;}
+.gantt-hdr .gh-weekend{color:var(--danger);}
+.gantt-body tr{height:36px;}
+.gantt-body td{border-bottom:1px solid #f0f0f0;padding:0;position:relative;vertical-align:middle;}
+.gantt-body td.gantt-name{position:sticky;left:0;z-index:1;background:var(--white);padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:2px solid var(--border);min-width:150px;max-width:180px;}
+.gantt-bar{position:absolute;top:4px;bottom:4px;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;transition:filter .12s;z-index:1;min-width:20px;}
+.gantt-bar:hover{filter:brightness(1.15);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.gantt-bar.gb-A{background:linear-gradient(135deg,#e65100,#ff8f00);}
+.gantt-bar.gb-T{background:linear-gradient(135deg,#b71c1c,#e53935);}
+.gantt-bar.gb-B{background:linear-gradient(135deg,#0d47a1,#1976d2);}
+.gantt-bar.gb-W{background:linear-gradient(135deg,#1565c0,#42a5f5);}
+.gantt-bar.gb-O{background:linear-gradient(135deg,#455a64,#78909c);}
+.gantt-day-col{border-left:1px solid #f5f5f5;}
+.gantt-day-col.gd-today{background:rgba(212,160,23,.06);}
+.gantt-day-col.gd-weekend{background:rgba(192,57,43,.03);}
 
 /* ══ TOAST ══ */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:24px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--sh2);}
@@ -336,10 +351,19 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
-  <!-- Availability Grid — uses main toolbar month selector -->
+  <!-- Availability Grid — Gantt style -->
   <div class="card" style="margin-bottom:14px;">
-    <div class="chdr"><span>📅 Availability Grid</span><span id="avail-month-label" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
-    <div class="cbdy" style="overflow-x:auto;" id="avail-wrap"></div>
+    <div class="chdr">
+      <span>📅 Availability Grid</span>
+      <span id="avail-month-label" style="font-size:11px;color:var(--text3);margin-left:8px;"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;font-size:10px;">
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--A-bg);border:1px solid var(--A);"></span>Agoda</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--T-bg);border:1px solid var(--T);"></span>Traveloka</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--B-bg);border:1px solid var(--B);"></span>Booking</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--W-bg);border:1px solid var(--W);"></span>Walk-in</span>
+      </div>
+    </div>
+    <div id="avail-wrap" style="padding:0;"></div>
   </div>
 
   <!-- Date strip -->
@@ -1222,47 +1246,73 @@ async function renderAvailTable(){
   const label=document.getElementById('avail-month-label');
   if(label)label.textContent=mL('2026-'+m)||m;
   
-  // Query all bookings that overlap this month
-  const{data:bookings}=await sb.from('ota_bookings').select('guest_name,source,check_in,check_out,room').lte('check_in',lte).gte('check_out',gte).neq('status','CANCELLED').order('check_in');
+  const{data:bookings}=await sb.from('ota_bookings').select('guest_name,source,check_in,check_out,room,total_amount').lte('check_in',lte).gte('check_out',gte).neq('status','CANCELLED').order('check_in');
   
-  if(!bookings||!bookings.length){document.getElementById('avail-wrap').innerHTML='<div class="empty">ไม่มีข้อมูลเดือนนี้</div>';return;}
+  const wrap=document.getElementById('avail-wrap');
+  if(!bookings||!bookings.length){wrap.innerHTML='<div class="empty" style="padding:24px;">ไม่มีข้อมูลเดือนนี้</div>';return;}
   
-  // Build day-by-day map: date|guest → source
   const srcMap={Agoda:'A',Traveloka:'T','Booking.com':'B','Walk-in':'W',Other:'O'};
-  const bmap={};  // date|row_key → source code
-  const rows=[];  // {key, label, room}
+  const today=new Date().toISOString().split('T')[0];
+  const thDows=['อา','จ','อ','พ','พฤ','ศ','ส'];
   
-  bookings.forEach((b,idx)=>{
+  // Build header
+  let hdr='<tr><td class="gantt-name" style="border-bottom:2px solid var(--border);font-size:10px;color:var(--text3);font-weight:700;">แขก</td>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`2026-${m}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(ds).getDay();
+    const isT=ds===today;
+    const isWe=dow===0||dow===6;
+    hdr+=`<td class="gantt-day-col${isT?' gd-today':''}${isWe?' gd-weekend':''}">
+      <div class="gh-dow${isWe?' gh-weekend':''}">${thDows[dow]}</div>
+      <div class="gh-day${isT?' gh-today':''}">${d}</div>
+    </td>`;
+  }
+  hdr+='</tr>';
+  
+  // Build rows with bars
+  let body='';
+  const colW=100/daysInMonth; // % width per day column
+  
+  bookings.forEach(b=>{
     const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
     const s=srcMap[b.source]||'O';
-    const rowKey=b.guest_name+'_'+idx;
-    rows.push({key:rowKey,label:`${b.room||'—'} ${b.guest_name}`,src:s});
-    // Fill each day
-    for(let d=new Date(ci);d<co;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
-      if(ds>=gte&&ds<=lte) bmap[ds+'|'+rowKey]=s;
+    const monthStart=new Date(`2026-${m}-01`);
+    const monthEnd=new Date(2026,mInt,0);
+    
+    // Clamp to month boundaries
+    const barStart=ci<monthStart?monthStart:ci;
+    const barEnd=co>new Date(monthEnd.getTime()+86400000)?new Date(monthEnd.getTime()+86400000):co;
+    const startDay=barStart.getDate();
+    const endDay=barEnd.getDate()||daysInMonth;
+    const spanDays=Math.max(1,Math.round((barEnd-barStart)/86400000));
+    
+    // Calculate position
+    const leftPct=((startDay-1)/daysInMonth)*100;
+    const widthPct=(spanDays/daysInMonth)*100;
+    
+    body+=`<tr>`;
+    body+=`<td class="gantt-name" title="${b.guest_name}"><span class="src src-${s}" style="margin-right:4px;">${s}</span>${b.guest_name}</td>`;
+    // One td spanning all day columns with positioned bar inside
+    body+=`<td colspan="${daysInMonth}" style="position:relative;padding:0;height:36px;">`;
+    // Day column backgrounds
+    for(let d=1;d<=daysInMonth;d++){
+      const ds=`2026-${m}-${String(d).padStart(2,'0')}`;
+      const dow=new Date(ds).getDay();
+      const isT=ds===today;
+      const isWe=dow===0||dow===6;
+      body+=`<div style="position:absolute;top:0;bottom:0;left:${((d-1)/daysInMonth)*100}%;width:${colW}%;border-left:1px solid #f5f5f5;${isT?'background:rgba(212,160,23,.06);':''}${isWe&&!isT?'background:rgba(192,57,43,.02);':''}"></div>`;
     }
+    // The booking bar
+    body+=`<div class="gantt-bar gb-${s}" style="left:calc(${leftPct}% + 2px);width:calc(${widthPct}% - 4px);" title="${b.guest_name} · ${b.source} · ฿${Number(b.total_amount||0).toLocaleString()} · ${fmtD(b.check_in)}→${fmtD(b.check_out)}">
+      ${spanDays>=2?b.guest_name:''}
+    </div>`;
+    body+=`</td></tr>`;
   });
   
-  const today=new Date().toISOString().split('T')[0];
-  const allDates=[];
-  for(let d=1;d<=daysInMonth;d++) allDates.push(`2026-${m}-${String(d).padStart(2,'0')}`);
-  
-  let html='<table class="avail-table"><thead><tr><th style="min-width:140px;">แขก / ห้อง</th>';
-  allDates.forEach(d=>{const day=new Date(d).getDate(),isT=d===today;html+=`<th style="${isT?'background:var(--gold);color:#1a1a2e;':''}">${day}</th>`;});
-  html+='</tr></thead><tbody>';
-  
-  rows.forEach(r=>{
-    html+=`<tr><td style="font-weight:700;font-size:10px;padding:4px 6px;background:var(--shell);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;"><span class="src src-${r.src}" style="margin-right:4px;">${r.src}</span>${r.label}</td>`;
-    allDates.forEach(d=>{
-      const src=bmap[d+'|'+r.key];
-      if(src){html+=`<td class="ac-${src}" title="${r.label}">${src}</td>`;}
-      else{html+=`<td class="ac-vacant" style="${d===today?'background:var(--gold-light);':''}">·</td>`;}
-    });
-    html+='</tr>';
-  });
-  html+='</tbody></table>';
-  document.getElementById('avail-wrap').innerHTML=html;
+  wrap.innerHTML=`<div class="gantt-wrap"><table class="gantt">
+    <thead class="gantt-hdr">${hdr}</thead>
+    <tbody class="gantt-body">${body}</tbody>
+  </table></div>`;
 }
 function renderSrcBars(data){
   const srcRev={},srcCnt={};
