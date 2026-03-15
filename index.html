@@ -238,6 +238,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div class="hnav">
     <button class="nbtn active" onclick="showSec('monthly',this)">📋 รายเดือน</button>
     <button class="nbtn" onclick="showSec('daily',this)">📅 รายวัน</button>
+    <button class="nbtn" onclick="showSec('checkin',this)">🛂 แจ้งเข้าพัก</button>
     <button class="nbtn" onclick="showSec('booking',this)">🛎 จองห้อง</button>
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
@@ -312,6 +313,115 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       </div>
     </div>
     <div class="cbdy" style="overflow-x:auto;" id="avail-wrap"></div>
+  </div>
+</div>
+
+<!-- ═══ BOOKING SECTION ═══ -->
+<!-- ═══ CHECK-IN / แจ้งเข้าพัก SECTION ═══ -->
+<div id="sec-checkin" class="sec">
+  <div class="g2">
+    <!-- LEFT: OCR + Form -->
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="chdr">
+          <span>🛂 แจ้งเข้าพัก — AI OCR</span>
+          <div class="seg" id="gtype-seg">
+            <button class="sb active" onclick="setGuestType('thai',this)">🇹🇭 คนไทย</button>
+            <button class="sb" onclick="setGuestType('foreign',this)">🌍 ต่างชาติ</button>
+          </div>
+        </div>
+        <div class="cbdy">
+          <!-- OCR Upload -->
+          <div id="ocr-box" style="border:2px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .15s;background:var(--shell);" onclick="document.getElementById('ocr-file').click();" ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='var(--gold-light)';" ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--shell)';" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleOCRDrop(event);">
+            <div style="font-size:28px;margin-bottom:6px;" id="ocr-icon">📸</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);" id="ocr-label">ถ่ายรูปหรือลากไฟล์ บัตรประชาชน / Passport</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">AI จะอ่านข้อมูลและกรอกฟอร์มอัตโนมัติ</div>
+            <input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none;" onchange="handleOCRFile(this)">
+          </div>
+          <div id="ocr-preview" style="display:none;margin-bottom:14px;text-align:center;">
+            <img id="ocr-img" style="max-width:100%;max-height:200px;border-radius:var(--r);border:1px solid var(--border);">
+            <div id="ocr-status" style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:6px;">🔍 กำลังอ่านข้อมูล...</div>
+          </div>
+
+          <!-- Thai Guest Form -->
+          <div id="form-thai">
+            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">ข้อมูลผู้เข้าพัก (คนไทย)</div>
+            <div class="fg">
+              <div class="fr"><label>เลขบัตรประชาชน (13 หลัก)</label><input type="text" id="ci-thai-id" maxlength="13" placeholder="1234567890123"></div>
+              <div class="fr"><label>คำนำหน้า</label><select id="ci-prefix"><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>ชื่อ (ไทย)</label><input type="text" id="ci-thai-fname"></div>
+              <div class="fr"><label>นามสกุล (ไทย)</label><input type="text" id="ci-thai-lname"></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>วันเกิด</label><input type="date" id="ci-thai-bday"></div>
+              <div class="fr"><label>เบอร์โทร</label><input type="tel" id="ci-thai-phone"></div>
+            </div>
+          </div>
+
+          <!-- Foreign Guest Form -->
+          <div id="form-foreign" style="display:none;">
+            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">Guest Information (Foreign / TM30)</div>
+            <div class="fg">
+              <div class="fr"><label>First Name *</label><input type="text" id="ci-fname"></div>
+              <div class="fr"><label>Last Name *</label><input type="text" id="ci-lname"></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>Middle Name</label><input type="text" id="ci-mname"></div>
+              <div class="fr"><label>Gender *</label><select id="ci-gender"><option value="M">M — Male</option><option value="F">F — Female</option></select></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>Passport No. *</label><input type="text" id="ci-passport"></div>
+              <div class="fr"><label>Nationality * (ICAO)</label>
+                <select id="ci-nationality"><option value="">— เลือกสัญชาติ —</option></select>
+              </div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>Birth Date</label><input type="date" id="ci-bday"></div>
+              <div class="fr"><label>Phone</label><input type="tel" id="ci-phone"></div>
+            </div>
+          </div>
+
+          <!-- Common: Room + Dates -->
+          <div class="fsec">ข้อมูลห้องพัก</div>
+          <div class="fg">
+            <div class="fr"><label>ห้อง *</label><input type="text" id="ci-room" placeholder="เลขห้อง"></div>
+            <div class="fr"><label>ประเภท</label><select id="ci-stay-type"><option value="daily">📅 รายวัน</option><option value="monthly">🏠 รายเดือน</option></select></div>
+          </div>
+          <div class="fg">
+            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin"></div>
+            <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout"></div>
+          </div>
+
+          <button class="btn bp" style="width:100%;margin-top:14px;padding:10px;font-size:13px;" onclick="saveCheckin()">💾 บันทึกแจ้งเข้าพัก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Guest List + Export -->
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="chdr">
+          <span>📋 รายการแจ้งเข้าพักล่าสุด</span>
+          <div style="display:flex;gap:6px;">
+            <button class="tbtn" style="font-size:10px;" onclick="exportTM30()">📄 TM30 Excel</button>
+            <button class="tbtn" style="font-size:10px;" onclick="exportRR1()">📄 รร.1 Excel</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:500px;overflow-y:auto;">
+          <table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อ</th><th>เอกสาร</th><th>สัญชาติ</th><th>เข้าพัก</th><th>ออก</th><th>TM30</th></tr></thead>
+          <tbody id="ci-tbody"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chdr">📊 สถิติแจ้งเข้าพัก (เดือนนี้)</div>
+        <div class="cbdy" id="ci-stats">
+          <div class="loading">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1003,7 +1113,233 @@ function showSec(id,btn){
   if(id==='daily'){buildDateStrip();renderDaily();}
   if(id==='booking'){loadBookings();refreshAvailRooms();}
   if(id==='monthly'&&mData.length)updateMonthlyKPI(mData);
+  if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();
+    const t=new Date().toISOString().split('T')[0];
+    if(!document.getElementById('ci-checkin').value)document.getElementById('ci-checkin').value=t;
+  }
 }
+
+// ══════════════════════════════════
+// CHECK-IN / แจ้งเข้าพัก
+// ══════════════════════════════════
+let curGuestType='thai';
+let nationalityList=[];
+
+function setGuestType(type,btn){
+  curGuestType=type;
+  document.querySelectorAll('#gtype-seg .sb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('form-thai').style.display=type==='thai'?'':'none';
+  document.getElementById('form-foreign').style.display=type==='foreign'?'':'none';
+  document.getElementById('ocr-label').textContent=type==='thai'?'ถ่ายรูปหรือลากไฟล์ บัตรประชาชน':'Take photo or drag & drop Passport';
+}
+
+async function loadNationalities(){
+  if(nationalityList.length)return;
+  const{data}=await sb.from('nationality_codes').select('*').order('name_en');
+  nationalityList=data||[];
+  const sel=document.getElementById('ci-nationality');
+  if(sel.options.length<=1){
+    nationalityList.forEach(n=>{
+      const opt=document.createElement('option');
+      opt.value=n.icao_code;
+      opt.textContent=`${n.icao_code} — ${n.name_en} (${n.name_th})`;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+// OCR with Claude API
+function handleOCRFile(input){if(input.files[0])processOCR(input.files[0]);}
+function handleOCRDrop(e){const f=e.dataTransfer.files[0];if(f)processOCR(f);}
+
+async function processOCR(file){
+  // Show preview
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    const base64=e.target.result.split(',')[1];
+    const mediaType=file.type||'image/jpeg';
+    document.getElementById('ocr-img').src=e.target.result;
+    document.getElementById('ocr-preview').style.display='block';
+    document.getElementById('ocr-status').textContent='🔍 AI กำลังอ่านข้อมูล...';
+    document.getElementById('ocr-box').style.display='none';
+    
+    try{
+      const prompt=curGuestType==='thai'
+        ?`อ่านบัตรประชาชนไทยในรูปนี้ ส่งกลับ JSON เท่านั้น ไม่ต้องมี markdown:
+{"id_number":"เลข 13 หลัก","prefix":"คำนำหน้า","first_name":"ชื่อภาษาไทย","last_name":"นามสกุลภาษาไทย","birth_date":"YYYY-MM-DD","gender":"M หรือ F"}`
+        :`Read this passport image. Return JSON only, no markdown:
+{"first_name":"","middle_name":"","last_name":"","passport_no":"","nationality":"ICAO 3-letter code","birth_date":"YYYY-MM-DD","gender":"M or F"}`;
+
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1000,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:prompt}
+          ]}]
+        })
+      });
+      const data=await res.json();
+      const text=data.content?.map(c=>c.text||'').join('')||'';
+      const clean=text.replace(/```json|```/g,'').trim();
+      const parsed=JSON.parse(clean);
+      
+      document.getElementById('ocr-status').innerHTML='<span style="color:var(--success);">✅ อ่านข้อมูลสำเร็จ — กรุณาตรวจสอบ</span>';
+      fillFormFromOCR(parsed);
+    }catch(err){
+      console.error('OCR error:',err);
+      document.getElementById('ocr-status').innerHTML='<span style="color:var(--danger);">❌ อ่านไม่สำเร็จ — กรุณากรอกข้อมูลเอง</span>';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function fillFormFromOCR(d){
+  if(curGuestType==='thai'){
+    if(d.id_number)document.getElementById('ci-thai-id').value=d.id_number;
+    if(d.prefix)document.getElementById('ci-prefix').value=d.prefix;
+    if(d.first_name)document.getElementById('ci-thai-fname').value=d.first_name;
+    if(d.last_name)document.getElementById('ci-thai-lname').value=d.last_name;
+    if(d.birth_date)document.getElementById('ci-thai-bday').value=d.birth_date;
+  }else{
+    if(d.first_name)document.getElementById('ci-fname').value=d.first_name;
+    if(d.middle_name)document.getElementById('ci-mname').value=d.middle_name;
+    if(d.last_name)document.getElementById('ci-lname').value=d.last_name;
+    if(d.passport_no)document.getElementById('ci-passport').value=d.passport_no;
+    if(d.nationality){
+      const sel=document.getElementById('ci-nationality');
+      // Try exact match first, then partial
+      for(let i=0;i<sel.options.length;i++){
+        if(sel.options[i].value===d.nationality){sel.selectedIndex=i;break;}
+      }
+    }
+    if(d.gender)document.getElementById('ci-gender').value=d.gender;
+    if(d.birth_date)document.getElementById('ci-bday').value=d.birth_date;
+  }
+}
+
+async function saveCheckin(){
+  const room=document.getElementById('ci-room').value.trim();
+  const checkIn=document.getElementById('ci-checkin').value;
+  if(!room||!checkIn){toast('กรุณาระบุห้องและวันที่เข้าพัก','err');return;}
+  
+  const rec={
+    building:'เจเรสซิเดนซ์',
+    room,
+    guest_type:curGuestType,
+    check_in:checkIn,
+    check_out:document.getElementById('ci-checkout').value||null,
+    source:'manual'
+  };
+  
+  if(curGuestType==='thai'){
+    rec.thai_id_number=document.getElementById('ci-thai-id').value||null;
+    rec.thai_prefix=document.getElementById('ci-prefix').value;
+    rec.thai_first_name=document.getElementById('ci-thai-fname').value;
+    rec.thai_last_name=document.getElementById('ci-thai-lname').value;
+    rec.birth_date=document.getElementById('ci-thai-bday').value||null;
+    rec.phone=document.getElementById('ci-thai-phone').value||null;
+    rec.gender=null;
+    if(!rec.thai_first_name){toast('กรุณากรอกชื่อ','err');return;}
+  }else{
+    rec.first_name=document.getElementById('ci-fname').value;
+    rec.last_name=document.getElementById('ci-lname').value;
+    rec.middle_name=document.getElementById('ci-mname').value||null;
+    rec.passport_no=document.getElementById('ci-passport').value;
+    rec.nationality=document.getElementById('ci-nationality').value;
+    rec.gender=document.getElementById('ci-gender').value;
+    rec.birth_date=document.getElementById('ci-bday').value||null;
+    rec.phone=document.getElementById('ci-phone').value||null;
+    if(!rec.first_name||!rec.passport_no){toast('กรุณากรอก First Name และ Passport No.','err');return;}
+  }
+  
+  const{error}=await sb.from('guest_checkins').insert(rec);
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('บันทึกแจ้งเข้าพักสำเร็จ ✓','ok');
+  
+  // Reset form
+  ['ci-thai-id','ci-thai-fname','ci-thai-lname','ci-thai-phone','ci-fname','ci-lname','ci-mname','ci-passport','ci-phone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('ci-room').value='';
+  document.getElementById('ocr-preview').style.display='none';
+  document.getElementById('ocr-box').style.display='';
+  loadCheckins();loadCheckinStats();
+}
+
+async function loadCheckins(){
+  const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(30);
+  const tb=document.getElementById('ci-tbody');
+  if(!data?.length){tb.innerHTML='<tr><td colspan="8" class="empty">ยังไม่มีรายการ</td></tr>';return;}
+  tb.innerHTML=data.map(r=>{
+    const name=r.guest_type==='thai'
+      ?`${r.thai_prefix||''}${r.thai_first_name||''} ${r.thai_last_name||''}`
+      :`${r.first_name||''} ${r.middle_name||''} ${r.last_name||''}`.trim();
+    const doc=r.guest_type==='thai'?(r.thai_id_number||'—'):(r.passport_no||'—');
+    const nat=r.guest_type==='thai'?'🇹🇭 ไทย':(r.nationality||'—');
+    return `<tr>
+      <td class="mono" style="font-weight:800;">${r.room}</td>
+      <td>${r.guest_type==='thai'?'<span class="pill ppaid">🇹🇭 ไทย</span>':'<span class="pill ppend">🌍 ต่างชาติ</span>'}</td>
+      <td>${name}</td>
+      <td class="mono" style="font-size:11px;">${doc}</td>
+      <td>${nat}</td>
+      <td style="font-size:11px;">${fmtD(r.check_in)}</td>
+      <td style="font-size:11px;">${r.check_out?fmtD(r.check_out):'—'}</td>
+      <td>${r.guest_type==='foreign'?(r.tm30_submitted?'<span style="color:var(--success);">✅</span>':'<span style="color:var(--warn);">⏳</span>'):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadCheckinStats(){
+  const now=new Date();const m=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').gte('check_in',m+'-01');
+  const el=document.getElementById('ci-stats');
+  if(!data?.length){el.innerHTML='<div class="empty">ยังไม่มีข้อมูลเดือนนี้</div>';return;}
+  const thai=data.filter(r=>r.guest_type==='thai').length;
+  const foreign=data.filter(r=>r.guest_type==='foreign').length;
+  const tm30Pending=data.filter(r=>r.guest_type==='foreign'&&!r.tm30_submitted).length;
+  const natCount={};data.filter(r=>r.guest_type==='foreign').forEach(r=>{natCount[r.nationality]=(natCount[r.nationality]||0)+1;});
+  const topNat=Object.entries(natCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:var(--sbg);border-radius:var(--rs);padding:10px;text-align:center;"><div class="klbl">คนไทย</div><div class="kval g" style="font-size:20px;">${thai}</div></div>
+      <div style="background:var(--blue-dim);border-radius:var(--rs);padding:10px;text-align:center;"><div class="klbl">ต่างชาติ</div><div class="kval b" style="font-size:20px;">${foreign}</div></div>
+      <div style="background:${tm30Pending?'var(--wbg)':'var(--sbg)'};border-radius:var(--rs);padding:10px;text-align:center;"><div class="klbl">TM30 ค้าง</div><div class="kval ${tm30Pending?'o':'g'}" style="font-size:20px;">${tm30Pending}</div></div>
+    </div>
+    ${topNat.length?`<div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">🌍 สัญชาติยอดนิยม</div>${topNat.map(([n,c])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);"><span class="src src-W">${n}</span><span class="mono" style="font-weight:700;">${c} คน</span></div>`).join('')}`:''}
+    <div style="font-size:11px;color:var(--text3);margin-top:10px;">รวมทั้งหมด: ${data.length} คน</div>`;
+}
+
+// Export TM30 Excel (ตรงตาม template ตม.)
+async function exportTM30(){
+  const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').eq('guest_type','foreign').order('check_in',{ascending:false}).limit(200);
+  if(!data?.length){toast('ไม่มีข้อมูลต่างชาติ','err');return;}
+  const rows=[['ชื่อ\nFirst Name *','ชื่อกลาง\nMiddle Name','นามสกุล\nLast Name','เพศ\nGender *','เลขหนังสือเดินทาง\nPassport No. *','สัญชาติ\nNationality *','วัน เดือน ปี เกิด\nBirth Date\nDD/MM/YYYY','วันที่แจ้งออกจากที่พัก\nCheck-out Date\nDD/MM/YYYY','เบอร์โทรศัพท์\nPhone No.']];
+  data.forEach(r=>{
+    const bd=r.birth_date?new Date(r.birth_date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    const co=r.check_out?new Date(r.check_out).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    rows.push([r.first_name||'',r.middle_name||'',r.last_name||'',r.gender||'',r.passport_no||'',r.nationality||'',bd,co,r.phone||'']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=Array(9).fill({wch:18});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'แบบแจ้งที่พัก Inform Accom');
+  XLSX.writeFile(wb,'TM30_JResidence.xlsx');toast('Export TM30 สำเร็จ ✓','ok');
+}
+
+// Export รร.1 (Thai guests)
+async function exportRR1(){
+  const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').eq('guest_type','thai').order('check_in',{ascending:false}).limit(200);
+  if(!data?.length){toast('ไม่มีข้อมูลคนไทย','err');return;}
+  const rows=[['เลขบัตรประชาชน','คำนำหน้า','ชื่อ','นามสกุล','วันเกิด','เบอร์โทร','ห้อง','วันที่เข้าพัก','วันที่ออก']];
+  data.forEach(r=>{
+    rows.push([r.thai_id_number||'',r.thai_prefix||'',r.thai_first_name||'',r.thai_last_name||'',r.birth_date||'',r.phone||'',r.room,r.check_in,r.check_out||'']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=Array(9).fill({wch:16});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'รร.1');
+  XLSX.writeFile(wb,'RR1_JResidence.xlsx');toast('Export รร.1 สำเร็จ ✓','ok');
+}
+
 function closeM(id){document.getElementById(id).classList.remove('open');}
 function mL(m){return{'2026-01':'ม.ค. 69','2026-02':'ก.พ. 69','2026-03':'มี.ค. 69'}[m]||m;}
 function fmtD(d){if(!d)return'';return new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});}
