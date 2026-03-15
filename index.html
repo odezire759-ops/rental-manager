@@ -336,10 +336,23 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
+  <!-- Availability Grid — TOP position -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr">
+      <span>📅 Availability Grid</span>
+      <div class="seg" id="dseg">
+        <button class="sb" onclick="setDM('02',this)">ก.พ.</button>
+        <button class="sb active" onclick="setDM('03',this)">มี.ค.</button>
+        <button class="sb" onclick="setDM('all',this)">รวม</button>
+      </div>
+    </div>
+    <div class="cbdy" style="overflow-x:auto;" id="avail-wrap"></div>
+  </div>
+
   <!-- Date strip -->
   <div class="date-strip" id="date-strip"></div>
 
-  <!-- Room status for selected date — NO floor grouping, guests only -->
+  <!-- Guest cards for selected date -->
   <div class="card" style="margin-bottom:14px;">
     <div class="chdr">
       <span id="daily-date-title">📅 ห้องที่มีแขกเข้าพัก</span>
@@ -350,37 +363,12 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
-  <!-- Charts + Recent bookings -->
-  <div class="g2">
-    <div class="card">
-      <div class="chdr">📊 สัดส่วนแหล่งที่มา</div>
-      <div class="cbdy"><div class="src-bars" id="src-bars"></div></div>
-    </div>
-    <div class="card">
-      <div class="chdr">🏆 Top ห้องรายรับ</div>
-      <div class="cbdy" id="bar-wrap"></div>
-    </div>
-  </div>
-
   <!-- Recent OTA table -->
-  <div class="card" style="margin-top:14px;">
+  <div class="card">
     <div class="chdr"><span>📋 การจองล่าสุด</span><span id="ota-total-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>Booking ID</th><th>Platform</th><th>ลูกค้า</th><th>Check-in</th><th>Check-out</th><th>ยอด</th><th>Commission</th><th>สถานะ</th></tr></thead>
-    <tbody id="ota-recent-tbody"><tr><td colspan="8" class="loading">โหลด...</td></tr></tbody></table></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>Booking ID</th><th>Platform</th><th>ลูกค้า</th><th>เตียง</th><th>Check-in</th><th>Check-out</th><th>ยอด</th><th>Commission</th><th>สถานะ</th></tr></thead>
+    <tbody id="ota-recent-tbody"><tr><td colspan="9" class="loading">โหลด...</td></tr></tbody></table></div>
     <div style="padding:6px 16px;font-size:10px;color:var(--text3);text-align:center;border-top:1px solid var(--border);">Real-time จาก Supabase</div>
-  </div>
-
-  <!-- Availability grid -->
-  <div class="card" style="margin-top:14px;">
-    <div class="chdr">
-      <span>📅 Availability Grid</span>
-      <div class="seg" id="dseg">
-        <button class="sb" onclick="setDM('02',this)">ก.พ.</button>
-        <button class="sb active" onclick="setDM('03',this)">มี.ค.</button>
-        <button class="sb" onclick="setDM('all',this)">รวม</button>
-      </div>
-    </div>
-    <div class="cbdy" style="overflow-x:auto;" id="avail-wrap"></div>
   </div>
 </div>
 
@@ -517,12 +505,17 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">เลือกห้อง (คลิกห้องที่ว่าง)</div>
         <div class="bform-rooms" id="brooms"><div class="loading">กำลังโหลด...</div></div>
-        <div class="fr" style="margin-top:8px;"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
         <div class="fg">
           <div class="fr"><label>แหล่งที่มา</label>
             <select id="bsrc"><option value="W">🔵 Walk-in</option><option value="A">🟠 Agoda</option><option value="B">🔵 Booking.com</option><option value="T">🔴 Traveloka</option><option value="O">⚫ OTA อื่นๆ</option></select>
           </div>
           <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="bprice" value="750" oninput="calcBT()"></div>
+        </div>
+        <div class="fg">
+          <div class="fr"><label>ประเภทเตียง</label>
+            <select id="bbed"><option value="double">🛏 เตียงคู่ (Double)</option><option value="single">🛏 เตียงเดี่ยว (Single)</option><option value="twin">🛏🛏 เตียงแฝด (Twin)</option></select>
+          </div>
+          <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
         </div>
         <div class="totrow"><span class="lbl">ยอดรวม (<span id="bnights">1</span> คืน)</span><span class="val" id="btotal">฿ 750</span></div>
         <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;" onclick="submitBooking()">บันทึกการจอง</button>
@@ -1050,8 +1043,6 @@ async function renderDaily(){
   loadOTACards();
   loadRecentOTABookings();
   const d=getDD();
-  renderSrcBars(d);
-  renderTopRooms(d);
   renderAvailTable(d);
 }
 
@@ -1108,11 +1099,12 @@ async function loadRecentOTABookings(){
     const c=m[s]||['#455a64','#eceff1'];
     return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">${s}</span>`;
   };
+  const bedIcon=(b)=>b==='single'?'🛏 เดี่ยว':b==='twin'?'🛏🛏 แฝด':'🛏 คู่';
   tb.innerHTML=data.map(b=>`<tr${b.status==='CANCELLED'?' style="opacity:.5;text-decoration:line-through;"':''}>
     <td class="mono" style="font-size:11px;">${(b.booking_id||'').slice(-8)}</td>
     <td>${srcBadge(b.source)}</td>
     <td style="font-weight:600;">${b.guest_name}</td>
-    <td style="font-size:11px;">J.Residence</td>
+    <td style="font-size:11px;">${bedIcon(b.bed_type)}</td>
     <td style="font-size:11px;">${fmtD(b.check_in)}</td>
     <td style="font-size:11px;">${fmtD(b.check_out)}</td>
     <td class="mono" style="font-weight:700;">฿${Number(b.total_amount||0).toLocaleString()}</td>
