@@ -317,15 +317,24 @@ function setIdType(type){
 // ── OCR ──
 async function handleIdImage(e){
   const file=e.target.files[0];if(!file)return;
-  currentMediaType=file.type||'image/jpeg';
-  const reader=new FileReader();
-  reader.onload=async(ev)=>{
-    const preview=document.getElementById('id-preview');
-    preview.src=ev.target.result;preview.style.display='block';
-    currentImageBase64=ev.target.result.split(',')[1];
-    await runOCR(currentImageBase64,currentMediaType);
+  currentMediaType='image/jpeg';
+  const img=new Image();
+  const objUrl=URL.createObjectURL(file);
+  img.onload=async()=>{
+    URL.revokeObjectURL(objUrl);
+    const MAX=1024;
+    let w=img.width,h=img.height;
+    if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
+    const cv=document.createElement('canvas');
+    cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    const dataUrl=cv.toDataURL('image/jpeg',0.80);
+    document.getElementById('id-preview').src=dataUrl;
+    document.getElementById('id-preview').style.display='block';
+    currentImageBase64=dataUrl.split(',')[1];
+    await runOCR(currentImageBase64,'image/jpeg');
   };
-  reader.readAsDataURL(file);
+  img.src=objUrl;
 }
 
 async function runOCR(base64,mediaType){
@@ -337,10 +346,10 @@ async function runOCR(base64,mediaType){
     ?`Read this passport image. Return ONLY valid JSON, no markdown:\n{"surname_en":"","given_names_en":"","nationality":"","passport_no":"","date_of_birth":"","date_of_expiry":"","sex":"","country_code":""}`
     :`Read this Thai national ID card. Return ONLY valid JSON, no markdown:\n{"name_th":"","surname_th":"","name_en":"","surname_en":"","id_number":"","date_of_birth":"","date_of_expiry":"","address":""}`;
   try{
-    const GEMINI_KEY='AIzaSyDu2T_M3fukz95lOLeDkacYMF0SISegSpo';
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
+    const PROXY='https://script.google.com/macros/s/AKfycbw5a_f6vH0ta_Fag4wE15BvySW94yHsRekogBxNRssg8X5DJFZjFXp1hCGu1_eEFD3JoA/exec';
+    const res=await fetch(PROXY,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({
         contents:[{parts:[
           {inline_data:{mime_type:mediaType,data:base64}},
@@ -349,15 +358,42 @@ async function runOCR(base64,mediaType){
         generationConfig:{temperature:0,maxOutputTokens:800}
       })
     });
-    const data=await res.json();
-    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const raw=await res.text();
+    console.log('Proxy raw response:',raw);
+    let data;
+    try{data=JSON.parse(raw);}catch(pe){
+      // Proxy might return non-JSON — try to extract JSON from raw text
+      const m=raw.match(/\{[\s\S]*\}/);
+      if(m){data=JSON.parse(m[0]);}else{throw new Error('Proxy response ไม่ใช่ JSON: '+raw.substring(0,120));}
+    }
+    // Handle if proxy returns Gemini response or direct text
+    let text='';
+    if(data.candidates){
+      text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    }else if(data.text){
+      text=data.text;
+    }else if(typeof data==='object'&&(data.name_th||data.id_number||data.passport_no||data.surname_en)){
+      // Proxy already returned parsed data
+      text=JSON.stringify(data);
+    }else{
+      text=JSON.stringify(data);
+    }
+    console.log('AI text:',text);
+    // Extract JSON from text (handle markdown fences, leading text, etc.)
+    let cleaned=text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    // If there's non-JSON text before the {, extract just the JSON object
+    const jsonStart=cleaned.indexOf('{');
+    const jsonEnd=cleaned.lastIndexOf('}');
+    if(jsonStart===-1||jsonEnd===-1)throw new Error('ไม่พบข้อมูล JSON ใน AI response');
+    cleaned=cleaned.substring(jsonStart,jsonEnd+1);
+    const parsed=JSON.parse(cleaned);
     fillForm(parsed,isPass);
     el.className='ocr-status ok';
     el.innerHTML=isPass
       ?`✓ ${parsed.given_names_en||''} ${parsed.surname_en||''} | ${parsed.passport_no||''} | ${parsed.nationality||''}`
       :`✓ ${parsed.name_th||''} ${parsed.surname_th||''} | เลขบัตร: ${parsed.id_number||''}`;
   }catch(err){
+    console.error('OCR error:',err);
     el.className='ocr-status err';
     el.innerHTML='⚠ อ่านไม่ได้ กรุณากรอกเอง ('+err.message+')';
   }
