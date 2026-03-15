@@ -423,17 +423,34 @@ const DAILY=[
   {d:'2026-02-26',r:'612',p:700,s:'B'},{d:'2026-02-27',r:'612',p:700,s:'B'},{d:'2026-02-28',r:'612',p:700,s:'B'},
 ];
 
-// All rooms grouped by floor
-const FLOOR_ROOMS={
-  '2':['224'],
-  '3':['313','319','323'],
-  '4':['411','422'],
-  '5':['511','514','520'],
-  '6':['611','612','613','614','615','616','617','618','619','620','621','622','623','624'],
-  '7':['711','712','713','714','718','719','720','721','722','723','777','779']
-};
-const ALL_ROOMS=Object.values(FLOOR_ROOMS).flat();
-const FLOOR_NAMES={'2':'ชั้น 2','3':'ชั้น 3','4':'ชั้น 4','5':'ชั้น 5','6':'ชั้น 6','7':'ชั้น 7'};
+// Dynamic floor grouping — built from actual Supabase data
+let FLOOR_ROOMS={};
+let ALL_ROOMS=[];
+
+function getFloor(room){
+  // Room numbers: 3-digit = first digit is floor, 4-digit or special = first 1-2 digits
+  const r=String(room);
+  if(r.length===3) return r[0];
+  if(r.length===4) return r.substring(0,2);
+  return '?';
+}
+function buildFloorMap(data){
+  const map={};
+  data.forEach(r=>{
+    const fl=getFloor(r.room);
+    if(!map[fl]) map[fl]=[];
+    if(!map[fl].includes(r.room)) map[fl].push(r.room);
+  });
+  // Sort rooms within each floor
+  for(const fl in map) map[fl].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  FLOOR_ROOMS=map;
+  ALL_ROOMS=Object.values(map).flat();
+}
+function getFloorName(fl){
+  const n=parseInt(fl);
+  if(!isNaN(n)) return `ชั้น ${n}`;
+  return `ชั้น ${fl}`;
+}
 
 let curMonth='2026-03',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'[]');
 let eEC=0,eWC=0;
@@ -509,14 +526,18 @@ async function loadMonth(m){
   const{data,error}=await sb.from('monthly_charges').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
   if(error){toast('Error: '+error.message,'err');return;}
   mData=data||[];
+  buildFloorMap(mData);
   document.getElementById('tinfo').textContent=mData.length+' ห้อง';
   renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData);renderMTable(mData);
 }
 function renderFloors(data){
   const c=document.getElementById('floor-container');
   const roomMap={};data.forEach(r=>roomMap[r.room]=r);
+  // Sort floor keys numerically
+  const sortedFloors=Object.keys(FLOOR_ROOMS).sort((a,b)=>parseInt(a)-parseInt(b));
   let html='';
-  for(const[floor,rooms] of Object.entries(FLOOR_ROOMS)){
+  for(const floor of sortedFloors){
+    const rooms=FLOOR_ROOMS[floor];
     const floorData=rooms.map(r=>roomMap[r]).filter(Boolean);
     const paid=floorData.filter(r=>r.status==='paid').length;
     const pend=floorData.filter(r=>r.status==='pending').length;
@@ -526,7 +547,7 @@ function renderFloors(data){
     html+=`<div class="floor-sec">
       <div class="floor-hdr ${collapsed}" onclick="toggleFloor(this,'${floor}')">
         <span class="arrow">▼</span>
-        <span class="floor-tag">${FLOOR_NAMES[floor]}</span>
+        <span class="floor-tag">${getFloorName(floor)}</span>
         <span class="floor-count">(${rooms.length} ห้อง)</span>
         <div class="floor-stats">
           <span class="fg">✓ ${paid}</span>
@@ -543,7 +564,7 @@ function renderFloors(data){
             const st=r.status==='paid'?'paid':'pending';
             const dc=st==='paid'?'var(--success)':'var(--gold)';
             const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
-            const eBadge=RATES.elec[er],wBadge=RATES.water[wr];
+            const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
             return `<div class="rcard" draggable="true" data-room="${r.room}">
               <div class="rstripe ${st}"></div><div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
               <div class="rnum">${r.room}</div>
@@ -562,7 +583,6 @@ function renderFloors(data){
     </div>`;
   }
   c.innerHTML=html;
-  // Init drag on each floor grid
   document.querySelectorAll('.rgrid[data-floor]').forEach(initDrag);
 }
 function toggleFloor(el,floor){
@@ -706,13 +726,23 @@ function renderDailyCards(){
     <span style="font-size:11px;color:var(--text3);font-weight:500;">${dayData.length} ห้องเข้าพัก / ${ALL_ROOMS.length} ห้อง</span>
   </div>`;
   
-  for(const[floor,rooms] of Object.entries(FLOOR_ROOMS)){
+  // Use floor map from monthly data; if empty fall back to grouping daily rooms
+  let floorMap=FLOOR_ROOMS;
+  if(!Object.keys(floorMap).length){
+    floorMap={};
+    DAILY.forEach(x=>{const fl=getFloor(x.r);if(!floorMap[fl])floorMap[fl]=[];if(!floorMap[fl].includes(x.r))floorMap[fl].push(x.r);});
+    for(const fl in floorMap) floorMap[fl].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  }
+  const sortedFloors=Object.keys(floorMap).sort((a,b)=>parseInt(a)-parseInt(b));
+  
+  for(const floor of sortedFloors){
+    const rooms=floorMap[floor];
     const booked=rooms.filter(r=>bookMap[r]);
     const vacantCount=rooms.length-booked.length;
     html+=`<div class="floor-sec">
       <div class="floor-hdr" onclick="toggleFloor(this,'df_${floor}')">
         <span class="arrow">▼</span>
-        <span class="floor-tag">${FLOOR_NAMES[floor]}</span>
+        <span class="floor-tag">${getFloorName(floor)}</span>
         <span class="floor-count">(${rooms.length} ห้อง)</span>
         <div class="floor-stats">
           <span class="fg">● ${booked.length} เข้าพัก</span>
