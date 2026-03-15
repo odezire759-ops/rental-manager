@@ -120,6 +120,29 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .ract.daily-toggle{background:#e3f2fd;color:#1565c0;border-color:#90caf9;}
 .ract.daily-toggle:hover{background:#1565c0;color:#fff;}
 
+/* ══ OTA BOOKING CARDS ══ */
+.ota-item{padding:10px 12px;border-radius:var(--rs);margin-bottom:8px;border:1px solid var(--border);transition:all .12s;}
+.ota-item:hover{box-shadow:var(--sh);}
+.ota-item:last-child{margin-bottom:0;}
+.ota-item .ota-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.ota-item .ota-det{font-size:10px;color:var(--text2);}
+.ota-item .ota-price{font-size:14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--gold2);float:right;margin-top:-20px;}
+.ota-ci{background:#f1fdf6;border-color:#a5d6a7;}
+.ota-ci2{background:#e8f0fe;border-color:#90caf9;}
+.ota-co{background:#fff1f1;border-color:#ef9a9a;}
+
+/* ══ CHECK-IN ROOM CARDS ══ */
+.ci-rcard{padding:10px 6px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.ci-rcard:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
+.ci-rcard.ci-selected{border:2px solid var(--blue);background:var(--blue-dim);transform:scale(1.02);}
+.ci-rcard.ci-selected::after{content:'✓';position:absolute;top:3px;right:5px;font-size:10px;font-weight:900;color:var(--blue);}
+.ci-rcard .ci-rnum{font-size:16px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;}
+.ci-rcard .ci-rstatus{font-size:9px;color:var(--text3);margin-top:2px;font-weight:600;}
+.ci-rcard.ci-daily{border-top:3px solid #1e88e5;}
+.ci-rcard.ci-daily .ci-rstatus{color:#1565c0;}
+.ci-rcard.ci-monthly{border-top:3px solid var(--success);}
+.ci-rcard.ci-monthly .ci-rstatus{color:var(--success);}
+
 /* ══ DAILY ROOM CARDS ══ */
 .dcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:12px;position:relative;transition:all .18s;}
 .dcard:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
@@ -284,6 +307,22 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <div class="litem"><div class="ldot" style="background:#f0f0f0;border:1px solid #ccc;"></div><span style="color:var(--text3);">ว่าง</span></div>
   </div>
 
+  <!-- OTA Check-in / Check-out Cards -->
+  <div id="ota-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="card" style="border-top:4px solid var(--success);">
+      <div class="chdr" style="background:#f1fdf6;"><span style="color:var(--success);">● Check-in วันนี้</span><span id="ota-ci-count" style="font-size:11px;color:var(--text3);"></span></div>
+      <div class="cbdy" id="ota-ci-today" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+    <div class="card" style="border-top:4px solid var(--blue);">
+      <div class="chdr" style="background:#e8f0fe;"><span style="color:var(--blue);">● Check-in พรุ่งนี้</span><span id="ota-ci2-count" style="font-size:11px;color:var(--text3);"></span></div>
+      <div class="cbdy" id="ota-ci-tomorrow" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+    <div class="card" style="border-top:4px solid var(--danger);">
+      <div class="chdr" style="background:#fff1f1;"><span style="color:var(--danger);">● Check-out วันนี้</span><span id="ota-co-count" style="font-size:11px;color:var(--text3);"></span></div>
+      <div class="cbdy" id="ota-co-today" style="max-height:300px;overflow-y:auto;padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+  </div>
+
   <!-- Date strip -->
   <div class="date-strip" id="date-strip"></div>
 
@@ -386,11 +425,23 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
           <!-- Common: Room + Dates -->
           <div class="fsec">ข้อมูลห้องพัก</div>
           <div class="fg">
-            <div class="fr"><label>ห้อง *</label><input type="text" id="ci-room" placeholder="เลขห้อง"></div>
-            <div class="fr"><label>ประเภท</label><select id="ci-stay-type"><option value="daily">📅 รายวัน</option><option value="monthly">🏠 รายเดือน</option></select></div>
+            <div class="fr"><label>ประเภทห้อง</label>
+              <select id="ci-stay-type" onchange="loadCheckinRooms()">
+                <option value="daily">📅 รายวัน</option>
+                <option value="monthly">🏠 รายเดือน</option>
+              </select>
+            </div>
+            <div class="fr"><label>ห้องที่เลือก</label>
+              <div class="cdisp" id="ci-room-display" style="font-weight:700;color:var(--blue);">— ยังไม่ได้เลือก —</div>
+              <input type="hidden" id="ci-room">
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">เลือกห้องว่าง <span id="ci-room-count" style="color:var(--text3);font-weight:500;"></span></div>
+          <div id="ci-room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:260px;overflow-y:auto;margin-bottom:12px;padding:2px;">
+            <div class="loading" style="grid-column:1/-1;">กำลังโหลดห้อง...</div>
           </div>
           <div class="fg">
-            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin"></div>
+            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin" onchange="loadCheckinRooms()"></div>
             <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout"></div>
           </div>
 
@@ -918,12 +969,54 @@ function getDD(){return dailyM==='all'?DAILY:DAILY.filter(x=>x.d.startsWith('202
 
 function renderDaily(){
   renderDailyCards();
+  loadOTACards();
   const d=getDD();
   renderSrcBars(d);
   renderTopRooms(d);
   renderAvailTable(d);
   renderKPIBar();
 }
+
+// OTA Check-in/Check-out cards
+async function loadOTACards(){
+  const today=new Date().toISOString().split('T')[0];
+  const tmr=new Date(Date.now()+86400000).toISOString().split('T')[0];
+  
+  const srcBadge=(s)=>{
+    const colors={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],'Walk-in':['#1a73e8','#e8f0fe']};
+    const c=colors[s]||['#455a64','#eceff1'];
+    return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;float:right;">${s}</span>`;
+  };
+  const renderItems=(items,cls)=>{
+    if(!items.length)return `<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px;">ไม่มีลูกค้า check-in ${cls==='ota-co'?'out ':' '}${cls==='ota-ci2'?'พรุ่งนี้':'วันนี้'}</div>`;
+    return items.map(b=>`<div class="ota-item ${cls}">
+      ${srcBadge(b.source)}
+      <div class="ota-name">${b.guest_name}</div>
+      <div class="ota-det">${b.room_type} · ${fmtD(b.check_in)} → ${fmtD(b.check_out)}</div>
+      <div class="ota-price">฿${Number(b.total_amount||0).toLocaleString()}</div>
+    </div>`).join('');
+  };
+  
+  // Check-in today
+  const{data:ciToday}=await sb.from('ota_bookings').select('*').eq('check_in',today).neq('status','CANCELLED').order('guest_name');
+  document.getElementById('ota-ci-today').innerHTML=renderItems(ciToday||[],'ota-ci');
+  document.getElementById('ota-ci-count').textContent=` · ${(ciToday||[]).length} ห้อง`;
+  
+  // Check-in tomorrow
+  const{data:ciTmr}=await sb.from('ota_bookings').select('*').eq('check_in',tmr).neq('status','CANCELLED').order('guest_name');
+  document.getElementById('ota-ci-tomorrow').innerHTML=renderItems(ciTmr||[],'ota-ci2');
+  document.getElementById('ota-ci2-count').textContent=` · ${(ciTmr||[]).length} ห้อง`;
+  
+  // Check-out today
+  const{data:coToday}=await sb.from('ota_bookings').select('*').eq('check_out',today).neq('status','CANCELLED').order('guest_name');
+  document.getElementById('ota-co-today').innerHTML=renderItems(coToday||[],'ota-co');
+  document.getElementById('ota-co-count').textContent=` · ${(coToday||[]).length} ห้อง`;
+}
+
+// Realtime subscription for OTA bookings
+sb.channel('ota-realtime').on('postgres_changes',{event:'*',schema:'public',table:'ota_bookings'},()=>{
+  if(activeSec==='daily')loadOTACards();
+}).subscribe();
 
 function renderDailyCards(){
   const c=document.getElementById('daily-floor-container');
@@ -1113,7 +1206,7 @@ function showSec(id,btn){
   if(id==='daily'){buildDateStrip();renderDaily();}
   if(id==='booking'){loadBookings();refreshAvailRooms();}
   if(id==='monthly'&&mData.length)updateMonthlyKPI(mData);
-  if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();
+  if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
     if(!document.getElementById('ci-checkin').value)document.getElementById('ci-checkin').value=t;
   }
@@ -1132,6 +1225,89 @@ function setGuestType(type,btn){
   document.getElementById('form-thai').style.display=type==='thai'?'':'none';
   document.getElementById('form-foreign').style.display=type==='foreign'?'':'none';
   document.getElementById('ocr-label').textContent=type==='thai'?'ถ่ายรูปหรือลากไฟล์ บัตรประชาชน':'Take photo or drag & drop Passport';
+}
+
+let ciSelectedRoom='';
+
+async function loadCheckinRooms(){
+  const stayType=document.getElementById('ci-stay-type').value;
+  const grid=document.getElementById('ci-room-grid');
+  grid.innerHTML='<div class="loading" style="grid-column:1/-1;">กำลังโหลด...</div>';
+  ciSelectedRoom='';
+  document.getElementById('ci-room').value='';
+  document.getElementById('ci-room-display').textContent='— ยังไม่ได้เลือก —';
+  document.getElementById('ci-room-display').style.color='var(--text3)';
+  
+  // Get all rooms for current month
+  const{data:allRooms}=await sb.from('monthly_charges').select('room,room_type,tenant_name,status').eq('month',curMonth).eq('building','เจเรสซิเดนซ์').order('room');
+  if(!allRooms||!allRooms.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1;">ไม่พบข้อมูลห้อง</div>';return;}
+  
+  // Get active bookings for overlap check (daily rooms)
+  const ci=document.getElementById('ci-checkin').value||new Date().toISOString().split('T')[0];
+  const{data:activeBookings}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',ci);
+  const bookedDailySet=new Set((activeBookings||[]).map(x=>x.room));
+  
+  // Get existing check-ins for today (to avoid double check-in)
+  const{data:todayCheckins}=await sb.from('guest_checkins').select('room').eq('building','เจเรสซิเดนซ์').eq('check_in',ci);
+  const checkedInSet=new Set((todayCheckins||[]).map(x=>x.room));
+  
+  let rooms=[];
+  if(stayType==='daily'){
+    // Show only rooms with room_type='daily' that are not booked
+    rooms=allRooms.filter(r=>r.room_type==='daily').map(r=>({
+      room:r.room,
+      available:!bookedDailySet.has(r.room)&&!checkedInSet.has(r.room),
+      reason:bookedDailySet.has(r.room)?'จองแล้ว':checkedInSet.has(r.room)?'เช็คอินแล้ว':'ว่าง'
+    }));
+  }else{
+    // Show only rooms with room_type='monthly' (or default) that have no tenant
+    rooms=allRooms.filter(r=>r.room_type!=='daily').map(r=>{
+      const hasTenant=r.tenant_name&&r.tenant_name.trim();
+      return{
+        room:r.room,
+        available:!hasTenant,
+        reason:hasTenant?r.tenant_name:'ว่าง'
+      };
+    });
+  }
+  
+  const availCount=rooms.filter(r=>r.available).length;
+  document.getElementById('ci-room-count').textContent=`(${availCount} ว่าง / ${rooms.length} ห้อง)`;
+  
+  if(!rooms.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1;">${stayType==='daily'?'ไม่มีห้องรายวัน — ไปตั้งที่แท็บรายเดือน':'ไม่มีห้องรายเดือนว่าง'}</div>`;
+    return;
+  }
+  
+  // Sort: available first, then by room number
+  rooms.sort((a,b)=>{
+    if(a.available&&!b.available)return -1;
+    if(!a.available&&b.available)return 1;
+    return a.room.localeCompare(b.room,undefined,{numeric:true});
+  });
+  
+  grid.innerHTML=rooms.map(r=>{
+    if(!r.available){
+      return `<div style="padding:8px 4px;border:1px solid var(--border);border-radius:var(--rs);background:#f8f8f8;text-align:center;opacity:.45;cursor:not-allowed;">
+        <div style="font-size:14px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;">${r.room}</div>
+        <div style="font-size:8px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.reason}</div>
+      </div>`;
+    }
+    return `<div class="ci-rcard ci-${stayType}" onclick="selectCIRoom('${r.room}',this)" data-room="${r.room}">
+      <div class="ci-rnum">${r.room}</div>
+      <div class="ci-rstatus">${stayType==='daily'?'📅 ว่าง':'🏠 ว่าง'}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectCIRoom(room,el){
+  ciSelectedRoom=room;
+  document.getElementById('ci-room').value=room;
+  document.getElementById('ci-room-display').textContent=`ห้อง ${room}`;
+  document.getElementById('ci-room-display').style.color='var(--blue)';
+  // Toggle selection visual
+  document.querySelectorAll('#ci-room-grid .ci-rcard').forEach(c=>c.classList.remove('ci-selected'));
+  el.classList.add('ci-selected');
 }
 
 async function loadNationalities(){
@@ -1264,9 +1440,12 @@ async function saveCheckin(){
   // Reset form
   ['ci-thai-id','ci-thai-fname','ci-thai-lname','ci-thai-phone','ci-fname','ci-lname','ci-mname','ci-passport','ci-phone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ci-room').value='';
+  ciSelectedRoom='';
+  document.getElementById('ci-room-display').textContent='— ยังไม่ได้เลือก —';
+  document.getElementById('ci-room-display').style.color='var(--text3)';
   document.getElementById('ocr-preview').style.display='none';
   document.getElementById('ocr-box').style.display='';
-  loadCheckins();loadCheckinStats();
+  loadCheckins();loadCheckinStats();loadCheckinRooms();
 }
 
 async function loadCheckins(){
