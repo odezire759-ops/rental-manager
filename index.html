@@ -101,17 +101,24 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .rcard.dragging{opacity:.35;cursor:grabbing;}
 .rcard.drag-over{border:2px dashed var(--gold);background:var(--gold-light);}
 .rcard.vacant{background:var(--shell);border-style:dashed;opacity:.65;}
+.rcard.daily-room{background:linear-gradient(135deg,#f0f7ff,#e8f4fd);border-color:#90caf9;}
 .rstripe{position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--r) var(--r) 0 0;}
 .rstripe.paid{background:linear-gradient(90deg,var(--success),#27ae60);}.rstripe.pending{background:linear-gradient(90deg,var(--gold),#f0c040);}.rstripe.vacant{background:var(--border2);}
+.rstripe.daily{background:linear-gradient(90deg,#42a5f5,#1e88e5);}
 .rdot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 4px;}
 .rnum{font-size:20px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;margin-top:3px;}
 .rname{font-size:11px;color:var(--text);font-weight:600;margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ramt{font-size:17px;font-weight:800;font-family:'JetBrains Mono',monospace;}
 .rdet{font-size:10px;color:var(--text2);margin-top:5px;display:flex;flex-direction:column;gap:2px;}
 .rdet .rate-line{display:flex;align-items:center;gap:4px;}
+.rtype-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.03em;margin-bottom:4px;}
+.rtype-monthly{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+.rtype-daily{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
 .racts{display:flex;gap:5px;margin-top:10px;}
 .ract{flex:1;padding:5px 0;font-size:10px;font-weight:700;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .12s;text-align:center;}
 .ract:hover{background:var(--gold);color:#1a1a2e;border-color:var(--gold2);}
+.ract.daily-toggle{background:#e3f2fd;color:#1565c0;border-color:#90caf9;}
+.ract.daily-toggle:hover{background:#1565c0;color:#fff;}
 
 /* ══ DAILY ROOM CARDS ══ */
 .dcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:12px;position:relative;transition:all .18s;}
@@ -261,7 +268,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div id="floor-container"><div class="loading">กำลังโหลด...</div></div>
   <div class="card" style="margin-top:14px;">
     <div class="chdr"><span>📊 ตารางรายละเอียด</span><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th></tr></thead><tbody id="mtbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th></tr></thead><tbody id="mtbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -556,7 +563,6 @@ async function loadMonth(m){
 function renderFloors(data){
   const c=document.getElementById('floor-container');
   const roomMap={};data.forEach(r=>roomMap[r.room]=r);
-  // Sort floor keys numerically
   const sortedFloors=Object.keys(FLOOR_ROOMS).sort((a,b)=>parseInt(a)-parseInt(b));
   let html='';
   for(const floor of sortedFloors){
@@ -564,6 +570,8 @@ function renderFloors(data){
     const floorData=rooms.map(r=>roomMap[r]).filter(Boolean);
     const paid=floorData.filter(r=>r.status==='paid').length;
     const pend=floorData.filter(r=>r.status==='pending').length;
+    const dailyCount=floorData.filter(r=>r.room_type==='daily').length;
+    const monthlyCount=floorData.filter(r=>r.room_type!=='daily').length;
     const vacant=rooms.length-floorData.length;
     const rev=floorData.reduce((a,r)=>a+(r.total||0),0);
     const collapsed=localStorage.getItem('fl_'+floor)==='1'?'collapsed':'';
@@ -573,6 +581,8 @@ function renderFloors(data){
         <span class="floor-tag">${getFloorName(floor)}</span>
         <span class="floor-count">(${rooms.length} ห้อง)</span>
         <div class="floor-stats">
+          ${monthlyCount?`<span class="fg">🏠 ${monthlyCount}</span>`:''}
+          ${dailyCount?`<span style="color:#1565c0;">📅 ${dailyCount}</span>`:''}
           <span class="fg">✓ ${paid}</span>
           <span class="fy">⏳ ${pend}</span>
           ${vacant?`<span style="color:var(--text3);">○ ${vacant}</span>`:''}
@@ -583,13 +593,39 @@ function renderFloors(data){
         <div class="rgrid" data-floor="${floor}">
           ${rooms.map(rm=>{
             const r=roomMap[rm];
-            if(!r){return `<div class="rcard vacant" data-room="${rm}"><div class="rstripe vacant"></div><div class="rnum">${rm}</div><div class="rname">ห้องว่าง</div><div class="ramt" style="color:var(--text3);">—</div><div class="racts"><button class="ract" onclick="openEdit('${rm}')">เพิ่มผู้เช่า</button></div></div>`;}
+            const isDaily=r&&r.room_type==='daily';
+            // Vacant room (no data at all)
+            if(!r){return `<div class="rcard vacant" data-room="${rm}">
+              <div class="rstripe vacant"></div>
+              <div class="rnum">${rm}</div><div class="rname">ห้องว่าง</div>
+              <div class="ramt" style="color:var(--text3);">—</div>
+              <div class="racts">
+                <button class="ract" onclick="openEdit('${rm}')">เพิ่มผู้เช่า</button>
+                <button class="ract daily-toggle" onclick="setRoomType('${rm}','daily')">📅 ตั้งรายวัน</button>
+              </div></div>`;}
+            // Daily room
+            if(isDaily){
+              return `<div class="rcard daily-room" draggable="true" data-room="${r.room}">
+              <div class="rstripe daily"></div>
+              <div class="rdot" style="background:#1565c0;box-shadow:0 0 4px #1565c0;"></div>
+              <div class="rtype-badge rtype-daily">📅 รายวัน</div>
+              <div class="rnum">${r.room}</div>
+              <div class="rname" style="color:#1565c0;">ห้องรายวัน</div>
+              <div class="ramt" style="color:#1565c0;">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
+              <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}</div>
+              <div class="racts">
+                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠 เปลี่ยนรายเดือน</button>
+              </div></div>`;
+            }
+            // Monthly room (normal)
             const st=r.status==='paid'?'paid':'pending';
             const dc=st==='paid'?'var(--success)':'var(--gold)';
             const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
             const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
+            const hasTenant=r.tenant_name&&r.tenant_name.trim();
             return `<div class="rcard" draggable="true" data-room="${r.room}">
               <div class="rstripe ${st}"></div><div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
+              <div class="rtype-badge rtype-monthly">🏠 รายเดือน</div>
               <div class="rnum">${r.room}</div>
               <div class="rname">${r.tenant_name||'—'}</div>
               <div class="ramt">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
@@ -598,7 +634,11 @@ function renderFloors(data){
                 ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}"><span class="rate-icon">⚡</span>${eBadge.label}</span> ฿${Math.round(r.elec_cost).toLocaleString()}</div>`:''}
                 ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}"><span class="rate-icon">💧</span>${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
               </div>
-              <div class="racts"><button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button><button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button></div>
+              <div class="racts">
+                <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
+                <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button>
+                ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅 รายวัน</button>`:''}
+              </div>
             </div>`;
           }).join('')}
         </div>
@@ -616,10 +656,14 @@ function toggleFloor(el,floor){
 }
 function renderMTable(d){
   const tb=document.getElementById('mtbody');
-  if(!d.length){tb.innerHTML='<tr><td colspan="10" class="empty">ไม่มีข้อมูล</td></tr>';return;}
+  if(!d.length){tb.innerHTML='<tr><td colspan="11" class="empty">ไม่มีข้อมูล</td></tr>';return;}
   tb.innerHTML=d.map(r=>{
     const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
-    return `<tr><td class="mono" style="font-weight:800;">${r.room}</td><td>${r.tenant_name||'—'}</td>
+    const isDaily=r.room_type==='daily';
+    return `<tr${isDaily?' style="background:#f0f7ff;"':''}>
+    <td class="mono" style="font-weight:800;">${r.room}</td>
+    <td>${isDaily?'<span class="rtype-badge rtype-daily">📅 รายวัน</span>':'<span class="rtype-badge rtype-monthly">🏠 รายเดือน</span>'}</td>
+    <td>${r.tenant_name||'—'}</td>
     <td><span class="rate-badge ${RATES.elec[er].cls}" style="margin-right:2px;">⚡${er==='gov'?'หลวง':'อพท.'}</span><span class="rate-badge ${RATES.water[wr].cls}">💧${wr==='gov'?'หลวง':'อพท.'}</span></td>
     <td class="mono">฿${(r.rent||0).toLocaleString()}</td>
     <td class="mono">฿${Math.round(r.elec_cost||0).toLocaleString()}<span style="color:var(--text3);font-size:10px;"> (${(r.elec_new||0)-(r.elec_old||0)}u)</span></td>
@@ -642,11 +686,41 @@ function initDrag(g){
 }
 function saveOrder(){rOrder=[...document.querySelectorAll('.rgrid [data-room]')].map(c=>c.dataset.room);localStorage.setItem('jro',JSON.stringify(rOrder));}
 
+// Toggle room type between daily and monthly
+async function setRoomType(room,newType){
+  if(newType==='daily'){
+    // Check if room has monthly tenant
+    const r=mData.find(x=>x.room===room);
+    if(r&&r.tenant_name&&r.tenant_name.trim()){
+      toast('ห้อง '+room+' มีผู้เช่ารายเดือน — ต้องย้ายออกก่อน','err');return;
+    }
+  }
+  if(newType==='monthly'){
+    // Check if room has active daily bookings
+    const{data:activeBookings}=await sb.from('bookings').select('id').eq('room',room).gte('check_out',new Date().toISOString().split('T')[0]);
+    if(activeBookings&&activeBookings.length>0){
+      toast('ห้อง '+room+' มีการจองรายวัน '+activeBookings.length+' รายการ — ต้องยกเลิกก่อน','err');return;
+    }
+  }
+  // Upsert to save room_type
+  const{error}=await sb.from('monthly_charges').upsert({
+    month:curMonth,room,building:'เจเรสซิเดนซ์',room_type:newType
+  },{onConflict:'month,room'});
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast(`ห้อง ${room} → ${newType==='daily'?'📅 รายวัน':'🏠 รายเดือน'} ✓`,'ok');
+  await loadMonth(curMonth);
+}
+
 // ══════════════════════════════════
 // EDIT MODAL
 // ══════════════════════════════════
 function openEdit(room){
   const r=mData.find(x=>x.room===room);
+  // Block editing monthly details for daily rooms
+  if(r&&r.room_type==='daily'){
+    toast('ห้อง '+room+' เป็นห้องรายวัน — แจ้งเข้าได้เฉพาะรายวัน กรุณาใช้แท็บ "จองห้อง"','err');
+    return;
+  }
   document.getElementById('eroom').value=room;document.getElementById('emonth').value=curMonth;
   document.getElementById('etitle').textContent=`แก้ไขห้อง ${room}`;
   if(r){
@@ -681,7 +755,10 @@ function calcEM(t){
 function calcET(){const r=parseFloat(document.getElementById('erent').value)||0,ex=['ecar','emoto','efridge','eother'].reduce((a,id)=>a+(parseFloat(document.getElementById(id).value)||0),0);document.getElementById('etot').textContent='฿ '+Math.round(r+eEC+eWC+ex).toLocaleString('th-TH');}
 async function saveEdit(){
   const room=document.getElementById('eroom').value,month=document.getElementById('emonth').value,rent=parseFloat(document.getElementById('erent').value)||0,car=parseFloat(document.getElementById('ecar').value)||0,moto=parseFloat(document.getElementById('emoto').value)||0,fridge=parseFloat(document.getElementById('efridge').value)||0,other=parseFloat(document.getElementById('eother').value)||0,total=rent+eEC+eWC+car+moto+fridge+other;
-  const{error}=await sb.from('monthly_charges').upsert({month,room,building:'เจเรสซิเดนซ์',tenant_name:document.getElementById('ename').value,rent,elec_old:parseFloat(document.getElementById('eeold').value)||null,elec_new:parseFloat(document.getElementById('eenew').value)||null,elec_cost:eEC,elec_rate_type:document.getElementById('erate_elec').value,water_old:parseFloat(document.getElementById('ewold').value)||null,water_new:parseFloat(document.getElementById('ewnew').value)||null,water_cost:eWC,water_rate_type:document.getElementById('erate_water').value,parking_car:car,parking_moto:moto,fridge_fee:fridge,other,total,status:document.getElementById('estatus').value},{onConflict:'month,room'});
+  // Preserve existing room_type
+  const existing=mData.find(x=>x.room===room);
+  const roomType=(existing&&existing.room_type)||'monthly';
+  const{error}=await sb.from('monthly_charges').upsert({month,room,building:'เจเรสซิเดนซ์',room_type:roomType,tenant_name:document.getElementById('ename').value,rent,elec_old:parseFloat(document.getElementById('eeold').value)||null,elec_new:parseFloat(document.getElementById('eenew').value)||null,elec_cost:eEC,elec_rate_type:document.getElementById('erate_elec').value,water_old:parseFloat(document.getElementById('ewold').value)||null,water_new:parseFloat(document.getElementById('ewnew').value)||null,water_cost:eWC,water_rate_type:document.getElementById('erate_water').value,parking_car:car,parking_moto:moto,fridge_fee:fridge,other,total,status:document.getElementById('estatus').value},{onConflict:'month,room'});
   if(error){toast('Error: '+error.message,'err');return;}
   toast('บันทึกสำเร็จ ✓','ok');closeM('emod');await loadMonth(curMonth);
 }
@@ -838,36 +915,46 @@ async function refreshAvailRooms(){
   const{data:dailyBooked}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',co);
   const dailyBookedSet=new Set((dailyBooked||[]).map(x=>x.room));
   
-  // 2) Get monthly tenants — rooms with a tenant name in current month = occupied
-  const ciMonth=ci.substring(0,7); // e.g. "2026-03"
-  const{data:monthlyData}=await sb.from('monthly_charges').select('room,tenant_name').eq('month',ciMonth).eq('building','เจเรสซิเดนซ์');
-  const monthlyOccupied=new Set((monthlyData||[]).filter(r=>r.tenant_name&&r.tenant_name.trim()).map(r=>r.room));
+  // 2) Get all rooms for this month to check room_type
+  const ciMonth=ci.substring(0,7);
+  const{data:monthlyData}=await sb.from('monthly_charges').select('room,tenant_name,room_type').eq('month',ciMonth).eq('building','เจเรสซิเดนซ์');
+  const roomInfo={};(monthlyData||[]).forEach(r=>roomInfo[r.room]=r);
   
-  // 3) Combine: unavailable = daily booked OR monthly occupied
-  const unavailSet=new Set([...dailyBookedSet,...monthlyOccupied]);
+  // 3) Classify rooms
+  const dailyTypeRooms=[];  // room_type='daily' → can book daily
+  const monthlyRooms=[];    // room_type='monthly' or has tenant → NOT for daily booking
   
-  // 4) Daily-only rooms = all rooms minus monthly occupied
-  const dailyRooms=ALL_ROOMS.filter(r=>!monthlyOccupied.has(r));
-  const avail=dailyRooms.filter(r=>!dailyBookedSet.has(r));
-  const dailyBookedRooms=dailyRooms.filter(r=>dailyBookedSet.has(r));
+  ALL_ROOMS.forEach(room=>{
+    const info=roomInfo[room];
+    if(info&&info.room_type==='daily'){
+      dailyTypeRooms.push(room);
+    } else {
+      monthlyRooms.push(room);
+    }
+  });
+  
+  // 4) Available = daily type rooms that are NOT already booked
+  const avail=dailyTypeRooms.filter(r=>!dailyBookedSet.has(r));
+  const dailyBookedRooms=dailyTypeRooms.filter(r=>dailyBookedSet.has(r));
   
   const fmt=(d)=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});
   document.getElementById('avail-date-range').textContent=`${fmt(ci)} – ${fmt(co)}`;
   
-  // Right panel: availability status
+  // Right panel
   document.getElementById('avail-rooms-status').innerHTML=`
     <div style="margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">✓ ว่าง (${avail.length} ห้อง)</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">${avail.map(r=>`<span style="background:var(--sbg);color:var(--success);border:1px solid var(--success);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="selectBRoom('${r}')">${r}</span>`).join('')}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">✓ ว่าง — จองรายวันได้ (${avail.length} ห้อง)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">${avail.length?avail.map(r=>`<span style="background:var(--sbg);color:var(--success);border:1px solid var(--success);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="selectBRoom('${r}')">${r}</span>`).join(''):'<span style="color:var(--text3);font-size:11px;">ไม่มีห้องว่าง</span>'}</div>
     </div>
     ${dailyBookedRooms.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px;">✗ จองรายวันแล้ว (${dailyBookedRooms.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${dailyBookedRooms.map(r=>`<span style="background:var(--dbg);color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}
-    ${monthlyOccupied.size?`<div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;">🏠 ห้องรายเดือน (${monthlyOccupied.size} ห้อง) — ไม่แสดงในจองรายวัน</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${[...monthlyOccupied].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(r=>`<span style="background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}`;
+    <div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;">🏠 ห้องรายเดือน (${monthlyRooms.length} ห้อง)</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${monthlyRooms.slice(0,30).map(r=>`<span style="background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;">${r}</span>`).join('')}${monthlyRooms.length>30?`<span style="color:var(--text3);font-size:11px;">+${monthlyRooms.length-30} ห้อง</span>`:''}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px;">💡 ต้องตั้งห้องเป็น "📅 รายวัน" ในแท็บรายเดือนก่อนจึงจะจองรายวันได้</div></div>`;
   
-  // Left panel: room grid — show only daily-rentable rooms
-  document.getElementById('brooms').innerHTML=dailyRooms.map(r=>{
+  // Left panel: show only daily-type rooms
+  document.getElementById('brooms').innerHTML=dailyTypeRooms.length?dailyTypeRooms.map(r=>{
     const isB=dailyBookedSet.has(r),isS=r===selRoom;
     return `<div class="broom${isB?' booked':''}${isS?' selected':''}" data-room="${r}" ${!isB?`onclick="selectBRoom('${r}')"`:''}><div class="bnum">${r}</div><div class="bstat">${isB?'จองแล้ว':'ว่าง'}</div></div>`;
-  }).join('');
+  }).join(''):'<div class="empty" style="grid-column:1/-1;">ยังไม่มีห้องที่ตั้งเป็น "📅 รายวัน"<br><span style="font-size:11px;">ไปที่แท็บ "รายเดือน" แล้วกดปุ่ม 📅 ที่การ์ดห้องเพื่อตั้งเป็นห้องรายวัน</span></div>';
 }
 function selectBRoom(r){selRoom=r;document.querySelectorAll('.broom').forEach(el=>{el.classList.toggle('selected',el.dataset.room===r);});}
 function calcBT(){
