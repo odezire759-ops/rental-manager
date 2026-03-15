@@ -1246,73 +1246,106 @@ async function renderAvailTable(){
   const label=document.getElementById('avail-month-label');
   if(label)label.textContent=mL('2026-'+m)||m;
   
-  const{data:bookings}=await sb.from('ota_bookings').select('guest_name,source,check_in,check_out,room,total_amount').lte('check_in',lte).gte('check_out',gte).neq('status','CANCELLED').order('check_in');
+  // 1) Get daily rooms
+  const{data:dailyRooms}=await sb.from('monthly_charges').select('room,bed_type').eq('month',curMonth).eq('building','เจเรสซิเดนซ์').eq('room_type','daily').order('room');
+  
+  // 2) Get all bookings overlapping this month
+  const{data:bookings}=await sb.from('ota_bookings').select('id,guest_name,source,check_in,check_out,room,total_amount').lte('check_in',lte).gte('check_out',gte).neq('status','CANCELLED').order('check_in');
   
   const wrap=document.getElementById('avail-wrap');
-  if(!bookings||!bookings.length){wrap.innerHTML='<div class="empty" style="padding:24px;">ไม่มีข้อมูลเดือนนี้</div>';return;}
+  const rooms=(dailyRooms||[]).map(r=>r.room);
+  const allBookings=bookings||[];
+  const assigned=allBookings.filter(b=>b.room&&rooms.includes(b.room));
+  const unassigned=allBookings.filter(b=>!b.room||!rooms.includes(b.room));
+  
+  if(!rooms.length){wrap.innerHTML='<div class="empty" style="padding:24px;">ยังไม่มีห้องรายวัน — ไปตั้งที่แท็บรายเดือน</div>';return;}
   
   const srcMap={Agoda:'A',Traveloka:'T','Booking.com':'B','Walk-in':'W',Other:'O'};
+  const srcColor={A:'linear-gradient(135deg,#e65100,#ff8f00)',T:'linear-gradient(135deg,#b71c1c,#e53935)',B:'linear-gradient(135deg,#0d47a1,#1976d2)',W:'linear-gradient(135deg,#1565c0,#42a5f5)',O:'linear-gradient(135deg,#455a64,#78909c)'};
   const today=new Date().toISOString().split('T')[0];
   const thDows=['อา','จ','อ','พ','พฤ','ศ','ส'];
   
-  // Build header
-  let hdr='<tr><td class="gantt-name" style="border-bottom:2px solid var(--border);font-size:10px;color:var(--text3);font-weight:700;">แขก</td>';
+  // Build room → bookings map
+  const roomBookings={};
+  rooms.forEach(r=>roomBookings[r]=[]);
+  assigned.forEach(b=>{if(roomBookings[b.room])roomBookings[b.room].push(b);});
+  
+  // Header
+  let hdr=`<tr><td class="gantt-name" style="border-bottom:2px solid var(--border);font-size:10px;color:var(--text3);font-weight:700;">ห้อง</td>`;
   for(let d=1;d<=daysInMonth;d++){
     const ds=`2026-${m}-${String(d).padStart(2,'0')}`;
     const dow=new Date(ds).getDay();
-    const isT=ds===today;
-    const isWe=dow===0||dow===6;
-    hdr+=`<td class="gantt-day-col${isT?' gd-today':''}${isWe?' gd-weekend':''}">
-      <div class="gh-dow${isWe?' gh-weekend':''}">${thDows[dow]}</div>
-      <div class="gh-day${isT?' gh-today':''}">${d}</div>
-    </td>`;
+    const isT=ds===today,isWe=dow===0||dow===6;
+    hdr+=`<td class="gantt-day-col${isT?' gd-today':''}${isWe?' gd-weekend':''}"><div class="gh-dow${isWe?' gh-weekend':''}">${thDows[dow]}</div><div class="gh-day${isT?' gh-today':''}">${d}</div></td>`;
   }
   hdr+='</tr>';
   
-  // Build rows with bars
+  // Room rows
   let body='';
-  const colW=100/daysInMonth; // % width per day column
-  
-  bookings.forEach(b=>{
-    const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
-    const s=srcMap[b.source]||'O';
-    const monthStart=new Date(`2026-${m}-01`);
-    const monthEnd=new Date(2026,mInt,0);
-    
-    // Clamp to month boundaries
-    const barStart=ci<monthStart?monthStart:ci;
-    const barEnd=co>new Date(monthEnd.getTime()+86400000)?new Date(monthEnd.getTime()+86400000):co;
-    const startDay=barStart.getDate();
-    const endDay=barEnd.getDate()||daysInMonth;
-    const spanDays=Math.max(1,Math.round((barEnd-barStart)/86400000));
-    
-    // Calculate position
-    const leftPct=((startDay-1)/daysInMonth)*100;
-    const widthPct=(spanDays/daysInMonth)*100;
-    
-    body+=`<tr>`;
-    body+=`<td class="gantt-name" title="${b.guest_name}"><span class="src src-${s}" style="margin-right:4px;">${s}</span>${b.guest_name}</td>`;
-    // One td spanning all day columns with positioned bar inside
-    body+=`<td colspan="${daysInMonth}" style="position:relative;padding:0;height:36px;">`;
-    // Day column backgrounds
+  rooms.forEach(room=>{
+    const rBookings=roomBookings[room];
+    body+=`<tr><td class="gantt-name" style="font-size:14px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">${room}</td>`;
+    body+=`<td colspan="${daysInMonth}" style="position:relative;padding:0;height:38px;">`;
+    // Day backgrounds
     for(let d=1;d<=daysInMonth;d++){
       const ds=`2026-${m}-${String(d).padStart(2,'0')}`;
       const dow=new Date(ds).getDay();
-      const isT=ds===today;
-      const isWe=dow===0||dow===6;
-      body+=`<div style="position:absolute;top:0;bottom:0;left:${((d-1)/daysInMonth)*100}%;width:${colW}%;border-left:1px solid #f5f5f5;${isT?'background:rgba(212,160,23,.06);':''}${isWe&&!isT?'background:rgba(192,57,43,.02);':''}"></div>`;
+      const isT=ds===today,isWe=dow===0||dow===6;
+      const pct=((d-1)/daysInMonth)*100,w=100/daysInMonth;
+      body+=`<div style="position:absolute;top:0;bottom:0;left:${pct}%;width:${w}%;border-left:1px solid #f0f0f0;${isT?'background:rgba(212,160,23,.08);':''}${isWe&&!isT?'background:rgba(192,57,43,.03);':''}"></div>`;
     }
-    // The booking bar
-    body+=`<div class="gantt-bar gb-${s}" style="left:calc(${leftPct}% + 2px);width:calc(${widthPct}% - 4px);" title="${b.guest_name} · ${b.source} · ฿${Number(b.total_amount||0).toLocaleString()} · ${fmtD(b.check_in)}→${fmtD(b.check_out)}">
-      ${spanDays>=2?b.guest_name:''}
-    </div>`;
+    // Booking bars
+    rBookings.forEach(b=>{
+      const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+      const s=srcMap[b.source]||'O';
+      const ms=new Date(`2026-${m}-01`);
+      const barStart=ci<ms?ms:ci;
+      const barEnd=co>new Date(2026,mInt,1)?new Date(2026,mInt,1):co;
+      const sd=barStart.getDate(),span=Math.max(1,Math.round((barEnd-barStart)/86400000));
+      const left=((sd-1)/daysInMonth)*100,width=(span/daysInMonth)*100;
+      body+=`<div class="gantt-bar gb-${s}" style="left:calc(${left}% + 1px);width:calc(${width}% - 2px);" title="${b.guest_name} · ${b.source} · ฿${Number(b.total_amount||0).toLocaleString()}">${span>=2?b.guest_name:s}</div>`;
+    });
+    // If no bookings, show "ว่าง" indicator
+    if(!rBookings.length){
+      body+=`<div style="position:absolute;top:0;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--success);font-weight:600;">✓ ว่างทั้งเดือน</div>`;
+    }
     body+=`</td></tr>`;
   });
   
-  wrap.innerHTML=`<div class="gantt-wrap"><table class="gantt">
-    <thead class="gantt-hdr">${hdr}</thead>
-    <tbody class="gantt-body">${body}</tbody>
-  </table></div>`;
+  // Unassigned bookings section
+  let unassignedHtml='';
+  if(unassigned.length){
+    unassignedHtml=`<div style="border-top:2px solid var(--gold);padding:12px 14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--gold2);margin-bottom:8px;">⚠ การจองที่ยังไม่กำหนดห้อง (${unassigned.length} รายการ)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;">
+      ${unassigned.map(b=>{
+        const s=srcMap[b.source]||'O';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--shell);font-size:12px;">
+          <span class="src src-${s}">${s}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.guest_name}</div>
+            <div style="font-size:10px;color:var(--text3);">${fmtD(b.check_in)} → ${fmtD(b.check_out)} · ฿${Number(b.total_amount||0).toLocaleString()}</div>
+          </div>
+          <select style="padding:4px 6px;border:1px solid var(--border2);border-radius:3px;font-size:11px;font-family:'JetBrains Mono',monospace;" onchange="assignRoom('${b.id}',this.value)">
+            <option value="">ห้อง…</option>
+            ${rooms.map(r=>`<option value="${r}">${r}</option>`).join('')}
+          </select>
+        </div>`;
+      }).join('')}
+      </div>
+    </div>`;
+  }
+  
+  wrap.innerHTML=`<div class="gantt-wrap"><table class="gantt"><thead class="gantt-hdr">${hdr}</thead><tbody class="gantt-body">${body}</tbody></table></div>${unassignedHtml}`;
+}
+
+// Assign room to booking
+async function assignRoom(bookingId,room){
+  if(!room)return;
+  const{error}=await sb.from('ota_bookings').update({room}).eq('id',bookingId);
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast(`กำหนดห้อง ${room} สำเร็จ ✓`,'ok');
+  await renderAvailTable();
 }
 function renderSrcBars(data){
   const srcRev={},srcCnt={};
