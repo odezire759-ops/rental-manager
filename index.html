@@ -456,6 +456,7 @@ let curMonth='2026-03',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'
 let eEC=0,eWC=0;
 let dailyM='02',selRoom='',curDailyDate='';
 let activeSec='monthly';
+let masterRoomsLoaded=false;
 
 // ══════════════════════════════════
 // INIT
@@ -468,10 +469,21 @@ async function init(){
   document.getElementById('bco').value=t;
   curDailyDate=t;
   renderKPIBar();
+  await loadMasterRooms();
   await loadMonth(curMonth);
   buildDateStrip();
   renderDaily();
   loadBookings();
+}
+
+// Load ALL unique rooms from database (across all months) to build master floor map
+async function loadMasterRooms(){
+  const{data,error}=await sb.from('monthly_charges').select('room').eq('building','เจเรสซิเดนซ์');
+  if(error){console.error('Master rooms error:',error.message);return;}
+  // Deduplicate
+  const unique=[...new Set((data||[]).map(r=>r.room))];
+  buildFloorMap(unique.map(room=>({room})));
+  masterRoomsLoaded=true;
 }
 
 // ══════════════════════════════════
@@ -526,8 +538,19 @@ async function loadMonth(m){
   const{data,error}=await sb.from('monthly_charges').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
   if(error){toast('Error: '+error.message,'err');return;}
   mData=data||[];
-  buildFloorMap(mData);
-  document.getElementById('tinfo').textContent=mData.length+' ห้อง';
+  // If master rooms not loaded yet, build from this month's data as fallback
+  if(!masterRoomsLoaded) buildFloorMap(mData);
+  // Merge any new rooms from this month that weren't in master
+  mData.forEach(r=>{
+    const fl=getFloor(r.room);
+    if(!FLOOR_ROOMS[fl]) FLOOR_ROOMS[fl]=[];
+    if(!FLOOR_ROOMS[fl].includes(r.room)){
+      FLOOR_ROOMS[fl].push(r.room);
+      FLOOR_ROOMS[fl].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+      ALL_ROOMS=Object.values(FLOOR_ROOMS).flat();
+    }
+  });
+  document.getElementById('tinfo').textContent=mData.length+' ห้อง / '+ALL_ROOMS.length+' ห้องทั้งหมด';
   renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData);renderMTable(mData);
 }
 function renderFloors(data){
