@@ -337,9 +337,20 @@ async function runOCR(base64,mediaType){
     ?`Read this passport image. Return ONLY valid JSON, no markdown:\n{"surname_en":"","given_names_en":"","nationality":"","passport_no":"","date_of_birth":"","date_of_expiry":"","sex":"","country_code":""}`
     :`Read this Thai national ID card. Return ONLY valid JSON, no markdown:\n{"name_th":"","surname_th":"","name_en":"","surname_en":"","id_number":"","date_of_birth":"","date_of_expiry":"","address":""}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:prompt}]}]})});
+    const GEMINI_KEY='AIzaSyDu2T_M3fukz95lOLeDkacYMF0SISegSpo';
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[
+          {inline_data:{mime_type:mediaType,data:base64}},
+          {text:prompt}
+        ]}],
+        generationConfig:{temperature:0,maxOutputTokens:800}
+      })
+    });
     const data=await res.json();
-    const text=data.content?.[0]?.text||'';
+    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
     fillForm(parsed,isPass);
     el.className='ocr-status ok';
