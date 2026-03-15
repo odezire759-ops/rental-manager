@@ -336,16 +336,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
-  <!-- Availability Grid — TOP position -->
+  <!-- Availability Grid — uses main toolbar month selector -->
   <div class="card" style="margin-bottom:14px;">
-    <div class="chdr">
-      <span>📅 Availability Grid</span>
-      <div class="seg" id="dseg">
-        <button class="sb" onclick="setDM('02',this)">ก.พ.</button>
-        <button class="sb active" onclick="setDM('03',this)">มี.ค.</button>
-        <button class="sb" onclick="setDM('all',this)">รวม</button>
-      </div>
-    </div>
+    <div class="chdr"><span>📅 Availability Grid</span><span id="avail-month-label" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
     <div class="cbdy" style="overflow-x:auto;" id="avail-wrap"></div>
   </div>
 
@@ -784,7 +777,14 @@ function updateMonthlyKPI(d){
 // ══════════════════════════════════
 // MONTHLY — Floor-based
 // ══════════════════════════════════
-function selMonth(m,btn){curMonth=m;document.querySelectorAll('#mseg .sb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadMonth(m);}
+function selMonth(m,btn){
+  curMonth=m;
+  dailyM=m.split('-')[1]; // sync daily month e.g. '2026-03' → '03'
+  document.querySelectorAll('#mseg .sb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadMonth(m);
+  if(activeSec==='daily'){buildDateStrip();renderDaily();}
+}
 async function loadMonth(m){
   const{data,error}=await sb.from('monthly_charges').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
   if(error){toast('Error: '+error.message,'err');return;}
@@ -1083,7 +1083,6 @@ async function selectDate(ds){
   await renderDailyCards();
   await updateDailyKPI();
 }
-function setDM(m,btn){dailyM=m;document.querySelectorAll('#dseg .sb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');buildDateStrip();renderDaily();}
 function getDD(){return dailyM==='all'?DAILY:DAILY.filter(x=>x.d.substring(5,7)===dailyM);}
 
 async function renderDaily(){
@@ -1093,8 +1092,7 @@ async function renderDaily(){
   await renderDailyCards();
   loadOTACards();
   loadRecentOTABookings();
-  const d=getDD();
-  renderAvailTable(d);
+  await renderAvailTable();
 }
 
 // OTA Check-in/Check-out cards
@@ -1216,22 +1214,49 @@ async function renderDailyCards(){
   }).join('')}</div>`;
 }
 
-function renderAvailTable(data){
-  const bmap={};data.forEach(x=>{bmap[x.d+'|'+x.r]=x.s;});
-  const months=dailyM==='all'?['02','03']:[dailyM];
-  const bookedRooms=[...new Set(data.map(x=>x.r).filter(r=>r&&r!=='—'))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-  if(!bookedRooms.length){document.getElementById('avail-wrap').innerHTML='<div class="empty">ไม่มีข้อมูล</div>';return;}
-  let html='<table class="avail-table"><thead><tr><th>ห้อง</th>';
-  const allDates=[];
-  months.forEach(m=>{const mInt=parseInt(m);const days=new Date(2026,mInt,0).getDate();for(let d=1;d<=days;d++){allDates.push(`2026-${m}-${String(d).padStart(2,'0')}`);}});
+async function renderAvailTable(){
+  const m=dailyM;
+  const mInt=parseInt(m);
+  const daysInMonth=new Date(2026,mInt,0).getDate();
+  const gte=`2026-${m}-01`,lte=`2026-${m}-${daysInMonth}`;
+  const label=document.getElementById('avail-month-label');
+  if(label)label.textContent=mL('2026-'+m)||m;
+  
+  // Query all bookings that overlap this month
+  const{data:bookings}=await sb.from('ota_bookings').select('guest_name,source,check_in,check_out,room').lte('check_in',lte).gte('check_out',gte).neq('status','CANCELLED').order('check_in');
+  
+  if(!bookings||!bookings.length){document.getElementById('avail-wrap').innerHTML='<div class="empty">ไม่มีข้อมูลเดือนนี้</div>';return;}
+  
+  // Build day-by-day map: date|guest → source
+  const srcMap={Agoda:'A',Traveloka:'T','Booking.com':'B','Walk-in':'W',Other:'O'};
+  const bmap={};  // date|row_key → source code
+  const rows=[];  // {key, label, room}
+  
+  bookings.forEach((b,idx)=>{
+    const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+    const s=srcMap[b.source]||'O';
+    const rowKey=b.guest_name+'_'+idx;
+    rows.push({key:rowKey,label:`${b.room||'—'} ${b.guest_name}`,src:s});
+    // Fill each day
+    for(let d=new Date(ci);d<co;d.setDate(d.getDate()+1)){
+      const ds=d.toISOString().split('T')[0];
+      if(ds>=gte&&ds<=lte) bmap[ds+'|'+rowKey]=s;
+    }
+  });
+  
   const today=new Date().toISOString().split('T')[0];
-  allDates.forEach(d=>{const day=new Date(d).getDate(),isToday=d===today;html+=`<th style="${isToday?'background:var(--gold);color:#1a1a2e;':''}">${day}</th>`;});
+  const allDates=[];
+  for(let d=1;d<=daysInMonth;d++) allDates.push(`2026-${m}-${String(d).padStart(2,'0')}`);
+  
+  let html='<table class="avail-table"><thead><tr><th style="min-width:140px;">แขก / ห้อง</th>';
+  allDates.forEach(d=>{const day=new Date(d).getDate(),isT=d===today;html+=`<th style="${isT?'background:var(--gold);color:#1a1a2e;':''}">${day}</th>`;});
   html+='</tr></thead><tbody>';
-  bookedRooms.forEach(room=>{
-    html+=`<tr><td style="font-weight:800;font-family:'JetBrains Mono',monospace;padding:4px 8px;background:var(--shell);">${room}</td>`;
+  
+  rows.forEach(r=>{
+    html+=`<tr><td style="font-weight:700;font-size:10px;padding:4px 6px;background:var(--shell);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;"><span class="src src-${r.src}" style="margin-right:4px;">${r.src}</span>${r.label}</td>`;
     allDates.forEach(d=>{
-      const src=bmap[d+'|'+room];
-      if(src){html+=`<td class="ac-${src}" title="${d} ห้อง${room}: ${SRC[src]?.label||src}">${src}</td>`;}
+      const src=bmap[d+'|'+r.key];
+      if(src){html+=`<td class="ac-${src}" title="${r.label}">${src}</td>`;}
       else{html+=`<td class="ac-vacant" style="${d===today?'background:var(--gold-light);':''}">·</td>`;}
     });
     html+='</tr>';
