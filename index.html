@@ -737,8 +737,8 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div class="card">
     <div class="chdr"><span>📱 LINE Users ทั้งหมด</span></div>
     <div style="overflow-x:auto;">
-      <table class="dtbl"><thead><tr><th>ชื่อ</th><th>Role</th><th>Step</th><th>ห้อง</th><th>อัพเดตล่าสุด</th><th></th></tr></thead>
-      <tbody id="st-tbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table>
+      <table class="dtbl"><thead><tr><th>ชื่อ</th><th>ชื่อเล่น</th><th>เบอร์โทร</th><th>Role</th><th>สถานะ</th><th>อัพเดตล่าสุด</th><th></th></tr></thead>
+      <tbody id="st-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table>
     </div>
   </div>
 </div>
@@ -3022,51 +3022,138 @@ async function syncCheckins(){
 // ══════════════════════════════════
 async function loadStaffList(){
   if(!sb) return;
-  const{data:all}=await sb.from('line_sessions').select('line_user_id,display_name,role,step,room,updated_at').order('role',{ascending:false}).order('display_name');
+  const{data:all}=await sb.from('line_sessions').select('line_user_id,display_name,nickname,phone,role,step,room,updated_at').order('role',{ascending:false}).order('display_name');
   const users=all||[];
   
   // KPI
-  const staffCount=users.filter(u=>u.role==='staff'||u.role==='admin').length;
-  const tenantCount=users.filter(u=>u.role==='tenant').length;
+  const adminCount=users.filter(u=>u.role==='admin').length;
+  const staffCount=users.filter(u=>u.role==='staff').length;
+  const tenantCount=users.filter(u=>u.role==='tenant'||u.role==='customer').length;
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   s('st-total',users.length);
-  s('st-staff',staffCount);
+  s('st-staff',adminCount+staffCount);
   s('st-tenant',tenantCount);
   
   // Dropdown (non-staff only)
   const sel=document.getElementById('staff-user-select');
   if(sel){
-    const tenants=users.filter(u=>u.role==='tenant'&&u.display_name);
-    sel.innerHTML='<option value="">— เลือก LINE user ('+tenants.length+' คน) —</option>'+tenants.map(u=>'<option value="'+u.line_user_id+'">'+u.display_name+'</option>').join('');
+    const tenants=users.filter(u=>(u.role==='tenant'||u.role==='customer')&&u.display_name);
+    sel.innerHTML='<option value="">— เลือก LINE user ('+tenants.length+' คน) —</option>'+tenants.map(u=>'<option value="'+u.line_user_id+'">'+(u.display_name||'ไม่ทราบชื่อ')+(u.nickname?' ('+u.nickname+')':'')+'</option>').join('');
   }
   
-  // Staff cards
+  // Staff/Admin cards
   const staff=users.filter(u=>u.role==='staff'||u.role==='admin');
   const el=document.getElementById('staff-list');
   if(!staff.length){
-    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;">ยังไม่มีพนักงานในระบบ<br>เลือก LINE user จาก dropdown ด้านบน แล้วกด "เพิ่มเป็น Staff"</div>';
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;">ยังไม่มีพนักงานในระบบ</div>';
   } else {
-    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">'+staff.map(u=>{
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">'+staff.map(u=>{
       const isAdmin=u.role==='admin';
       const border=isAdmin?'var(--danger)':'var(--blue)';
       const roleTxt=isAdmin?'👑 Admin':'🔧 Staff';
       const roleColor=isAdmin?'#c62828':'#1565c0';
-      return '<div style="border:2px solid '+border+';border-radius:var(--r);padding:14px;background:var(--shell);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:800;font-size:15px;">'+(u.display_name||'ไม่ทราบชื่อ')+'</span><span style="background:'+roleColor+'18;color:'+roleColor+';padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;">'+roleTxt+'</span></div><div style="font-size:10px;color:var(--text3);margin-bottom:8px;">ID: '+u.line_user_id.slice(0,12)+'...</div><div style="display:flex;gap:6px;"><button onclick="demoteStaff(\''+u.line_user_id+'\',\''+(u.display_name||'')+'\')" style="flex:1;padding:6px;border:1px solid var(--danger);border-radius:var(--rs);background:#ffebee;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;">❌ ลบสิทธิ์ Staff</button></div></div>';
+      return '<div style="border:2px solid '+border+';border-radius:var(--r);padding:14px;background:var(--shell);">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        +'<span style="font-weight:800;font-size:15px;">'+(u.display_name||'ไม่ทราบชื่อ')+'</span>'
+        +'<span style="background:'+roleColor+'18;color:'+roleColor+';padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;">'+roleTxt+'</span></div>'
+        +(u.nickname?'<div style="font-size:12px;color:var(--text2);margin-bottom:2px;">ชื่อเล่น: '+u.nickname+'</div>':'')
+        +(u.phone?'<div style="font-size:12px;color:var(--text2);margin-bottom:4px;">📱 '+u.phone+'</div>':'<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">📱 ยังไม่ระบุเบอร์โทร</div>')
+        +'<div style="display:flex;gap:6px;margin-top:8px;">'
+        +'<button onclick="editStaff(\''+u.line_user_id+'\')" style="flex:1;padding:6px;border:1px solid var(--blue);border-radius:var(--rs);background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;cursor:pointer;">✏️ แก้ไข</button>'
+        +'<button onclick="deleteStaff(\''+u.line_user_id+'\',\''+(u.display_name||'').replace(/'/g,'')+'\',\''+u.role+'\')" style="flex:1;padding:6px;border:1px solid var(--danger);border-radius:var(--rs);background:#ffebee;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;">❌ ลบสิทธิ์</button>'
+        +'</div></div>';
     }).join('')+'</div>';
   }
   
   // All users table
   const tb=document.getElementById('st-tbody');
-  if(!users.length){tb.innerHTML='<tr><td colspan="6" class="empty">ยังไม่มี LINE user</td></tr>';return;}
-  const roleBadge=(r)=>({admin:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👑 Admin</span>',staff:'<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">🔧 Staff</span>',tenant:'<span style="background:#f5f5f5;color:#666;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👤 Tenant</span>'})[r]||r;
-  tb.innerHTML=users.map(u=>'<tr><td style="font-weight:700;font-size:12px;">'+(u.display_name||'—')+'</td><td>'+roleBadge(u.role||'tenant')+'</td><td style="font-size:10px;color:var(--text3);">'+(u.step||'idle')+'</td><td class="mono" style="font-size:11px;">'+(u.room||'—')+'</td><td style="font-size:10px;color:var(--text3);">'+(u.updated_at?fmtD(u.updated_at):'—')+'</td><td>'+(u.role==='tenant'?'<button class="ract" onclick="promoteStaffDirect(\''+u.line_user_id+'\',\''+(u.display_name||'')+'\')" title="เพิ่มเป็น Staff" style="font-size:11px;">🔧→</button>':'')+'</td></tr>').join('');
+  if(!users.length){tb.innerHTML='<tr><td colspan="7" class="empty">ยังไม่มี LINE user</td></tr>';return;}
+  const roleBadge=(r)=>({
+    admin:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👑 Admin</span>',
+    staff:'<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">🔧 Staff</span>',
+    tenant:'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">🏠 Tenant</span>',
+    customer:'<span style="background:#f5f5f5;color:#666;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👤 Customer</span>',
+  })[r]||'<span style="background:#f5f5f5;color:#666;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+r+'</span>';
+  const stepBadge=(st)=>st==='idle'?'<span style="color:var(--success);font-size:10px;">● ว่าง</span>':'<span style="color:var(--gold2);font-size:10px;">● '+st+'</span>';
+  tb.innerHTML=users.map(u=>{
+    const isTenant=u.role==='tenant'||u.role==='customer';
+    return '<tr>'
+      +'<td style="font-weight:700;font-size:12px;">'+(u.display_name||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(u.nickname||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(u.phone||'—')+'</td>'
+      +'<td>'+roleBadge(u.role||'tenant')+'</td>'
+      +'<td>'+stepBadge(u.step||'idle')+'</td>'
+      +'<td style="font-size:10px;color:var(--text3);">'+(u.updated_at?fmtD(u.updated_at):'—')+'</td>'
+      +'<td style="white-space:nowrap;">'
+        +'<button class="ract" onclick="editStaff(\''+u.line_user_id+'\')" title="แก้ไข" style="font-size:11px;">✏️</button>'
+        +(isTenant?'<button class="ract" onclick="promoteStaffDirect(\''+u.line_user_id+'\',\''+(u.display_name||'').replace(/'/g,'')+'\',\'staff\')" title="→ Staff" style="font-size:11px;">🔧</button>':'')
+        +(isTenant?'<button class="ract" onclick="promoteStaffDirect(\''+u.line_user_id+'\',\''+(u.display_name||'').replace(/'/g,'')+'\',\'admin\')" title="→ Admin" style="font-size:11px;">👑</button>':'')
+      +'</td></tr>';
+  }).join('');
 }
 
-async function promoteStaffDirect(uid,name){
-  if(!confirm('เพิ่ม "'+(name||uid)+'" เป็น Staff?'))return;
-  await sb.from('line_sessions').update({role:'staff'}).eq('line_user_id',uid);
-  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'staff'})})}catch(e){}
-  toast((name||uid)+' → Staff ✅','ok');
+// Edit staff modal (using prompt for simplicity)
+async function editStaff(uid){
+  const{data:u}=await sb.from('line_sessions').select('*').eq('line_user_id',uid).maybeSingle();
+  if(!u){toast('ไม่พบข้อมูล','err');return;}
+  
+  const newName=prompt('ชื่อ (LINE Display Name):', u.display_name||'');
+  if(newName===null)return;
+  const newNick=prompt('ชื่อเล่น:', u.nickname||'');
+  if(newNick===null)return;
+  const newPhone=prompt('เบอร์โทร:', u.phone||'');
+  if(newPhone===null)return;
+  const roleOptions='1=👤 Customer  2=🏠 Tenant  3=🔧 Staff  4=👑 Admin';
+  const curRoleNum={customer:'1',tenant:'2',staff:'3',admin:'4'}[u.role||'tenant']||'2';
+  const newRoleNum=prompt('Role ปัจจุบัน: '+(u.role||'tenant')+'\n\n'+roleOptions+'\n\nเลือกเลข:', curRoleNum);
+  if(newRoleNum===null)return;
+  const roleMap={1:'customer',2:'tenant',3:'staff',4:'admin'};
+  const newRole=roleMap[parseInt(newRoleNum)]||u.role;
+  
+  const upd={};
+  if(newName.trim())upd.display_name=newName.trim();
+  if(newNick!==undefined)upd.nickname=newNick.trim()||null;
+  if(newPhone!==undefined)upd.phone=newPhone.trim()||null;
+  if(newRole!==u.role)upd.role=newRole;
+  
+  if(Object.keys(upd).length===0){toast('ไม่มีอะไรเปลี่ยน','ok');return;}
+  
+  const{error}=await sb.from('line_sessions').update(upd).eq('line_user_id',uid);
+  if(error){toast('Error: '+error.message,'err');return;}
+  
+  // Switch menu if role changed
+  if(newRole!==u.role){
+    const menuRole=(newRole==='staff'||newRole==='admin')?'staff':'tenant';
+    try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:menuRole})})}catch(e){}
+  }
+  
+  toast('อัพเดต '+(newName||u.display_name)+' สำเร็จ ✅','ok');
+  loadStaffList();
+}
+
+async function deleteStaff(uid,name,currentRole){
+  const action=currentRole==='admin'||currentRole==='staff'?'ลบสิทธิ์ → กลับเป็น Tenant':'ลบออกจากระบบ';
+  if(!confirm(action+'\n"'+(name||uid)+'"\n\nดำเนินการ?'))return;
+  
+  if(currentRole==='admin'||currentRole==='staff'){
+    // Demote to tenant
+    await sb.from('line_sessions').update({role:'tenant'}).eq('line_user_id',uid);
+    try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'tenant'})})}catch(e){}
+    toast((name||uid)+' → Tenant ✅','ok');
+  } else {
+    // Delete entirely
+    await sb.from('line_sessions').delete().eq('line_user_id',uid);
+    toast('ลบ '+(name||uid)+' แล้ว','ok');
+  }
+  loadStaffList();
+}
+
+async function promoteStaffDirect(uid,name,targetRole){
+  const roleTxt={staff:'🔧 Staff',admin:'👑 Admin'}[targetRole]||targetRole;
+  if(!confirm('เพิ่ม "'+(name||uid)+'" เป็น '+roleTxt+'?'))return;
+  await sb.from('line_sessions').update({role:targetRole}).eq('line_user_id',uid);
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:targetRole})})}catch(e){}
+  toast((name||uid)+' → '+roleTxt+' ✅','ok');
   loadStaffList();
 }
 
@@ -3075,27 +3162,20 @@ async function promoteStaff(){
   const uid=sel.value;
   if(!uid){toast('กรุณาเลือก LINE user','err');return;}
   const name=sel.options[sel.selectedIndex].text;
-  if(!confirm('เพิ่ม "'+name+'" เป็น Staff?\n\nจะเห็นเมนูพนักงาน: รายชื่อลูกค้า, งานซ่อม, สถานะแอร์'))return;
+  if(!confirm('เพิ่ม "'+name+'" เป็น Staff?\n\nจะเห็นเมนูพนักงาน'))return;
   
-  const{error}=await sb.from('line_sessions').update({role:'staff'}).eq('line_user_id',uid);
-  if(error){toast('Error: '+error.message,'err');return;}
-  
-  // Switch Rich Menu via Edge Function
-  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'staff'})})}catch(e){console.log('menu switch:',e)}
+  await sb.from('line_sessions').update({role:'staff'}).eq('line_user_id',uid);
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'staff'})})}catch(e){}
   
   toast(name+' → Staff ✅ Rich Menu เปลี่ยนแล้ว','ok');
   loadStaffList();
 }
 
 async function demoteStaff(uid,name){
-  if(!confirm('ลบสิทธิ์ staff ของ "'+name+'"?\nจะกลับเป็นผู้เช่าปกติ'))return;
-  const{error}=await sb.from('line_sessions').update({role:'tenant'}).eq('line_user_id',uid);
-  if(error){toast('Error: '+error.message,'err');return;}
-  
-  // Switch Rich Menu back to tenant
-  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'tenant'})})}catch(e){console.log('menu switch:',e)}
-  
-  toast(name+' → Tenant ✅ Rich Menu เปลี่ยนกลับแล้ว','ok');
+  if(!confirm('ลบสิทธิ์ staff ของ "'+name+'"?'))return;
+  await sb.from('line_sessions').update({role:'tenant'}).eq('line_user_id',uid);
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'tenant'})})}catch(e){}
+  toast(name+' → Tenant ✅','ok');
   loadStaffList();
 }
 
