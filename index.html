@@ -689,6 +689,39 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div class="modal"><div class="mhdr"><span class="mtitle" id="htitle">ประวัติห้อง</span><button class="mclose" onclick="closeM('hmod')">×</button></div><div class="mbdy" id="hbody"></div></div>
 </div>
 
+<!-- QUICK WALK-IN MODAL -->
+<div class="moverlay" id="wimod">
+  <div class="modal" style="max-width:480px;">
+    <div class="mhdr"><span class="mtitle" id="wi-title">🚶 Walk-in เข้าพัก</span><button class="mclose" onclick="closeM('wimod')">×</button></div>
+    <div class="mbdy">
+      <input type="hidden" id="wi-room">
+      <div class="fg">
+        <div class="fr"><label>ชื่อลูกค้า *</label><input type="text" id="wi-name" placeholder="ชื่อ-นามสกุล"></div>
+        <div class="fr"><label>เบอร์โทร</label><input type="tel" id="wi-phone" placeholder="08x-xxx-xxxx"></div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>วันที่เข้าพัก</label><input type="date" id="wi-checkin" onchange="calcWIPrice()"></div>
+        <div class="fr"><label>วันที่ออก</label><input type="date" id="wi-checkout" onchange="calcWIPrice()"></div>
+      </div>
+      <div style="background:#fffde7;border:1px solid #fcd34d;border-radius:var(--r);padding:10px;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <span style="font-size:11px;color:var(--text3);">จ-พฤ ฿750 · ศ-อา+หยุด ฿790</span><br>
+            <span id="wi-nights" style="font-size:12px;font-weight:600;">0 คืน</span>
+          </div>
+          <span id="wi-total" style="font-size:24px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">฿0</span>
+        </div>
+        <div id="wi-breakdown" style="font-size:10px;color:var(--text3);margin-top:4px;"></div>
+      </div>
+      <div class="fg" style="margin-top:8px;">
+        <div class="fr"><label>ปรับราคาเอง (฿/คืน)</label><input type="number" id="wi-custom" placeholder="อัตโนมัติ" oninput="calcWIPrice()"></div>
+        <div class="fr"><label>ส่วนลด (฿)</label><input type="number" id="wi-discount" value="0" oninput="calcWIPrice()"></div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;font-size:14px;" onclick="saveQuickWalkin()">💾 เช็คอิน Walk-in</button>
+    </div>
+  </div>
+</div>
+
 <!-- ROOM LOG MODAL -->
 <div class="moverlay" id="rlmod">
   <div class="modal" style="max-width:580px;">
@@ -923,6 +956,7 @@ function selMonth(m,btn){
   if(activeSec==='daily'){buildDateStrip();renderDaily();}
 }
 let lastLogMap={};
+let todayGuestMap={}; // room → guest from ota_bookings for today
 
 async function loadMonth(m){
   const{data,error}=await sb.from('monthly_charges').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
@@ -941,6 +975,11 @@ async function loadMonth(m){
   // Preload last log for each room
   const{data:logs}=await sb.from('room_logs').select('room,log_type,description,cost,logged_at').eq('building','เจเรสซิเดนซ์').order('logged_at',{ascending:false}).limit(200);
   lastLogMap={};(logs||[]).forEach(l=>{if(!lastLogMap[l.room])lastLogMap[l.room]=l;});
+  
+  // Preload today's guests for daily rooms (from ota_bookings)
+  const today=new Date().toISOString().split('T')[0];
+  const{data:guests}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED');
+  todayGuestMap={};(guests||[]).forEach(g=>{if(g.room)todayGuestMap[g.room]=g;});
   
   document.getElementById('tinfo').textContent=mData.length+' ห้อง / '+ALL_ROOMS.length+' ห้องทั้งหมด';
   renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');renderMTable(mData);
@@ -1008,20 +1047,30 @@ function renderFloors(data, containerId, filter){
 
             // ── DAILY ROOM ──
             if(isDaily){
-              const stColor=r.room_status==='cleaning'?'var(--gold)':r.room_status==='repairing'?'var(--danger)':'#1565c0';
-              const stText={ready:'✅ พร้อม',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 ซ่อม',blocked:'🚫 ปิด'}[r.room_status||'ready']||'';
-              return `<div class="rcard daily-room" draggable="true" data-room="${r.room}">
+              const guest=todayGuestMap[r.room];
+              const hasGuest=!!guest;
+              const stColor=hasGuest?'var(--blue)':r.room_status==='cleaning'?'var(--gold)':r.room_status==='repairing'?'var(--danger)':'var(--success)';
+              const stText=hasGuest?'🔵 มีแขก':{ready:'✅ พร้อม',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 ซ่อม',blocked:'🚫 ปิด'}[r.room_status||'ready']||'✅ พร้อม';
+              const srcBadge=guest?{Agoda:'🟠 Agoda',Traveloka:'🔴 Traveloka','Booking.com':'🔵 Booking','Walk-in':'🟢 Walk-in'}[guest.source]||guest.source:'';
+              return `<div class="rcard daily-room" draggable="true" data-room="${r.room}" style="${hasGuest?'border-color:#90caf9;background:#f8fbff;':''}">
               <div class="rstripe daily" style="background:${stColor};"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div style="display:flex;gap:4px;align-items:center;">
                   <span class="rtype-badge rtype-daily">📅 รายวัน</span>
                   <span class="gbadge">${bedIcon(r.bed_type)} ${bedTxt(r.bed_type)}</span>
                 </div>
-                <div class="rdot" style="background:${stColor};box-shadow:0 0 4px ${stColor};"></div>
+                <div class="rdot" style="background:${stColor};box-shadow:0 0 4px ${stColor};${hasGuest?'animation:pulse 1.5s infinite;':''}"></div>
               </div>
               <div class="rnum">${r.room}</div>
-              ${r.room_status&&r.room_status!=='ready'?`<div style="font-size:10px;font-weight:700;color:${stColor};margin:2px 0;">${stText}</div>`:''}
-              <div class="ramt" style="color:#1565c0;">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
+              <div style="font-size:10px;font-weight:700;color:${stColor};margin:2px 0;">${stText}</div>
+              ${hasGuest?`
+                <div class="rname" style="font-weight:700;font-size:12px;color:var(--text);">${guest.guest_name}</div>
+                <div style="font-size:10px;color:var(--text3);margin:2px 0;">📅 ${fmtD(guest.check_in)} → ${fmtD(guest.check_out)} · <span style="font-size:9px;">${srcBadge}</span></div>
+                <div class="ramt" style="color:var(--gold2);">฿${Number(guest.total_amount||0).toLocaleString()}</div>
+              `:`
+                <div class="rname" style="color:var(--text3);">— ว่าง —</div>
+                <button onclick="openQuickWalkin('${r.room}')" style="margin-top:4px;width:100%;padding:6px;border:1px dashed var(--success);border-radius:var(--rs);background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">🚶 Walk-in เข้าพัก</button>
+              `}
               ${logLine}
               <div style="display:flex;gap:3px;margin-top:8px;">
                 <button class="ract" onclick="openEdit('${r.room}')" title="แก้ไข">✏️</button>
@@ -1876,9 +1925,10 @@ function renderDashboard(){
   renderFloors(mData,'dash-floor-container','dash');
   const daily=mData.filter(r=>r.room_type==='daily').length;
   const monthly=mData.filter(r=>r.room_type!=='daily').length;
-  const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()).length;
+  const monthlyOccupied=mData.filter(r=>r.room_type!=='daily'&&r.tenant_name&&r.tenant_name.trim()).length;
+  const dailyOccupied=Object.keys(todayGuestMap).length;
   const el=document.getElementById('dash-summary');
-  if(el)el.textContent=`${ALL_ROOMS.length} ห้อง · 🏠${monthly} รายเดือน · 📅${daily} รายวัน · ${occupied} มีผู้เช่า`;
+  if(el)el.textContent=`${ALL_ROOMS.length} ห้อง · 🏠${monthly} รายเดือน (${monthlyOccupied} มีผู้เช่า) · 📅${daily} รายวัน (${dailyOccupied} มีแขก)`;
 }
 
 function dashFilter(val,btn){
@@ -2521,7 +2571,84 @@ async function exportDailyReceipt(){
   toast('Export ใบส่งมอบเงินสำเร็จ ✓','ok');
 }
 
-// Sync guest_checkins → ota_bookings (for records that were saved before the auto-sync was added)
+// ══════════════════════════════════
+// QUICK WALK-IN (from room card)
+// ══════════════════════════════════
+function openQuickWalkin(room){
+  const today=new Date().toISOString().split('T')[0];
+  const tmr=new Date(Date.now()+86400000).toISOString().split('T')[0];
+  document.getElementById('wi-room').value=room;
+  document.getElementById('wi-title').textContent=`🚶 Walk-in เข้าพัก ห้อง ${room}`;
+  document.getElementById('wi-name').value='';
+  document.getElementById('wi-phone').value='';
+  document.getElementById('wi-checkin').value=today;
+  document.getElementById('wi-checkout').value=tmr;
+  document.getElementById('wi-custom').value='';
+  document.getElementById('wi-discount').value='0';
+  calcWIPrice();
+  document.getElementById('wimod').classList.add('open');
+  document.getElementById('wi-name').focus();
+}
+
+function calcWIPrice(){
+  const ci=document.getElementById('wi-checkin').value;
+  const co=document.getElementById('wi-checkout').value;
+  if(!ci||!co){document.getElementById('wi-total').textContent='฿0';document.getElementById('wi-nights').textContent='0 คืน';return;}
+  const start=new Date(ci),end=new Date(co);
+  const nights=Math.max(0,Math.round((end-start)/86400000));
+  const custom=parseFloat(document.getElementById('wi-custom').value)||0;
+  const disc=parseFloat(document.getElementById('wi-discount').value)||0;
+  const thD=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  let total=0,bd=[];
+  for(let i=0;i<nights;i++){
+    const d=new Date(start);d.setDate(d.getDate()+i);
+    const ds=d.toISOString().split('T')[0];
+    const dow=d.getDay();
+    const isPrem=dow===0||dow===5||dow===6||HOLIDAYS_2026.includes(ds);
+    const price=custom>0?custom:(isPrem?790:750);
+    total+=price;
+    bd.push(`${thD[dow]}${d.getDate()}=฿${price}`);
+  }
+  total=Math.max(0,total-disc);
+  document.getElementById('wi-nights').textContent=`${nights} คืน`;
+  document.getElementById('wi-total').textContent='฿'+total.toLocaleString();
+  document.getElementById('wi-breakdown').textContent=nights<=7?bd.join(' · '):`${nights} คืน × เฉลี่ย ฿${nights?Math.round((total+disc)/nights):'—'}`;
+}
+
+async function saveQuickWalkin(){
+  const room=document.getElementById('wi-room').value;
+  const name=document.getElementById('wi-name').value.trim();
+  const phone=document.getElementById('wi-phone').value.trim();
+  const ci=document.getElementById('wi-checkin').value;
+  const co=document.getElementById('wi-checkout').value;
+  if(!name){toast('กรุณากรอกชื่อลูกค้า','err');return;}
+  if(!ci||!co){toast('กรุณากรอกวันที่เข้า-ออก','err');return;}
+  
+  const totalText=document.getElementById('wi-total').textContent.replace(/[฿,]/g,'');
+  const totalAmt=parseFloat(totalText)||0;
+  const nights=Math.max(1,Math.round((new Date(co)-new Date(ci))/86400000));
+  const roomData=mData.find(x=>x.room===room)||{};
+  
+  // Insert into ota_bookings
+  const{error:e1}=await sb.from('ota_bookings').insert({
+    source:'Walk-in',booking_id:'WI-'+Date.now(),status:'CONFIRMED',
+    guest_name:name,check_in:ci,check_out:co,
+    room_type:'Deluxe - Room Only',total_amount:totalAmt,commission:0,
+    room:room,bed_type:roomData.bed_type||'6ft',building:'เจเรสซิเดนซ์',
+    phone:phone||null
+  });
+  if(e1){toast('Error: '+e1.message,'err');return;}
+  
+  // Update room status
+  await sb.from('monthly_charges').update({room_status:'occupied'}).eq('room',room).eq('month',curMonth);
+  
+  closeM('wimod');
+  toast(`ห้อง ${room} — ${name} เช็คอินสำเร็จ ✓ ฿${totalAmt.toLocaleString()}`,'ok');
+  await loadMonth(curMonth);
+  if(activeSec==='daily'){await renderDailyCards();loadOTACards();loadRecentOTABookings();await renderAvailTable();await renderDailyRoomCards();}
+}
+
+// Sync guest_checkins → ota_bookings
 async function syncCheckins(){
   const{data:checkins}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(100);
   if(!checkins?.length){toast('ไม่มีข้อมูล','err');return;}
