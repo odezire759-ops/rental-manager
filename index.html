@@ -115,8 +115,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .rtype-monthly{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 .rtype-daily{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
 .racts{display:flex;gap:5px;margin-top:10px;}
-.ract{flex:1;padding:5px 0;font-size:10px;font-weight:700;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .12s;text-align:center;}
-.ract:hover{background:var(--gold);color:#1a1a2e;border-color:var(--gold2);}
+.ract{padding:5px 0;font-size:12px;font-weight:700;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .12s;text-align:center;min-width:32px;}
+.ract:hover{background:var(--gold);color:#1a1a2e;border-color:var(--gold2);transform:scale(1.05);}
+.ract[title]:hover::after{content:attr(title);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;white-space:nowrap;z-index:10;pointer-events:none;}
 .ract.daily-toggle{background:#e3f2fd;color:#1565c0;border-color:#90caf9;}
 .ract.daily-toggle:hover{background:#1565c0;color:#fff;}
 
@@ -965,79 +966,86 @@ function renderFloors(data, containerId, filter){
           ${rooms.map(rm=>{
             const r=roomMap[rm];
             const isDaily=r&&r.room_type==='daily';
-            // Vacant room (no data at all)
+            const bedTxt=(b)=>b==='5ft'?'5ฟุต':b==='twin'?'คู่':'6ฟุต';
+            const bedIcon=(b)=>b==='twin'?'🛏🛏':'🛏';
+            const logLine=lastLogMap[rm]?`<div style="font-size:9px;color:var(--text3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📋 ${lastLogMap[rm].description||lastLogMap[rm].log_type} · ${new Date(lastLogMap[rm].logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</div>`:'';
+
+            // ── VACANT ──
             if(!r){return `<div class="rcard vacant" data-room="${rm}">
               <div class="rstripe vacant"></div>
-              <div class="rnum">${rm}</div><div class="rname">ห้องว่าง</div>
-              <div class="ramt" style="color:var(--text3);">—</div>
-              <div class="racts">
-                <button class="ract" onclick="openEdit('${rm}')">เพิ่มผู้เช่า</button>
-                <button class="ract" onclick="openRoomLog('${rm}')">📋</button>
-                <button class="ract daily-toggle" onclick="setRoomType('${rm}','daily')">📅</button>
+              <div class="rnum">${rm}</div>
+              <div class="rname">ห้องว่าง</div>
+              ${logLine}
+              <div class="racts" style="margin-top:8px;">
+                <button class="ract" onclick="openEdit('${rm}')" title="เพิ่มผู้เช่า">✏️</button>
+                <button class="ract" onclick="openRoomLog('${rm}')" title="บันทึก">📋</button>
+                <button class="ract daily-toggle" onclick="setRoomType('${rm}','daily')" title="เปลี่ยนเป็นรายวัน">📅→</button>
               </div></div>`;}
-            // Daily room
+
+            // ── DAILY ROOM ──
             if(isDaily){
-              const bedD=r.bed_type==='5ft'?'🛏 5ฟุต':r.bed_type==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
+              const stColor=r.room_status==='cleaning'?'var(--gold)':r.room_status==='repairing'?'var(--danger)':'#1565c0';
+              const stText={ready:'✅ พร้อม',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 ซ่อม',blocked:'🚫 ปิด'}[r.room_status||'ready']||'';
               return `<div class="rcard daily-room" draggable="true" data-room="${r.room}">
-              <div class="rstripe daily"></div>
-              <div class="rdot" style="background:#1565c0;box-shadow:0 0 4px #1565c0;"></div>
-              <div style="display:flex;gap:4px;align-items:center;">
-                <div class="rtype-badge rtype-daily">📅 รายวัน</div>
-                <span class="gbadge">${bedD}</span>
+              <div class="rstripe daily" style="background:${stColor};"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <span class="rtype-badge rtype-daily">📅 รายวัน</span>
+                  <span class="gbadge">${bedIcon(r.bed_type)} ${bedTxt(r.bed_type)}</span>
+                </div>
+                <div class="rdot" style="background:${stColor};box-shadow:0 0 4px ${stColor};"></div>
               </div>
               <div class="rnum">${r.room}</div>
-              <div class="rname" style="color:#1565c0;">ห้องรายวัน</div>
+              ${r.room_status&&r.room_status!=='ready'?`<div style="font-size:10px;font-weight:700;color:${stColor};margin:2px 0;">${stText}</div>`:''}
               <div class="ramt" style="color:#1565c0;">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
-              <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}
-                ${r.room_status&&r.room_status!=='ready'?`<span style="color:${r.room_status==='cleaning'?'var(--gold2)':r.room_status==='repairing'?'var(--danger)':'#616161'};">${{cleaning:'🧹 ทำความสะอาด',repairing:'🔧 กำลังซ่อม',blocked:'🚫 ปิดห้อง'}[r.room_status]||r.room_status}</span>`:''}
-                ${lastLogMap[r.room]?`<span style="color:var(--blue);font-size:9px;">📋 ${lastLogMap[r.room].description||''} · ${new Date(lastLogMap[r.room].logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</span>`:''}</div>
-              <div class="racts">
-                <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
-                <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
-                <button class="ract" onclick="quickStatus('${r.room}','cleaning')">🧹</button>
-                <button class="ract" onclick="quickStatus('${r.room}','ready')">✅</button>
-                <button class="ract" onclick="quickStatus('${r.room}','repairing')">🔧</button>
-                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠</button>
+              ${logLine}
+              <div style="display:flex;gap:3px;margin-top:8px;">
+                <button class="ract" onclick="openEdit('${r.room}')" title="แก้ไข">✏️</button>
+                <button class="ract" onclick="openRoomLog('${r.room}')" title="บันทึก/ซ่อม">📋</button>
+                <button class="ract" onclick="quickStatus('${r.room}','ready')" title="พร้อม">✅</button>
+                <button class="ract" onclick="quickStatus('${r.room}','cleaning')" title="สะอาด">🧹</button>
+                <button class="ract" onclick="quickStatus('${r.room}','repairing')" title="ซ่อม">🔧</button>
+                <button class="ract" onclick="setRoomType('${r.room}','monthly')" title="เปลี่ยนเป็นรายเดือน" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;">🏠→</button>
               </div></div>`;
             }
-            // Monthly room (normal)
+
+            // ── MONTHLY ROOM ──
             const st=r.status==='paid'?'paid':'pending';
             const dc=st==='paid'?'var(--success)':'var(--gold)';
             const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
             const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
             const hasTenant=r.tenant_name&&r.tenant_name.trim();
-            const bedTxt=r.bed_type==='5ft'?'🛏 5ฟุต':r.bed_type==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
-            const amenities=[r.has_tv?'📺':'',r.has_fridge?'🧊':'',r.has_motorcycle?'🏍':'',r.has_car?'🚗':''].filter(Boolean).join(' ');
+            const amenities=[r.has_tv?'📺':'',r.has_fridge?'🧊':'',r.has_motorcycle?'🏍':'',r.has_car?'🚗':''].filter(Boolean).join('');
             return `<div class="rcard" draggable="true" data-room="${r.room}">
-              <div class="rstripe ${st}"></div><div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
-              <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-                <div class="rtype-badge rtype-monthly">🏠 รายเดือน</div>
-                <span class="gbadge">${bedTxt}</span>
+              <div class="rstripe ${st}"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <span class="rtype-badge rtype-monthly">🏠 รายเดือน</span>
+                  <span class="gbadge">${bedIcon(r.bed_type)} ${bedTxt(r.bed_type)}</span>
+                  ${amenities?`<span style="font-size:11px;">${amenities}</span>`:''}
+                </div>
+                <div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
               </div>
               <div class="rnum">${r.room}</div>
               <div class="rname">${r.tenant_name||'—'}${r.phone?` · 📞${r.phone}`:''}</div>
               <div class="ramt">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
               <div class="rdet">
                 ${r.rent>0?`<span>เช่า ฿${r.rent.toLocaleString()}</span>`:''}
-                ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}"><span class="rate-icon">⚡</span>${eBadge.label}</span> ฿${Math.round(r.elec_cost).toLocaleString()}</div>`:''}
-                ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}"><span class="rate-icon">💧</span>${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
-                ${amenities?`<span>${amenities}</span>`:''}
-                ${r.contract_end?`<span>📄 หมดสัญญา ${fmtD(r.contract_end)}</span>`:''}
-                ${lastLogMap[r.room]?`<span style="color:var(--blue);">📋 ${lastLogMap[r.room].description||lastLogMap[r.room].log_type} · ${new Date(lastLogMap[r.room].logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</span>`:''}
+                ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}">⚡${eBadge.label}</span> ฿${Math.round(r.elec_cost).toLocaleString()}</div>`:''}
+                ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}">💧${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
+                ${r.contract_end?`<span>📄 สัญญา → ${fmtD(r.contract_end)}</span>`:''}
               </div>
-              <div class="racts">
-                <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
+              ${logLine}
+              <div style="display:flex;gap:3px;margin-top:8px;">
+                <button class="ract" onclick="openEdit('${r.room}')" title="แก้ไข">✏️</button>
+                <button class="ract" onclick="toggleP('${r.room}','${r.status}')" title="${r.status==='paid'?'เปลี่ยนเป็นค้างชำระ':'เปลี่ยนเป็นชำระแล้ว'}">${r.status==='paid'?'✅':'💰'}</button>
+                <button class="ract" onclick="openRoomLog('${r.room}')" title="บันทึก/ซ่อม">📋</button>
                 ${isDash?`
-                  <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'✅':'💰'}</button>
-                  <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
-                  <button class="ract" onclick="quickStatus('${r.room}','cleaning')">🧹</button>
-                  <button class="ract" onclick="quickStatus('${r.room}','repairing')">🔧</button>
-                  ${hasTenant?`<button class="ract" onclick="moveOut('${r.room}')" style="color:var(--danger);">ย้ายออก</button>`:`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`}
-                `:`
-                  <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button>
-                  <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
-                  ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`:''}
-                `}
+                  <button class="ract" onclick="quickStatus('${r.room}','cleaning')" title="ทำความสะอาด">🧹</button>
+                  <button class="ract" onclick="quickStatus('${r.room}','repairing')" title="แจ้งซ่อม">🔧</button>
+                  ${hasTenant?`<button class="ract" onclick="moveOut('${r.room}')" title="ย้ายออก" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;">🚪</button>`
+                    :`<button class="ract" onclick="setRoomType('${r.room}','daily')" title="เปลี่ยนเป็นรายวัน" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅→</button>`}
+                `:(!hasTenant?`<button class="ract" onclick="setRoomType('${r.room}','daily')" title="เปลี่ยนเป็นรายวัน" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅→</button>`:'')}
               </div>
             </div>`;
           }).join('')}
