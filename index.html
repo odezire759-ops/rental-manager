@@ -347,17 +347,18 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 
 <!-- ═══ DASHBOARD — ALL ROOMS ═══ -->
 <div id="sec-dashboard" class="sec active">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-    <div style="display:flex;align-items:center;gap:12px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:14px;font-weight:700;">🏠 ภาพรวมห้องพักทั้งหมด</span>
       <span id="dash-summary" style="font-size:11px;color:var(--text3);"></span>
     </div>
-    <div style="display:flex;gap:6px;">
-      <span class="gbadge active" style="font-size:10px;">🏠 รายเดือน</span>
-      <span class="gbadge" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;font-size:10px;">📅 รายวัน</span>
-      <span class="gbadge" style="font-size:10px;">🛏คู่</span>
-      <span class="gbadge" style="font-size:10px;">🛏เดี่ยว</span>
-      <span class="gbadge" style="font-size:10px;">🛏🛏แฝด</span>
+    <div id="dash-filters" style="display:flex;gap:4px;">
+      <button class="sb active" onclick="dashFilter('all',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--gold);color:#1a1a2e;">ทั้งหมด</button>
+      <button class="sb" onclick="dashFilter('monthly',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">🏠 รายเดือน</button>
+      <button class="sb" onclick="dashFilter('daily',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">📅 รายวัน</button>
+      <button class="sb" onclick="dashFilter('5ft',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">🛏 5 ฟุต</button>
+      <button class="sb" onclick="dashFilter('6ft',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">🛏 6 ฟุต</button>
+      <button class="sb" onclick="dashFilter('twin',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">🛏🛏 คู่</button>
     </div>
   </div>
   <div id="dash-floor-container"><div class="loading">กำลังโหลด...</div></div>
@@ -587,7 +588,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         </div>
         <div class="fg">
           <div class="fr"><label>ประเภทเตียง</label>
-            <select id="bbed"><option value="double">🛏 เตียงคู่ (Double)</option><option value="single">🛏 เตียงเดี่ยว (Single)</option><option value="twin">🛏🛏 เตียงแฝด (Twin)</option></select>
+            <select id="bbed"><option value="6ft">🛏 เตียง 6 ฟุต</option><option value="5ft">🛏 เตียง 5 ฟุต</option><option value="twin">🛏🛏 เตียงคู่</option></select>
           </div>
           <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
         </div>
@@ -615,7 +616,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       <input type="hidden" id="eroom"><input type="hidden" id="emonth">
       <!-- Shared: bed type (both daily + monthly) -->
       <div class="fsec">ข้อมูลห้อง</div>
-      <div class="fg"><div class="fr"><label>ประเภทเตียง</label><select id="ebed"><option value="double">🛏 เตียงคู่ (Double)</option><option value="single">🛏 เตียงเดี่ยว (Single)</option><option value="twin">🛏🛏 เตียงแฝด (Twin)</option></select></div><div class="fr"><label>เบอร์โทร</label><input type="tel" id="ephone" placeholder="08x-xxx-xxxx"></div></div>
+      <div class="fg"><div class="fr"><label>ประเภทเตียง</label><select id="ebed"><option value="6ft">🛏 เตียง 6 ฟุต</option><option value="5ft">🛏 เตียง 5 ฟุต</option><option value="twin">🛏🛏 เตียงคู่</option></select></div><div class="fr"><label>เบอร์โทร</label><input type="tel" id="ephone" placeholder="08x-xxx-xxxx"></div></div>
       <!-- Monthly only sections -->
       <div class="monthly-only">
         <div class="fsec">ข้อมูลผู้เช่า</div>
@@ -922,7 +923,9 @@ async function loadMonth(m){
 }
 function renderFloors(data, containerId, filter){
   containerId=containerId||'floor-container';
-  filter=filter||'all'; // 'all', 'monthly', 'daily'
+  filter=filter||'all';
+  const isDash=filter==='dash';
+  const dFilter=isDash?dashFilterVal:'all';
   const c=document.getElementById(containerId);
   if(!c)return;
   const roomMap={};data.forEach(r=>roomMap[r.room]=r);
@@ -930,10 +933,11 @@ function renderFloors(data, containerId, filter){
   let html='';
   for(const floor of sortedFloors){
     let rooms=FLOOR_ROOMS[floor];
-    // Filter rooms by type
-    if(filter==='monthly') rooms=rooms.filter(rm=>{const r=roomMap[rm];return !r||r.room_type!=='daily';});
-    else if(filter==='daily') rooms=rooms.filter(rm=>{const r=roomMap[rm];return r&&r.room_type==='daily';});
-    if(!rooms.length) continue; // skip empty floors
+    // Apply filter
+    if(filter==='monthly'||dFilter==='monthly') rooms=rooms.filter(rm=>{const r=roomMap[rm];return !r||r.room_type!=='daily';});
+    else if(filter==='daily'||dFilter==='daily') rooms=rooms.filter(rm=>{const r=roomMap[rm];return r&&r.room_type==='daily';});
+    else if(dFilter==='5ft'||dFilter==='6ft'||dFilter==='twin') rooms=rooms.filter(rm=>{const r=roomMap[rm];return r&&r.bed_type===dFilter;});
+    if(!rooms.length) continue;
     const floorData=rooms.map(r=>roomMap[r]).filter(Boolean);
     const paid=floorData.filter(r=>r.status==='paid').length;
     const pend=floorData.filter(r=>r.status==='pending').length;
@@ -973,7 +977,7 @@ function renderFloors(data, containerId, filter){
               </div></div>`;}
             // Daily room
             if(isDaily){
-              const bedD=r.bed_type==='single'?'🛏เดี่ยว':r.bed_type==='twin'?'🛏🛏แฝด':'🛏คู่';
+              const bedD=r.bed_type==='5ft'?'🛏 5ฟุต':r.bed_type==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
               return `<div class="rcard daily-room" draggable="true" data-room="${r.room}">
               <div class="rstripe daily"></div>
               <div class="rdot" style="background:#1565c0;box-shadow:0 0 4px #1565c0;"></div>
@@ -984,11 +988,16 @@ function renderFloors(data, containerId, filter){
               <div class="rnum">${r.room}</div>
               <div class="rname" style="color:#1565c0;">ห้องรายวัน</div>
               <div class="ramt" style="color:#1565c0;">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
-              <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}</div>
+              <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}
+                ${r.room_status&&r.room_status!=='ready'?`<span style="color:${r.room_status==='cleaning'?'var(--gold2)':r.room_status==='repairing'?'var(--danger)':'#616161'};">${{cleaning:'🧹 ทำความสะอาด',repairing:'🔧 กำลังซ่อม',blocked:'🚫 ปิดห้อง'}[r.room_status]||r.room_status}</span>`:''}
+                ${lastLogMap[r.room]?`<span style="color:var(--blue);font-size:9px;">📋 ${lastLogMap[r.room].description||''} · ${new Date(lastLogMap[r.room].logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</span>`:''}</div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
                 <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
-                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠 รายเดือน</button>
+                <button class="ract" onclick="quickStatus('${r.room}','cleaning')">🧹</button>
+                <button class="ract" onclick="quickStatus('${r.room}','ready')">✅</button>
+                <button class="ract" onclick="quickStatus('${r.room}','repairing')">🔧</button>
+                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠</button>
               </div></div>`;
             }
             // Monthly room (normal)
@@ -997,7 +1006,7 @@ function renderFloors(data, containerId, filter){
             const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
             const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
             const hasTenant=r.tenant_name&&r.tenant_name.trim();
-            const bedTxt=r.bed_type==='single'?'🛏เดี่ยว':r.bed_type==='twin'?'🛏🛏แฝด':'🛏คู่';
+            const bedTxt=r.bed_type==='5ft'?'🛏 5ฟุต':r.bed_type==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
             const amenities=[r.has_tv?'📺':'',r.has_fridge?'🧊':'',r.has_motorcycle?'🏍':'',r.has_car?'🚗':''].filter(Boolean).join(' ');
             return `<div class="rcard" draggable="true" data-room="${r.room}">
               <div class="rstripe ${st}"></div><div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
@@ -1018,9 +1027,17 @@ function renderFloors(data, containerId, filter){
               </div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
-                <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button>
-                <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
-                ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`:''}
+                ${isDash?`
+                  <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'✅':'💰'}</button>
+                  <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
+                  <button class="ract" onclick="quickStatus('${r.room}','cleaning')">🧹</button>
+                  <button class="ract" onclick="quickStatus('${r.room}','repairing')">🔧</button>
+                  ${hasTenant?`<button class="ract" onclick="moveOut('${r.room}')" style="color:var(--danger);">ย้ายออก</button>`:`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`}
+                `:`
+                  <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button>
+                  <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
+                  ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`:''}
+                `}
               </div>
             </div>`;
           }).join('')}
@@ -1171,6 +1188,16 @@ async function saveEdit(){
   toast('บันทึกสำเร็จ ✓','ok');closeM('emod');await loadMonth(curMonth);
 }
 async function toggleP(room,cur){await sb.from('monthly_charges').update({status:cur==='paid'?'pending':'paid'}).eq('room',room).eq('month',curMonth);await loadMonth(curMonth);}
+
+// Move out tenant (clear tenant data)
+async function moveOut(room){
+  if(!confirm(`ยืนยันย้ายผู้เช่าออกจากห้อง ${room}?`))return;
+  const{error}=await sb.from('monthly_charges').update({tenant_name:'',rent:0,elec_old:null,elec_new:null,elec_cost:0,water_old:null,water_new:null,water_cost:0,parking_car:0,parking_moto:0,fridge_fee:0,other:0,total:0,status:'pending',has_tv:false,has_fridge:false,has_motorcycle:false,has_car:false,contract_months:null,contract_end:null,phone:null}).eq('room',room).eq('month',curMonth);
+  if(error){toast('Error: '+error.message,'err');return;}
+  await sb.from('room_logs').insert({building:'เจเรสซิเดนซ์',room,log_type:'status_change',status:'ready',description:'ย้ายผู้เช่าออก'});
+  toast(`ห้อง ${room} — ย้ายออกแล้ว ✓`,'ok');
+  await loadMonth(curMonth);
+}
 async function showHist(){
   const room=document.getElementById('eroom').value;closeM('emod');
   document.getElementById('htitle').textContent=`ประวัติห้อง ${room}`;document.getElementById('hbody').innerHTML='<div class="loading">กำลังโหลด...</div>';document.getElementById('hmod').classList.add('open');
@@ -1276,7 +1303,7 @@ async function loadRecentOTABookings(){
     const c=m[s]||['#455a64','#eceff1'];
     return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">${s}</span>`;
   };
-  const bedIcon=(b)=>b==='single'?'🛏 เดี่ยว':b==='twin'?'🛏🛏 แฝด':'🛏 คู่';
+  const bedIcon=(b)=>b==='5ft'?'🛏 5ฟุต':b==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
   tb.innerHTML=data.map(b=>`<tr${b.status==='CANCELLED'?' style="opacity:.5;text-decoration:line-through;"':''}>
     <td class="mono" style="font-size:11px;">${(b.booking_id||'').slice(-8)}</td>
     <td>${srcBadge(b.source)}</td>
@@ -1324,7 +1351,7 @@ async function renderDailyCards(){
   c.innerHTML=`<div class="guest-grid">${guests.map(b=>{
     const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
     const nights=Math.max(1,Math.round((co-ci)/86400000));
-    const bed=b.bed_type==='single'?'🛏 เตียงเดี่ยว':b.bed_type==='twin'?'🛏🛏 เตียงแฝด':'🛏 เตียงคู่';
+    const bed=b.bed_type==='5ft'?'🛏 เตียง 5 ฟุต':b.bed_type==='twin'?'🛏🛏 เตียงคู่':'🛏 เตียง 6 ฟุต';
     return `<div class="gcard ${srcCls(b.source)}">
       <div class="gcard-top">
         <div class="gcard-room">${b.room||'—'}</div>
@@ -1476,7 +1503,7 @@ async function renderDailyRoomCards(){
   
   const srcBadge=(s)=>{const m={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],'Walk-in':['#1a73e8','#e8f0fe']};const cl=m[s]||['#455a64','#eceff1'];return `<span style="background:${cl[1]};color:${cl[0]};padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;">${s}</span>`;};
   const stLabel={ready:'✅ พร้อมให้เช่า',occupied:'🔵 มีแขก',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 กำลังซ่อม',blocked:'🚫 ปิดห้อง'};
-  const bedTxt=(b)=>b==='single'?'🛏เดี่ยว':b==='twin'?'🛏🛏แฝด':'🛏คู่';
+  const bedTxt=(b)=>b==='5ft'?'🛏 5ฟุต':b==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
   
   // Stats
   const ready=rooms.filter(r=>(r.room_status||'ready')==='ready'&&!guestMap[r.room]).length;
@@ -1724,14 +1751,22 @@ function showSec(id,btn){
   }
 }
 
+let dashFilterVal='all';
+
 function renderDashboard(){
-  renderFloors(mData,'dash-floor-container','all');
-  // Update summary
+  renderFloors(mData,'dash-floor-container','dash');
   const daily=mData.filter(r=>r.room_type==='daily').length;
   const monthly=mData.filter(r=>r.room_type!=='daily').length;
   const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()).length;
   const el=document.getElementById('dash-summary');
   if(el)el.textContent=`${ALL_ROOMS.length} ห้อง · 🏠${monthly} รายเดือน · 📅${daily} รายวัน · ${occupied} มีผู้เช่า`;
+}
+
+function dashFilter(val,btn){
+  dashFilterVal=val;
+  document.querySelectorAll('#dash-filters .sb').forEach(b=>{b.style.background='var(--white)';b.style.color='var(--text2)';});
+  btn.style.background='var(--gold)';btn.style.color='#1a1a2e';
+  renderDashboard();
 }
 
 // ══════════════════════════════════
