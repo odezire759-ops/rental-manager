@@ -376,6 +376,11 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 <!-- ═══ DAILY SECTION — REDESIGNED ═══ -->
 <div id="sec-daily" class="sec">
 
+  <!-- Daily toolbar -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;gap:6px;">
+    <button class="tbtn" onclick="exportDailyReceipt()">📄 ใบส่งมอบเงิน</button>
+  </div>
+
   <!-- OTA Check-in/out strip -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
     <div class="card" style="border-left:4px solid var(--success);border-top:none;">
@@ -533,8 +538,27 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
             <div class="loading" style="grid-column:1/-1;">กำลังโหลดห้อง...</div>
           </div>
           <div class="fg">
-            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin" onchange="loadCheckinRooms()"></div>
-            <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout"></div>
+            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin" onchange="loadCheckinRooms();calcWalkinPrice()"></div>
+            <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout" onchange="calcWalkinPrice()"></div>
+          </div>
+
+          <!-- Walk-in Pricing (show only for daily rooms) -->
+          <div id="ci-pricing" style="display:none;margin-top:10px;">
+            <div style="background:linear-gradient(135deg,var(--gold-light),#fff8e1);border:1px solid #fcd34d;border-radius:var(--r);padding:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:12px;font-weight:700;color:var(--gold2);">💰 ค่าห้องพัก Walk-in</span>
+                <span style="font-size:10px;color:var(--text3);">จ-พฤ ฿750 · ศ-อา+นักขัตฤกษ์ ฿790</span>
+              </div>
+              <div id="ci-price-breakdown" style="font-size:11px;color:var(--text2);margin-bottom:8px;"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:var(--text2);font-weight:600;"><span id="ci-nights">0</span> คืน</span>
+                <span style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;" id="ci-total-price">฿0</span>
+              </div>
+              <div class="fg" style="margin-top:8px;">
+                <div class="fr"><label>ปรับราคาเอง (฿/คืน)</label><input type="number" id="ci-custom-price" placeholder="ราคาอัตโนมัติ" oninput="calcWalkinPrice()"></div>
+                <div class="fr"><label>ส่วนลด (฿)</label><input type="number" id="ci-discount" value="0" oninput="calcWalkinPrice()"></div>
+              </div>
+            </div>
           </div>
 
           <button class="btn bp" style="width:100%;margin-top:14px;padding:10px;font-size:13px;" onclick="saveCheckin()">💾 บันทึกแจ้งเข้าพัก</button>
@@ -1862,6 +1886,7 @@ async function loadCheckinRooms(){
       <div class="ci-rstatus">${stayType==='daily'?'📅 ว่าง':'🏠 ว่าง'}</div>
     </div>`;
   }).join('');
+  calcWalkinPrice();
 }
 
 function selectCIRoom(room,el){
@@ -1869,9 +1894,81 @@ function selectCIRoom(room,el){
   document.getElementById('ci-room').value=room;
   document.getElementById('ci-room-display').textContent=`ห้อง ${room}`;
   document.getElementById('ci-room-display').style.color='var(--blue)';
-  // Toggle selection visual
   document.querySelectorAll('#ci-room-grid .ci-rcard').forEach(c=>c.classList.remove('ci-selected'));
   el.classList.add('ci-selected');
+  calcWalkinPrice();
+}
+
+// Thai public holidays 2026 (วันหยุดนักขัตฤกษ์)
+const HOLIDAYS_2026=[
+  '2026-01-01','2026-01-02','2026-02-17','2026-02-16',
+  '2026-04-06','2026-04-13','2026-04-14','2026-04-15',
+  '2026-05-01','2026-05-05','2026-05-11','2026-05-22',
+  '2026-06-03','2026-07-06','2026-07-28',
+  '2026-08-12','2026-10-13','2026-10-23',
+  '2026-12-05','2026-12-10','2026-12-31'
+];
+
+function calcWalkinPrice(){
+  const stayType=document.getElementById('ci-stay-type').value;
+  const pricingEl=document.getElementById('ci-pricing');
+  // Only show for daily rooms
+  if(stayType!=='daily'){pricingEl.style.display='none';return;}
+  pricingEl.style.display='';
+  
+  const ci=document.getElementById('ci-checkin').value;
+  const co=document.getElementById('ci-checkout').value;
+  if(!ci||!co){
+    document.getElementById('ci-nights').textContent='0';
+    document.getElementById('ci-total-price').textContent='฿0';
+    document.getElementById('ci-price-breakdown').innerHTML='';
+    return;
+  }
+  
+  const start=new Date(ci),end=new Date(co);
+  const nights=Math.max(0,Math.round((end-start)/86400000));
+  if(nights<=0){
+    document.getElementById('ci-nights').textContent='0';
+    document.getElementById('ci-total-price').textContent='฿0';
+    document.getElementById('ci-price-breakdown').innerHTML='<span style="color:var(--danger);">วันที่ออกต้องมากกว่าวันที่เข้า</span>';
+    return;
+  }
+  
+  const customPrice=parseFloat(document.getElementById('ci-custom-price').value)||0;
+  const discount=parseFloat(document.getElementById('ci-discount').value)||0;
+  const thDays=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  
+  let total=0,breakdown=[];
+  for(let i=0;i<nights;i++){
+    const d=new Date(start);d.setDate(d.getDate()+i);
+    const ds=d.toISOString().split('T')[0];
+    const dow=d.getDay();
+    const isWeekend=dow===0||dow===5||dow===6; // ศ,ส,อา
+    const isHoliday=HOLIDAYS_2026.includes(ds);
+    const isPremium=isWeekend||isHoliday;
+    const price=customPrice>0?customPrice:(isPremium?790:750);
+    total+=price;
+    breakdown.push({date:ds,day:thDays[dow],price,isPremium,isHoliday});
+  }
+  total=Math.max(0,total-discount);
+  
+  document.getElementById('ci-nights').textContent=nights;
+  document.getElementById('ci-total-price').textContent='฿'+total.toLocaleString();
+  
+  // Show breakdown
+  if(nights<=7){
+    document.getElementById('ci-price-breakdown').innerHTML=breakdown.map(b=>
+      `<span style="display:inline-flex;align-items:center;gap:2px;margin-right:6px;${b.isPremium?'color:var(--danger);font-weight:700;':''}">
+        ${b.day} ${new Date(b.date).getDate()} = ฿${b.price}${b.isHoliday?' 🎌':''}
+      </span>`
+    ).join('')+(discount>0?`<span style="color:var(--success);font-weight:700;">- ส่วนลด ฿${discount}</span>`:'');
+  } else {
+    const weekday=breakdown.filter(b=>!b.isPremium).length;
+    const weekend=breakdown.filter(b=>b.isPremium).length;
+    document.getElementById('ci-price-breakdown').innerHTML=
+      `${weekday} คืน × ฿${customPrice||750} (จ-พฤ) + ${weekend} คืน × ฿${customPrice||790} (ศ-อา/หยุด)`
+      +(discount>0?` - ส่วนลด ฿${discount}`:'');
+  }
 }
 
 async function loadNationalities(){
@@ -1976,6 +2073,17 @@ async function saveCheckin(){
     source:'manual'
   };
   
+  // Add pricing for daily stays
+  const stayType=document.getElementById('ci-stay-type').value;
+  if(stayType==='daily'&&rec.check_out){
+    const nights=Math.max(1,Math.round((new Date(rec.check_out)-new Date(rec.check_in))/86400000));
+    const totalText=document.getElementById('ci-total-price').textContent.replace(/[฿,]/g,'');
+    rec.nights=nights;
+    rec.total_price=parseFloat(totalText)||0;
+    rec.price_per_night=nights>0?Math.round(rec.total_price/nights):0;
+    rec.discount=parseFloat(document.getElementById('ci-discount').value)||0;
+  }
+  
   if(curGuestType==='thai'){
     rec.thai_id_number=document.getElementById('ci-thai-id').value||null;
     rec.thai_prefix=document.getElementById('ci-prefix').value;
@@ -2009,6 +2117,8 @@ async function saveCheckin(){
   document.getElementById('ci-room-display').style.color='var(--text3)';
   document.getElementById('ocr-preview').style.display='none';
   document.getElementById('ocr-box').style.display='';
+  document.getElementById('ci-custom-price').value='';
+  document.getElementById('ci-discount').value='0';
   loadCheckins();loadCheckinStats();loadCheckinRooms();
 }
 
@@ -2081,6 +2191,136 @@ async function exportRR1(){
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=Array(9).fill({wch:16});
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'รร.1');
   XLSX.writeFile(wb,'RR1_JResidence.xlsx');toast('Export รร.1 สำเร็จ ✓','ok');
+}
+
+// ══════════════════════════════════
+// EXPORT ใบส่งมอบเงิน ค่าเช่ารายวัน
+// ══════════════════════════════════
+async function exportDailyReceipt(){
+  // Fetch today's daily check-ins from ota_bookings
+  const today=new Date().toISOString().split('T')[0];
+  const{data:bookings}=await sb.from('ota_bookings').select('*').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED').order('room');
+  const rows=bookings||[];
+
+  const wb=XLSX.utils.book_new();
+  const thMonths=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const now=new Date();
+  const dateLabel=`วันที่ ${now.getDate()}  เดือน ${thMonths[now.getMonth()]} ${now.getFullYear()+543}`;
+
+  // ─── Helper: build one receipt section (25 rows) ───
+  function buildSection(data,dateStr){
+    // Row 0: Title
+    const sec=[];
+    const hdr0=['ใบส่งมอบเงิน ค่าห้อง','','','','','','','','','','','','วันที่',''];
+    hdr0[12]=dateStr;
+    sec.push(hdr0);
+    // Row 1: Headers
+    sec.push(['ห้อง','เวลาเข้าพัก','ค่าห้องพัก','','','รวม','ประกัน','รวมสุทธิ','รับเงินจากลูกค้า','','คืนเงินประกัน (B)','','คงเหลือ (A-B)','หมายเหตุ']);
+    // Row 2: Sub-headers
+    sec.push(['','','ค่าห้อง','คืน','','','','','สด (A)','โอน','สด','โอน','','']);
+    // Row 3-20: 18 data rows
+    for(let i=0;i<18;i++){
+      const b=data[i];
+      if(b){
+        const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+        const nights=Math.max(1,Math.round((co-ci)/86400000));
+        const price=Number(b.total_amount||0)/nights;
+        const total=Number(b.total_amount||0);
+        sec.push([b.room||'',b.check_in?ci.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):'',Math.round(price),nights,'',total,'',total,'','','','','','']);
+      } else {
+        sec.push(['','','','','','','','','','','','','','']);
+      }
+    }
+    // Row 21: Totals
+    sec.push(['รวม','','','','','','','','','','','','','ผู้ส่งบัญชี …..........................................']);
+    // Row 22: Bracket
+    sec.push(['[','','','','','','','','','','','','','ผู้รับบัญชี …..........................................']);
+    return sec;
+  }
+
+  // Split data into chunks of 18
+  const chunk1=rows.slice(0,18);
+  const chunk2=rows.slice(18,36);
+
+  // ─── Sheet 1: ใบส่งเงินค่าเช่ารายวัน ───
+  const aoa=[...buildSection(chunk1,dateLabel),['','','','','','','','','','','','','',''],...buildSection(chunk2,'')];
+  const ws1=XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths matching target
+  ws1['!cols']=[{wch:9},{wch:10.3},{wch:6},{wch:4.6},{wch:0.5},{wch:8.1},{wch:6.4},{wch:10.1},{wch:10},{wch:8.1},{wch:6.4},{wch:8.6},{wch:16},{wch:28.4}];
+
+  // Merges (matching target exactly)
+  ws1['!merges']=[
+    {s:{r:0,c:0},e:{r:0,c:11}},  // A1:L1 title
+    {s:{r:0,c:12},e:{r:0,c:13}}, // M1:N1 date
+    {s:{r:1,c:0},e:{r:2,c:0}},   // A2:A3 ห้อง
+    {s:{r:1,c:1},e:{r:2,c:1}},   // B2:B3 เวลา
+    {s:{r:1,c:2},e:{r:1,c:4}},   // C2:E2 ค่าห้องพัก
+    {s:{r:1,c:5},e:{r:2,c:5}},   // F2:F3 รวม
+    {s:{r:1,c:6},e:{r:2,c:6}},   // G2:G3 ประกัน
+    {s:{r:1,c:7},e:{r:2,c:7}},   // H2:H3 รวมสุทธิ
+    {s:{r:1,c:8},e:{r:1,c:9}},   // I2:J2 รับเงิน
+    {s:{r:1,c:10},e:{r:1,c:11}}, // K2:L2 คืนประกัน
+    {s:{r:1,c:12},e:{r:2,c:12}}, // M2:M3 คงเหลือ
+    {s:{r:1,c:13},e:{r:2,c:13}}, // N2:N3 หมายเหตุ
+    {s:{r:20,c:0},e:{r:20,c:6}}, // A21:G21 รวม
+    // Data rows D:E merges
+    ...Array.from({length:18},(_, i)=>({s:{r:3+i,c:3},e:{r:3+i,c:4}})),
+    // Section 2 (offset by 24 rows)
+    {s:{r:24,c:0},e:{r:24,c:11}},{s:{r:24,c:12},e:{r:24,c:13}},
+    {s:{r:25,c:0},e:{r:26,c:0}},{s:{r:25,c:1},e:{r:26,c:1}},
+    {s:{r:25,c:2},e:{r:25,c:4}},{s:{r:25,c:5},e:{r:26,c:5}},
+    {s:{r:25,c:6},e:{r:26,c:6}},{s:{r:25,c:7},e:{r:26,c:7}},
+    {s:{r:25,c:8},e:{r:25,c:9}},{s:{r:25,c:10},e:{r:25,c:11}},
+    {s:{r:25,c:12},e:{r:26,c:12}},{s:{r:25,c:13},e:{r:26,c:13}},
+    {s:{r:44,c:0},e:{r:44,c:6}},
+    ...Array.from({length:18},(_, i)=>({s:{r:27+i,c:3},e:{r:27+i,c:4}})),
+  ];
+
+  // Row heights
+  ws1['!rows']=[{hpt:27},{hpt:23.25},{hpt:23.25},...Array(17).fill({}),{hpt:21},{hpt:21.75},{hpt:21.75},{hpt:26.25},{},
+    {hpt:27},{hpt:22.5},{hpt:23.25},...Array(17).fill({}),{hpt:21},{hpt:21.75},{hpt:21.75},{hpt:26.25}];
+
+  XLSX.utils.book_append_sheet(wb,ws1,'ใบส่งเงินค่าเช่ารายวัน');
+
+  // ─── Sheet 2: รายการห้องพักและเงินประกัน ───
+  const roomAoa=[];
+  // 4 quadrants (2x2), each with header + 10 data rows
+  const qHdr=['รายการห้องพักและเงินประกัน วันที่ ...................................','','','','','','','รายการห้องพักและเงินประกัน วันที่ ...................................','','','','',''];
+  const qSub=['ห้อง','วัน check-in','วัน check-out','มัดจำ/จอง','','เงินประกัน (มี/ไม่มี)','','ห้อง','วัน check-in','วัน check-out','มัดจำ/จอง','','เงินประกัน (มี/ไม่มี)'];
+  const qSub2=['','','','โอน','เงินสด','','','','','','โอน','เงินสด',''];
+  roomAoa.push(qHdr,qSub,qSub2);
+  for(let i=0;i<11;i++){
+    const b=rows[i];
+    if(b) roomAoa.push([b.room||'',b.check_in||'',b.check_out||'','','','','','','','','','','']);
+    else roomAoa.push(['','','','','','','','','','','','','']);
+  }
+  // Second pair
+  roomAoa.push(qHdr,qSub,qSub2);
+  const ws2=XLSX.utils.aoa_to_sheet(roomAoa);
+  ws2['!cols']=[{wch:6},{wch:12},{wch:12},{wch:8},{wch:8},{wch:18},{wch:1},{wch:6},{wch:12},{wch:12},{wch:8},{wch:8},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws2,'รายการห้องพักและเงินประกัน');
+
+  // ─── Sheet 3: บันทึกรถยนต์ ───
+  const carAoa=[];
+  carAoa.push(['รายงานบันทึกเข้า-ออก รถยนต์-รถจักรยานยนต์','','','','','','',`เย็นวันที่ ......... เดือน ......... ปี .........`,''  ]);
+  carAoa.push(['ลำดับ','ยี่ห้อ','ทะเบียน','ห้อง','','เวลา','','','หมายเหตุ']);
+  carAoa.push(['','','','','','เข้า','','ออก','']);
+  for(let i=0;i<22;i++) carAoa.push(['','','','','','','','','']);
+  // Second section
+  carAoa.push(['รายงานบันทึกเข้า-ออก รถยนต์-รถจักรยานยนต์','','','','','',`เช้าวันที่ ......... เดือน ......... ปี .........`,'','']);
+  carAoa.push(['ลำดับ','ยี่ห้อ','ทะเบียน','ห้อง','','เวลา','','','หมายเหตุ']);
+  carAoa.push(['','','','','','เข้า','','ออก','']);
+  for(let i=0;i<17;i++) carAoa.push(['','','','','','','','','']);
+  carAoa.push(['รวม','','','','','','','','']);
+  carAoa.push(['หักเงินประกัน','','','','','','','','']);
+  carAoa.push(['ส่งบัญชี','','','','','','','','']);
+  const ws3=XLSX.utils.aoa_to_sheet(carAoa);
+  ws3['!cols']=[{wch:8},{wch:10},{wch:10},{wch:6},{wch:1},{wch:8},{wch:1},{wch:8},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws3,'บันทึกรถยนต์');
+
+  XLSX.writeFile(wb,`JResidence_ใบส่งมอบเงิน_${today}.xlsx`);
+  toast('Export ใบส่งมอบเงินสำเร็จ ✓','ok');
 }
 
 function closeM(id){document.getElementById(id).classList.remove('open');}
