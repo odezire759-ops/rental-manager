@@ -2286,7 +2286,7 @@ async function exportTM30(){
   const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').eq('guest_type','foreign').order('check_in',{ascending:false}).limit(200);
   if(!data?.length){toast('ไม่มีข้อมูลต่างชาติ','err');return;}
   
-  // Exact headers from template
+  // Exact header text from template (spacing must match exactly)
   const headers=[
     'ชื่อ\nFirst Name *',
     'ชื่อกลาง\nMiddle Name',
@@ -2294,27 +2294,22 @@ async function exportTM30(){
     'เพศ\nGender *',
     'เลขหนังสือเดินทาง\nPassport No. *',
     'สัญชาติ\nNationality *',
-    'วัน เดือน ปี เกิด\nBirth Date\nDD/MM/YYYY(ค.ศ. / A.D.) \nเช่น 17/06/1985 หรือ 10/00/1985\nหรือ 00/00/1985',
-    'วันที่แจ้งออกจากที่พัก\nCheck-out Date\nDD/MM/YYYY(ค.ศ. / A.D.)\nเช่น 14/06/2023',
+    'วัน เดือน ปี เกิด\nBirth Date\nDD/MM/YYYY(ค.ศ. / A.D.) \nเช่น 17/06/1985 หรือ 10/00/1985 หรือ 00/00/1985',
+    'วันที่แจ้งออกจากที่พัก\nCheck-out Date\nDD/MM/YYYY(ค.ศ. / A.D.) \nเช่น 14/06/2023',
     'เบอร์โทรศัพท์\nPhone No.'
   ];
   
-  // Exact style from template: fill=FF99CCFF, Arial bold 10, center, wrap
+  // Styles matching template exactly
   const hdrStyle={
     fill:{fgColor:{rgb:'99CCFF'}},
     font:{bold:true,sz:10,name:'Arial'},
     alignment:{horizontal:'center',vertical:'center',wrapText:true},
-    border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}
+    border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}},
+    numFmt:'@'
   };
-  const dataStyle={
-    font:{sz:11,name:'Calibri',color:{rgb:'000000'}},
-    alignment:{horizontal:'general',vertical:'bottom'}
-  };
-  const dateCenterStyle={
-    font:{sz:11,name:'Calibri',color:{rgb:'000000'}},
-    alignment:{horizontal:'center',vertical:'bottom'}
-  };
+  const dataStyle={font:{sz:10,name:'Arial',color:{rgb:'000000'}}};
   
+  // Build data sheet
   const rows=[headers];
   data.forEach(r=>{
     const bd=r.birth_date?new Date(r.birth_date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
@@ -2324,26 +2319,60 @@ async function exportTM30(){
   
   const ws=XLSX.utils.aoa_to_sheet(rows);
   
-  // Apply header styles (row 1)
+  // Apply header styles + numFmt '@' (text format - critical for ตม. import)
   for(let c=0;c<9;c++){
     const addr=XLSX.utils.encode_cell({r:0,c});
-    if(ws[addr]) ws[addr].s=hdrStyle;
+    if(ws[addr]){ws[addr].s=hdrStyle;ws[addr].z='@';}
   }
-  // Apply data styles (row 2+)
+  // Apply data styles (Arial 10pt, same as template)
   for(let r=1;r<rows.length;r++){
     for(let c=0;c<9;c++){
       const addr=XLSX.utils.encode_cell({r,c});
-      if(ws[addr]) ws[addr].s=(c===6||c===7)?dateCenterStyle:dataStyle;
+      if(!ws[addr]) ws[addr]={v:'',t:'s'};
+      ws[addr].s=dataStyle;
+      ws[addr].z='@'; // text format
     }
   }
   
   // Exact column widths from template
   ws['!cols']=[{wch:32.4},{wch:14.3},{wch:15.8},{wch:18.7},{wch:16.4},{wch:13.8},{wch:31.6},{wch:34.6},{wch:13.7}];
-  // Row 1 height = 79.5
-  ws['!rows']=[{hpt:79.5}];
+  ws['!rows']=[{hpt:79.5}]; // header row height
   
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'แบบแจ้งที่พัก Inform Accom');
+  
+  // ─── Sheet 2: ตัวอย่างข้อมูล Ex ───
+  const exRows=[headers,
+    ['ALEX','','JEAN','M','L39939000','AFG','00/00/1985','14/06/2023',''],
+    ['ANNA','','LEE','F','L39828919','USA','30/10/1975','14/06/2023',''],
+    ['BOB','MIKE','SMITH','M','AB1234567','GBR','17/06/1985','',''],
+    ['CHARLIE','','BROWN','M','CD7654321','AUS','10/00/1990','14/06/2023','089-000-0000']
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(exRows);
+  for(let c=0;c<9;c++){const a=XLSX.utils.encode_cell({r:0,c});if(ws2[a]){ws2[a].s=hdrStyle;ws2[a].z='@';}}
+  for(let r=1;r<exRows.length;r++){for(let c=0;c<9;c++){const a=XLSX.utils.encode_cell({r,c});if(ws2[a])ws2[a].s=dataStyle;}}
+  ws2['!cols']=ws['!cols'];ws2['!rows']=[{hpt:79.5}];
+  XLSX.utils.book_append_sheet(wb,ws2,'ตัวอย่างข้อมูล Ex');
+  
+  // ─── Sheet 3: สัญชาติ Nationality ───
+  const natHdrStyle={fill:{fgColor:{rgb:'99CCFF'}},font:{bold:true,sz:10,name:'Arial'},alignment:{horizontal:'center',vertical:'center',wrapText:true}};
+  const natData=[['','icao','สัญชาติ(ไทย)','สัญชาติ(อังกฤษ)']];
+  // Add nationality codes from our DB
+  const{data:nats}=await sb.from('nationality_codes').select('icao_code,name_th,name_en').order('icao_code');
+  (nats||[]).forEach(n=>natData.push(['',n.icao_code,n.name_th||'',n.name_en||'']));
+  const ws3=XLSX.utils.aoa_to_sheet(natData);
+  for(let c=1;c<4;c++){const a=XLSX.utils.encode_cell({r:0,c});if(ws3[a])ws3[a].s=natHdrStyle;}
+  ws3['!cols']=[{wch:4},{wch:10},{wch:50},{wch:58}];
+  ws3['!rows']=[{hpt:25}];
+  XLSX.utils.book_append_sheet(wb,ws3,'สัญชาติ Nationality');
+  
+  // ─── Sheet 4: เพศ Gender ───
+  const genderData=[['','GENDER CODE\nรหัสเพศ','SEX\nเพศ'],['','M','ชาย'],['','F','หญิง']];
+  const ws4=XLSX.utils.aoa_to_sheet(genderData);
+  for(let c=1;c<3;c++){const a=XLSX.utils.encode_cell({r:0,c});if(ws4[a])ws4[a].s=natHdrStyle;}
+  ws4['!cols']=[{wch:4},{wch:17},{wch:19}];ws4['!rows']=[{hpt:42}];
+  XLSX.utils.book_append_sheet(wb,ws4,'เพศ Gender ');
+  
   XLSX.writeFile(wb,'TM30_JResidence.xlsx');
   toast('Export TM30 สำเร็จ ✓','ok');
 }
