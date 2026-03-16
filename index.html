@@ -572,6 +572,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         <div class="chdr">
           <span>📋 รายการแจ้งเข้าพักล่าสุด</span>
           <div style="display:flex;gap:6px;">
+            <button class="tbtn" style="font-size:10px;" onclick="syncCheckins()">🔄 Sync</button>
             <button class="tbtn" style="font-size:10px;" onclick="exportTM30()">📄 TM30 Excel</button>
             <button class="tbtn" style="font-size:10px;" onclick="exportRR1()">📄 รร.1 Excel</button>
           </div>
@@ -2518,6 +2519,53 @@ async function exportDailyReceipt(){
 
   XLSX.writeFile(wb,`JResidence_ใบส่งมอบเงิน_${today}.xlsx`);
   toast('Export ใบส่งมอบเงินสำเร็จ ✓','ok');
+}
+
+// Sync guest_checkins → ota_bookings (for records that were saved before the auto-sync was added)
+async function syncCheckins(){
+  const{data:checkins}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(100);
+  if(!checkins?.length){toast('ไม่มีข้อมูล','err');return;}
+  
+  // Get existing ota_bookings to avoid duplicates
+  const{data:existing}=await sb.from('ota_bookings').select('guest_name,check_in,room').eq('source','Walk-in');
+  const existSet=new Set((existing||[]).map(e=>`${e.guest_name}|${e.check_in}|${e.room}`));
+  
+  let synced=0;
+  for(const c of checkins){
+    // Determine room type
+    const roomData=mData.find(r=>r.room===c.room);
+    if(!roomData||roomData.room_type!=='daily') continue; // only sync daily rooms
+    
+    const guestName=c.guest_type==='thai'
+      ?`${c.thai_prefix||''}${c.thai_first_name||''} ${c.thai_last_name||''}`.trim()
+      :`${c.first_name||''} ${c.last_name||''}`.trim();
+    
+    const key=`${guestName}|${c.check_in}|${c.room}`;
+    if(existSet.has(key)) continue; // already exists
+    
+    const{error}=await sb.from('ota_bookings').insert({
+      source:'Walk-in',
+      booking_id:'WI-SYNC-'+c.id.slice(0,8),
+      status:'CONFIRMED',
+      guest_name:guestName,
+      check_in:c.check_in,
+      check_out:c.check_out||c.check_in,
+      room_type:'Deluxe - Room Only',
+      total_amount:c.total_price||0,
+      commission:0,
+      room:c.room,
+      bed_type:roomData.bed_type||'6ft',
+      building:'เจเรสซิเดนซ์'
+    });
+    if(!error) synced++;
+  }
+  
+  if(synced>0){
+    toast(`Sync สำเร็จ — เพิ่ม ${synced} รายการ ✓`,'ok');
+    await loadMonth(curMonth);
+  } else {
+    toast('ข้อมูลครบแล้ว ไม่มีอะไรต้อง sync','ok');
+  }
 }
 
 function closeM(id){document.getElementById(id).classList.remove('open');}
