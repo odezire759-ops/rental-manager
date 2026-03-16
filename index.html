@@ -281,6 +281,27 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 
 /* ══ TOAST ══ */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:24px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--sh2);}
+
+/* ══ DAILY ROOM STATUS CARDS ══ */
+.dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;}
+.drcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:0;overflow:hidden;transition:all .15s;position:relative;}
+.drcard:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
+.drcard-stripe{height:4px;}
+.drcard-stripe.st-ready{background:var(--success);}.drcard-stripe.st-occupied{background:var(--blue);}.drcard-stripe.st-cleaning{background:var(--gold);}.drcard-stripe.st-repairing{background:var(--danger);}.drcard-stripe.st-blocked{background:#616161;}
+.drcard-body{padding:10px 12px;}
+.drcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.drcard-room{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--blue);}
+.drcard-dot{width:10px;height:10px;border-radius:50%;}
+.drcard-dot.st-ready{background:var(--success);box-shadow:0 0 6px var(--success);}.drcard-dot.st-occupied{background:var(--blue);box-shadow:0 0 6px var(--blue);}.drcard-dot.st-cleaning{background:var(--gold);box-shadow:0 0 6px var(--gold);animation:pulse 1.5s infinite;}.drcard-dot.st-repairing{background:var(--danger);box-shadow:0 0 6px var(--danger);animation:pulse 1.5s infinite;}.drcard-dot.st-blocked{background:#616161;}
+.drcard-status{font-size:10px;font-weight:700;margin-bottom:6px;}
+.drcard-status.st-ready{color:var(--success);}.drcard-status.st-occupied{color:var(--blue);}.drcard-status.st-cleaning{color:var(--gold2);}.drcard-status.st-repairing{color:var(--danger);}.drcard-status.st-blocked{color:#616161;}
+.drcard-guest{font-size:11px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.drcard-meta{font-size:10px;color:var(--text3);margin-bottom:8px;}
+.drcard-badges{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;}
+.drcard-acts{display:flex;gap:4px;}
+.drcard-acts button{flex:1;padding:4px 0;font-size:9px;font-weight:700;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .1s;text-align:center;}
+.drcard-acts button:hover{background:var(--gold);color:#1a1a2e;border-color:var(--gold2);}
+.rl-active{background:var(--gold)!important;color:#1a1a2e!important;border-color:var(--gold2)!important;}
 .toast.show{opacity:1;}.toast.ok{background:var(--gold);color:#1a1a2e;}.toast.err{background:var(--danger);color:#fff;}
 .loading{text-align:center;padding:40px;color:var(--text3);font-weight:500;}
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:12px;}
@@ -395,6 +416,23 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       <span id="daily-room-summary" style="font-size:11px;color:var(--text3);"></span>
     </div>
     <div id="daily-guest-grid" style="padding:14px;">
+      <div class="loading">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- Daily Room Scored Cards -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr">
+      <span>🏨 ห้องรายวันทั้งหมด</span>
+      <span id="daily-rooms-stat" style="font-size:11px;color:var(--text3);margin-left:8px;"></span>
+      <div style="margin-left:auto;display:flex;gap:6px;font-size:10px;">
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--success);"></span>พร้อม</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--blue);"></span>มีแขก</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--gold);"></span>ทำความสะอาด</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--danger);"></span>ซ่อม</span>
+      </div>
+    </div>
+    <div id="daily-room-cards" style="padding:14px;">
       <div class="loading">กำลังโหลด...</div>
     </div>
   </div>
@@ -625,6 +663,38 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div class="modal"><div class="mhdr"><span class="mtitle" id="htitle">ประวัติห้อง</span><button class="mclose" onclick="closeM('hmod')">×</button></div><div class="mbdy" id="hbody"></div></div>
 </div>
 
+<!-- ROOM LOG MODAL -->
+<div class="moverlay" id="rlmod">
+  <div class="modal" style="max-width:580px;">
+    <div class="mhdr"><span class="mtitle" id="rltitle">บันทึกห้อง</span><button class="mclose" onclick="closeM('rlmod')">×</button></div>
+    <div class="mbdy">
+      <input type="hidden" id="rl-room">
+      <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">สถานะห้อง</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button class="btn" style="flex:1;font-size:11px;" id="rl-s-ready" onclick="setRLStatus('ready')">✅ พร้อม</button>
+        <button class="btn" style="flex:1;font-size:11px;" id="rl-s-cleaning" onclick="setRLStatus('cleaning')">🧹 ทำความสะอาด</button>
+        <button class="btn" style="flex:1;font-size:11px;" id="rl-s-repairing" onclick="setRLStatus('repairing')">🔧 ซ่อม</button>
+        <button class="btn" style="flex:1;font-size:11px;" id="rl-s-blocked" onclick="setRLStatus('blocked')">🚫 ปิดห้อง</button>
+      </div>
+      <div class="fsec">บันทึกเพิ่ม</div>
+      <div class="fg">
+        <div class="fr"><label>ประเภท</label>
+          <select id="rl-type"><option value="note">📝 บันทึกทั่วไป</option><option value="cleaning">🧹 ทำความสะอาดห้อง</option><option value="ac_clean">❄️ ล้างแอร์</option><option value="repair">🔧 แจ้งซ่อม</option><option value="repair_done">✅ ซ่อมเสร็จ</option><option value="meter">⚡ บันทึกมิเตอร์</option><option value="inspect">🔍 ตรวจสอบห้อง</option></select>
+        </div>
+        <div class="fr"><label>ค่าใช้จ่าย (฿)</label><input type="number" id="rl-cost" placeholder="0"></div>
+      </div>
+      <div class="fr"><label>รายละเอียด</label><input type="text" id="rl-desc" placeholder="เช่น เปลี่ยนหลอดไฟ, ซ่อมแอร์..."></div>
+      <div class="fg" id="rl-meter-row" style="display:none;">
+        <div class="fr"><label>⚡ มิเตอร์ไฟ</label><input type="number" id="rl-elec" placeholder="เลขมิเตอร์"></div>
+        <div class="fr"><label>💧 มิเตอร์น้ำ</label><input type="number" id="rl-water" placeholder="เลขมิเตอร์"></div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-top:10px;" onclick="saveRoomLog()">💾 บันทึก</button>
+      <div class="fsec">ประวัติล่าสุด</div>
+      <div id="rl-history" style="max-height:250px;overflow-y:auto;"><div class="loading">โหลด...</div></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -826,13 +896,13 @@ function selMonth(m,btn){
   loadMonth(m);
   if(activeSec==='daily'){buildDateStrip();renderDaily();}
 }
+let lastLogMap={};
+
 async function loadMonth(m){
   const{data,error}=await sb.from('monthly_charges').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
   if(error){toast('Error: '+error.message,'err');return;}
   mData=data||[];
-  // If master rooms not loaded yet, build from this month's data as fallback
   if(!masterRoomsLoaded) buildFloorMap(mData);
-  // Merge any new rooms from this month that weren't in master
   mData.forEach(r=>{
     const fl=getFloor(r.room);
     if(!FLOOR_ROOMS[fl]) FLOOR_ROOMS[fl]=[];
@@ -842,9 +912,12 @@ async function loadMonth(m){
       ALL_ROOMS=Object.values(FLOOR_ROOMS).flat();
     }
   });
+  // Preload last log for each room
+  const{data:logs}=await sb.from('room_logs').select('room,log_type,description,cost,logged_at').eq('building','เจเรสซิเดนซ์').order('logged_at',{ascending:false}).limit(200);
+  lastLogMap={};(logs||[]).forEach(l=>{if(!lastLogMap[l.room])lastLogMap[l.room]=l;});
+  
   document.getElementById('tinfo').textContent=mData.length+' ห้อง / '+ALL_ROOMS.length+' ห้องทั้งหมด';
   renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');renderMTable(mData);
-  // Also update dashboard if visible
   if(activeSec==='dashboard')renderDashboard();
 }
 function renderFloors(data, containerId, filter){
@@ -895,7 +968,8 @@ function renderFloors(data, containerId, filter){
               <div class="ramt" style="color:var(--text3);">—</div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${rm}')">เพิ่มผู้เช่า</button>
-                <button class="ract daily-toggle" onclick="setRoomType('${rm}','daily')">📅 ตั้งรายวัน</button>
+                <button class="ract" onclick="openRoomLog('${rm}')">📋</button>
+                <button class="ract daily-toggle" onclick="setRoomType('${rm}','daily')">📅</button>
               </div></div>`;}
             // Daily room
             if(isDaily){
@@ -913,7 +987,8 @@ function renderFloors(data, containerId, filter){
               <div class="rdet">${r.total>0?`<span>รายรับจากรายวัน</span>`:''}</div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
-                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠 เปลี่ยนรายเดือน</button>
+                <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
+                <button class="ract daily-toggle" onclick="setRoomType('${r.room}','monthly')">🏠 รายเดือน</button>
               </div></div>`;
             }
             // Monthly room (normal)
@@ -939,11 +1014,13 @@ function renderFloors(data, containerId, filter){
                 ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}"><span class="rate-icon">💧</span>${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
                 ${amenities?`<span>${amenities}</span>`:''}
                 ${r.contract_end?`<span>📄 หมดสัญญา ${fmtD(r.contract_end)}</span>`:''}
+                ${lastLogMap[r.room]?`<span style="color:var(--blue);">📋 ${lastLogMap[r.room].description||lastLogMap[r.room].log_type} · ${new Date(lastLogMap[r.room].logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</span>`:''}
               </div>
               <div class="racts">
                 <button class="ract" onclick="openEdit('${r.room}')">แก้ไข</button>
                 <button class="ract" onclick="toggleP('${r.room}','${r.status}')">${r.status==='paid'?'ยังไม่จ่าย':'ชำระแล้ว'}</button>
-                ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅 รายวัน</button>`:''}
+                <button class="ract" onclick="openRoomLog('${r.room}')">📋</button>
+                ${!hasTenant?`<button class="ract daily-toggle" onclick="setRoomType('${r.room}','daily')">📅</button>`:''}
               </div>
             </div>`;
           }).join('')}
@@ -1143,6 +1220,7 @@ async function renderDaily(){
   loadOTACards();
   loadRecentOTABookings();
   await renderAvailTable();
+  await renderDailyRoomCards();
 }
 
 // OTA Check-in/Check-out cards
@@ -1373,6 +1451,157 @@ async function assignRoom(bookingId,room){
   toast(`กำหนดห้อง ${room} สำเร็จ ✓`,'ok');
   await renderAvailTable();
 }
+
+// ══════════════════════════════════
+// DAILY ROOM SCORED CARDS
+// ══════════════════════════════════
+async function renderDailyRoomCards(){
+  const c=document.getElementById('daily-room-cards');
+  if(!c)return;
+  c.innerHTML='<div class="loading">กำลังโหลด...</div>';
+  
+  // Get daily rooms
+  const{data:rooms}=await sb.from('monthly_charges').select('room,bed_type,room_status,phone').eq('month',curMonth).eq('building','เจเรสซิเดนซ์').eq('room_type','daily').order('room');
+  if(!rooms||!rooms.length){c.innerHTML='<div class="empty">ยังไม่มีห้องรายวัน</div>';return;}
+  
+  // Get bookings for today to check occupancy
+  const today=curDailyDate||new Date().toISOString().split('T')[0];
+  const{data:todayBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED');
+  const guestMap={};(todayBookings||[]).forEach(b=>{if(b.room)guestMap[b.room]=b;});
+  
+  // Get last log for each room
+  const roomIds=rooms.map(r=>r.room);
+  const{data:lastLogs}=await sb.from('room_logs').select('room,log_type,description,logged_at').in('room',roomIds).order('logged_at',{ascending:false}).limit(50);
+  const lastLogMap={};(lastLogs||[]).forEach(l=>{if(!lastLogMap[l.room])lastLogMap[l.room]=l;});
+  
+  const srcBadge=(s)=>{const m={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],'Walk-in':['#1a73e8','#e8f0fe']};const cl=m[s]||['#455a64','#eceff1'];return `<span style="background:${cl[1]};color:${cl[0]};padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;">${s}</span>`;};
+  const stLabel={ready:'✅ พร้อมให้เช่า',occupied:'🔵 มีแขก',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 กำลังซ่อม',blocked:'🚫 ปิดห้อง'};
+  const bedTxt=(b)=>b==='single'?'🛏เดี่ยว':b==='twin'?'🛏🛏แฝด':'🛏คู่';
+  
+  // Stats
+  const ready=rooms.filter(r=>(r.room_status||'ready')==='ready'&&!guestMap[r.room]).length;
+  const occ=rooms.filter(r=>guestMap[r.room]).length;
+  const clean=rooms.filter(r=>r.room_status==='cleaning').length;
+  const repair=rooms.filter(r=>r.room_status==='repairing').length;
+  document.getElementById('daily-rooms-stat').textContent=`${rooms.length} ห้อง · ✅${ready} พร้อม · 🔵${occ} มีแขก · 🧹${clean} สะอาด · 🔧${repair} ซ่อม`;
+  
+  c.innerHTML=`<div class="dr-grid">${rooms.map(r=>{
+    const guest=guestMap[r.room];
+    const st=guest?'occupied':(r.room_status||'ready');
+    const log=lastLogMap[r.room];
+    return `<div class="drcard">
+      <div class="drcard-stripe st-${st}"></div>
+      <div class="drcard-body">
+        <div class="drcard-top">
+          <div class="drcard-room">${r.room}</div>
+          <div class="drcard-dot st-${st}"></div>
+        </div>
+        <div class="drcard-status st-${st}">${stLabel[st]||st}</div>
+        ${guest?`<div class="drcard-guest">${guest.guest_name} ${srcBadge(guest.source)}</div>
+          <div class="drcard-meta">📅 ${fmtD(guest.check_in)} → ${fmtD(guest.check_out)} · ฿${Number(guest.total_amount||0).toLocaleString()}</div>`
+          :`<div class="drcard-guest" style="color:var(--text3);">— ว่าง —</div><div class="drcard-meta">&nbsp;</div>`}
+        <div class="drcard-badges">
+          <span class="gbadge">${bedTxt(r.bed_type)}</span>
+          ${r.phone?`<span class="gbadge">📞 ${r.phone}</span>`:''}
+        </div>
+        ${log?`<div style="font-size:9px;color:var(--text3);margin-bottom:6px;">📋 ${log.description||log.log_type} · ${new Date(log.logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</div>`:''}
+        <div class="drcard-acts">
+          <button onclick="openRoomLog('${r.room}')">📋 บันทึก</button>
+          <button onclick="quickStatus('${r.room}','cleaning')">🧹</button>
+          <button onclick="quickStatus('${r.room}','ready')">✅</button>
+          <button onclick="quickStatus('${r.room}','repairing')">🔧</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// Quick status change
+async function quickStatus(room,status){
+  const{error}=await sb.from('monthly_charges').update({room_status:status}).eq('room',room).eq('month',curMonth);
+  if(error){toast('Error: '+error.message,'err');return;}
+  // Also log it
+  await sb.from('room_logs').insert({building:'เจเรสซิเดนซ์',room,log_type:'status_change',status,description:`เปลี่ยนสถานะเป็น ${status}`});
+  toast(`ห้อง ${room} → ${status} ✓`,'ok');
+  if(activeSec==='daily')await renderDailyRoomCards();
+  if(activeSec==='monthly'||activeSec==='dashboard')await loadMonth(curMonth);
+}
+
+// Open Room Log Modal
+async function openRoomLog(room){
+  document.getElementById('rl-room').value=room;
+  document.getElementById('rltitle').textContent=`📋 บันทึกห้อง ${room}`;
+  document.getElementById('rl-desc').value='';
+  document.getElementById('rl-cost').value='';
+  document.getElementById('rl-elec').value='';
+  document.getElementById('rl-water').value='';
+  
+  // Highlight current status
+  const r=mData.find(x=>x.room===room);
+  const st=r?.room_status||'ready';
+  ['ready','cleaning','repairing','blocked'].forEach(s=>{
+    const btn=document.getElementById('rl-s-'+s);
+    if(btn)btn.className=s===st?'btn rl-active':'btn';
+  });
+  
+  // Show meter fields when type=meter
+  document.getElementById('rl-type').onchange=function(){
+    document.getElementById('rl-meter-row').style.display=this.value==='meter'?'':'none';
+  };
+  
+  // Load history
+  const{data:logs}=await sb.from('room_logs').select('*').eq('room',room).order('logged_at',{ascending:false}).limit(20);
+  const hist=document.getElementById('rl-history');
+  if(!logs?.length){hist.innerHTML='<div class="empty">ยังไม่มีประวัติ</div>';}
+  else{
+    const typeIcon={cleaning:'🧹',ac_clean:'❄️',repair:'🔧',repair_done:'✅',meter:'⚡',note:'📝',status_change:'🔄',inspect:'🔍'};
+    hist.innerHTML=logs.map(l=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;">
+      <span style="font-size:14px;">${typeIcon[l.log_type]||'📝'}</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;">${l.description||l.log_type}${l.cost>0?' · ฿'+Number(l.cost).toLocaleString():''}</div>
+        ${l.elec_reading?`<span style="color:var(--text3);">⚡${l.elec_reading}</span> `:''}${l.water_reading?`<span style="color:var(--text3);">💧${l.water_reading}</span>`:''}
+        <div style="color:var(--text3);font-size:10px;">${new Date(l.logged_at).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>`).join('');
+  }
+  
+  document.getElementById('rlmod').classList.add('open');
+}
+
+// Change room status from modal
+async function setRLStatus(status){
+  const room=document.getElementById('rl-room').value;
+  await quickStatus(room,status);
+  ['ready','cleaning','repairing','blocked'].forEach(s=>{
+    const btn=document.getElementById('rl-s-'+s);
+    if(btn)btn.className=s===status?'btn rl-active':'btn';
+  });
+}
+
+// Save room log entry
+async function saveRoomLog(){
+  const room=document.getElementById('rl-room').value;
+  const logType=document.getElementById('rl-type').value;
+  const desc=document.getElementById('rl-desc').value;
+  const cost=parseFloat(document.getElementById('rl-cost').value)||0;
+  const elec=parseFloat(document.getElementById('rl-elec').value)||null;
+  const water=parseFloat(document.getElementById('rl-water').value)||null;
+  
+  if(!desc&&logType==='note'){toast('กรุณากรอกรายละเอียด','err');return;}
+  
+  const{error}=await sb.from('room_logs').insert({
+    building:'เจเรสซิเดนซ์',room,log_type:logType,
+    description:desc||logType,cost,
+    elec_reading:elec,water_reading:water
+  });
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('บันทึกสำเร็จ ✓','ok');
+  openRoomLog(room); // reload history
+  // Refresh whichever view is active
+  if(activeSec==='daily')renderDailyRoomCards();
+  if(activeSec==='monthly'||activeSec==='dashboard')await loadMonth(curMonth);
+}
+
 function renderSrcBars(data){
   const srcRev={},srcCnt={};
   data.forEach(x=>{srcRev[x.s]=(srcRev[x.s]||0)+x.p;srcCnt[x.s]=(srcCnt[x.s]||0)+1;});
