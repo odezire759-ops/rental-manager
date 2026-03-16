@@ -1292,13 +1292,21 @@ async function loadOTACards(){
     return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;float:right;">${s}</span>`;
   };
   const renderItems=(items,cls)=>{
-    if(!items.length)return `<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px;">ไม่มีลูกค้า check-in ${cls==='ota-co'?'out ':' '}${cls==='ota-ci2'?'พรุ่งนี้':'วันนี้'}</div>`;
-    return items.map(b=>`<div class="ota-item ${cls}">
+    if(!items.length)return `<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px;">ไม่มีลูกค้า ${cls==='ota-co'?'check-out':'check-in'} ${cls==='ota-ci2'?'พรุ่งนี้':'วันนี้'}</div>`;
+    return items.map(b=>{
+      const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
+      const nights=Math.max(1,Math.round((co-ci)/86400000));
+      const ppn=nights>0?Math.round(Number(b.total_amount||0)/nights):750;
+      return `<div class="ota-item ${cls}">
       ${srcBadge(b.source)}
       <div class="ota-name">${b.guest_name}</div>
-      <div class="ota-det">${b.room_type} · ${fmtD(b.check_in)} → ${fmtD(b.check_out)}</div>
-      <div class="ota-price">฿${Number(b.total_amount||0).toLocaleString()}</div>
-    </div>`).join('');
+      <div class="ota-det">${b.room_type||'Room'} · ${fmtD(b.check_in)} → ${fmtD(b.check_out)} · ${nights} คืน</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <span class="ota-price" style="float:none;margin:0;">฿${Number(b.total_amount||0).toLocaleString()}</span>
+        ${cls==='ota-co'?`<button onclick="extendStay('${b.id}','${b.check_out}',${ppn})" style="padding:3px 8px;border:1px solid var(--success);border-radius:4px;background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">🔄 อยู่ต่อ +1</button>`:''}
+      </div>
+    </div>`;
+    }).join('');
   };
   
   // Check-in today
@@ -1383,6 +1391,7 @@ async function renderDailyCards(){
     const ci=new Date(b.check_in),co=new Date(b.check_out||b.check_in);
     const nights=Math.max(1,Math.round((co-ci)/86400000));
     const bed=b.bed_type==='5ft'?'🛏 เตียง 5 ฟุต':b.bed_type==='twin'?'🛏🛏 เตียงคู่':'🛏 เตียง 6 ฟุต';
+    const pricePerNight=nights>0?Math.round(Number(b.total_amount||0)/nights):750;
     return `<div class="gcard ${srcCls(b.source)}">
       <div class="gcard-top">
         <div class="gcard-room">${b.room||'—'}</div>
@@ -1394,7 +1403,13 @@ async function renderDailyCards(){
           <span>📅 ${fmtD(b.check_in)} → ${fmtD(b.check_out)}</span> · <span>🌙 ${nights} คืน</span><br>
           <span>🏷 ${b.room_type||'Deluxe Room'}</span> · <span>${bed}</span>
         </div>
-        <div class="gcard-price">฿${Number(b.total_amount||0).toLocaleString()}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+          <div class="gcard-price" style="margin:0;">฿${Number(b.total_amount||0).toLocaleString()}</div>
+          <div style="display:flex;gap:4px;">
+            <button onclick="extendStay('${b.id}','${b.check_out}',${pricePerNight})" style="padding:5px 10px;border:1px solid var(--success);border-radius:var(--rs);background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;" title="ขยายอยู่ต่อ +1 คืน">🔄 อยู่ต่อ</button>
+            <button onclick="extendStayCustom('${b.id}','${b.check_out}',${pricePerNight})" style="padding:5px 10px;border:1px solid var(--blue);border-radius:var(--rs);background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;" title="เลือกวันที่ออก">📅 เลือกวัน</button>
+          </div>
+        </div>
       </div>
     </div>`;
   }).join('')}</div>`;
@@ -1508,6 +1523,78 @@ async function assignRoom(bookingId,room){
   if(error){toast('Error: '+error.message,'err');return;}
   toast(`กำหนดห้อง ${room} สำเร็จ ✓`,'ok');
   await renderAvailTable();
+}
+
+// ══════════════════════════════════
+// EXTEND STAY (อยู่ต่อ)
+// ══════════════════════════════════
+
+// Quick extend +1 night
+async function extendStay(bookingId,currentCheckout,pricePerNight){
+  const co=new Date(currentCheckout);
+  co.setDate(co.getDate()+1);
+  const newCO=co.toISOString().split('T')[0];
+  
+  // Calculate new total
+  const{data:booking}=await sb.from('ota_bookings').select('check_in,total_amount').eq('id',bookingId).single();
+  if(!booking){toast('ไม่พบ booking','err');return;}
+  
+  const newTotal=Number(booking.total_amount||0)+pricePerNight;
+  
+  if(!confirm(`ขยายวันออกเป็น ${fmtD(newCO)}\nเพิ่ม +1 คืน (฿${pricePerNight.toLocaleString()})\nรวมใหม่ ฿${newTotal.toLocaleString()}`))return;
+  
+  const{error}=await sb.from('ota_bookings').update({check_out:newCO,total_amount:newTotal}).eq('id',bookingId);
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast(`อยู่ต่อ +1 คืน → checkout ${fmtD(newCO)} · ฿${newTotal.toLocaleString()} ✓`,'ok');
+  
+  // Refresh all views
+  await renderDailyCards();
+  loadOTACards();
+  loadRecentOTABookings();
+  await renderAvailTable();
+  await renderDailyRoomCards();
+}
+
+// Custom date extend
+async function extendStayCustom(bookingId,currentCheckout,pricePerNight){
+  const newDate=prompt(`วันที่ checkout ใหม่ (yyyy-mm-dd)\nปัจจุบัน: ${currentCheckout}`,currentCheckout);
+  if(!newDate||newDate===currentCheckout)return;
+  
+  // Validate
+  const newCO=new Date(newDate);
+  const oldCO=new Date(currentCheckout);
+  if(isNaN(newCO.getTime())){toast('วันที่ไม่ถูกต้อง','err');return;}
+  if(newCO<=oldCO){toast('วันที่ใหม่ต้องมากกว่าวันที่เดิม','err');return;}
+  
+  // Calculate
+  const{data:booking}=await sb.from('ota_bookings').select('check_in,total_amount').eq('id',bookingId).single();
+  if(!booking){toast('ไม่พบ booking','err');return;}
+  
+  const extraNights=Math.round((newCO-oldCO)/86400000);
+  
+  // Use walk-in pricing for extra nights
+  let extraCost=0;
+  for(let i=0;i<extraNights;i++){
+    const d=new Date(oldCO);d.setDate(d.getDate()+i);
+    const dow=d.getDay();
+    const ds=d.toISOString().split('T')[0];
+    const isWe=dow===0||dow===5||dow===6;
+    const isH=typeof HOLIDAYS_2026!=='undefined'&&HOLIDAYS_2026.includes(ds);
+    extraCost+=(isWe||isH)?790:750;
+  }
+  const newTotal=Number(booking.total_amount||0)+extraCost;
+  
+  if(!confirm(`ขยาย checkout: ${fmtD(currentCheckout)} → ${fmtD(newDate)}\nเพิ่ม ${extraNights} คืน · ฿${extraCost.toLocaleString()}\nรวมใหม่ ฿${newTotal.toLocaleString()}`))return;
+  
+  const{error}=await sb.from('ota_bookings').update({check_out:newDate,total_amount:newTotal}).eq('id',bookingId);
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast(`อยู่ต่อ +${extraNights} คืน → ฿${newTotal.toLocaleString()} ✓`,'ok');
+  
+  await renderDailyCards();
+  loadOTACards();
+  loadRecentOTABookings();
+  await renderAvailTable();
+  await renderDailyRoomCards();
 }
 
 // ══════════════════════════════════
