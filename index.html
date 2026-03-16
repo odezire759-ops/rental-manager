@@ -321,6 +321,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('daily',this)">📅 รายวัน</button>
     <button class="nbtn" onclick="showSec('checkin',this)">🛂 แจ้งเข้าพัก</button>
     <button class="nbtn" onclick="showSec('booking',this)">🛎 จองห้อง</button>
+    <button class="nbtn" onclick="showSec('slips',this)">💳 สลิป</button>
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
 </div>
@@ -669,7 +670,39 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 </div>
 </div>
 
-<!-- ══ EDIT MODAL ══ -->
+<!-- ═══ SLIPS — PAYMENT SLIP MANAGEMENT ═══ -->
+<div id="sec-slips" class="sec">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">รอตรวจสอบ</div><div id="sl-pending" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">อนุมัติแล้ว</div><div id="sl-approved" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);"><div style="font-size:10px;color:var(--text3);font-weight:600;">ไม่อนุมัติ</div><div id="sl-rejected" style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);"><div style="font-size:10px;color:var(--text3);font-weight:600;">เดือนนี้ทั้งหมด</div><div id="sl-total" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div></div>
+  </div>
+
+  <!-- Pending slips (need action) -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>⏳ สลิปรอตรวจสอบ</span><button class="tbtn" onclick="loadSlips()" style="font-size:10px;">🔄 รีเฟรช</button></div>
+    <div id="sl-pending-list" style="padding:4px;"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+
+  <!-- All slips table -->
+  <div class="card">
+    <div class="chdr"><span>📋 ประวัติสลิปทั้งหมด</span>
+      <div style="display:flex;gap:4px;">
+        <select id="sl-filter" onchange="loadSlips()" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;">
+          <option value="all">ทั้งหมด</option>
+          <option value="pending">⏳ รอตรวจ</option>
+          <option value="approved">✅ อนุมัติ</option>
+          <option value="rejected">❌ ไม่อนุมัติ</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>เดือน</th><th>ชื่อผู้ส่ง</th><th>ยอดที่ต้องชำระ</th><th>สลิป</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody id="sl-tbody"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
 <div class="moverlay" id="emod">
   <div class="modal">
     <div class="mhdr"><span class="mtitle" id="etitle">แก้ไขห้อง</span><button class="mclose" onclick="closeM('emod')">×</button></div>
@@ -1954,6 +1987,7 @@ function showSec(id,btn){
   if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
   if(id==='booking'){loadBookings();refreshAvailRooms();}
+  if(id==='slips'){loadSlips();}
   if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
   if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
@@ -2939,6 +2973,105 @@ async function syncCheckins(){
   } else {
     toast('ข้อมูลครบแล้ว ไม่มีอะไรต้อง sync','ok');
   }
+}
+
+// ══════════════════════════════════
+// 💳 SLIP MANAGEMENT
+// ══════════════════════════════════
+async function loadSlips(){
+  const now=new Date();const m=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const{data:all}=await sb.from('payment_slips').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(100);
+  const slips=all||[];
+  
+  const thisMonth=slips.filter(s=>s.month===m);
+  const pending=thisMonth.filter(s=>s.status==='pending');
+  const approved=thisMonth.filter(s=>s.status==='approved');
+  const rejected=thisMonth.filter(s=>s.status==='rejected');
+  document.getElementById('sl-pending').textContent=pending.length;
+  document.getElementById('sl-approved').textContent=approved.length;
+  document.getElementById('sl-rejected').textContent=rejected.length;
+  document.getElementById('sl-total').textContent=thisMonth.length;
+  
+  const typeBadge=(t)=>t==='daily'?'<span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;">📅 รายวัน</span>':'<span style="background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;">🏠 รายเดือน</span>';
+  
+  // Pending cards
+  const pEl=document.getElementById('sl-pending-list');
+  if(!pending.length){
+    pEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--success);font-size:12px;">✅ ไม่มีสลิปรอตรวจสอบ</div>';
+  } else {
+    pEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;">${pending.map(s=>{
+      const expAmt=Number(s.expected_amount||0);
+      return `<div style="border:2px solid var(--gold);border-radius:var(--r);padding:12px;background:var(--shell);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:20px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">${s.room}</span>
+            ${typeBadge(s.payment_type)}
+          </div>
+          <span style="font-size:10px;color:var(--text3);">${fmtD(s.created_at)} ${new Date(s.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px;">${s.display_name||'ไม่ระบุชื่อ'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">เดือน ${s.month||'—'}</div>
+        
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rs);padding:8px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;color:var(--text3);">ยอดที่ต้องชำระ</span>
+            <span style="font-size:16px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">${expAmt>0?'฿'+expAmt.toLocaleString():'ไม่มีข้อมูล'}</span>
+          </div>
+          ${s.payment_type==='monthly'?`<div style="font-size:9px;color:var(--text3);margin-top:2px;">💡 เช็คยอดโอนในสลิปว่าตรงกับยอดนี้</div>`:`<div style="font-size:9px;color:var(--text3);margin-top:2px;">📅 ยอดจาก booking รายวันที่ active</div>`}
+        </div>
+        
+        ${s.slip_image_url?`<a href="${s.slip_image_url}" target="_blank" style="display:block;padding:8px;background:var(--blue-dim);border-radius:var(--rs);text-align:center;font-size:11px;font-weight:700;color:var(--blue);text-decoration:none;margin-bottom:8px;">📎 ดูสลิป (Google Drive) — ตรวจยอดโอน</a>`:'<div style="font-size:10px;color:var(--danger);margin-bottom:8px;">⚠️ ไม่มีรูปสลิป</div>'}
+        <div style="display:flex;gap:6px;">
+          <button onclick="approveSlip('${s.id}','${s.room}','${s.month}','${s.payment_type}','${s.booking_id||''}')" style="flex:1;padding:8px;border:none;border-radius:var(--rs);background:var(--success);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">✅ ยอดตรง — อนุมัติ</button>
+          <button onclick="rejectSlip('${s.id}')" style="flex:1;padding:8px;border:none;border-radius:var(--rs);background:var(--danger);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">❌ ยอดไม่ตรง</button>
+        </div>
+      </div>`;}).join('')}</div>`;
+  }
+  
+  // Table
+  const filter=document.getElementById('sl-filter')?.value||'all';
+  const filtered=filter==='all'?slips:slips.filter(s=>s.status===filter);
+  const tb=document.getElementById('sl-tbody');
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="8" class="empty">ไม่มีรายการ</td></tr>';return;}
+  const stBadge=(st)=>({pending:'<span style="background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">⏳ รอตรวจ</span>',approved:'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">✅ อนุมัติ</span>',rejected:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">❌ ไม่อนุมัติ</span>'})[st]||st;
+  tb.innerHTML=filtered.map(s=>`<tr>
+    <td class="mono" style="font-weight:800;">${s.room}</td>
+    <td>${typeBadge(s.payment_type)}</td>
+    <td style="font-size:11px;">${s.month||'—'}</td>
+    <td style="font-size:12px;">${s.display_name||'—'}</td>
+    <td style="font-size:11px;font-weight:700;color:var(--gold2);">${s.expected_amount?'฿'+Number(s.expected_amount).toLocaleString():'—'}</td>
+    <td>${s.slip_image_url?`<a href="${s.slip_image_url}" target="_blank" style="color:var(--blue);font-size:11px;">📎 ดูสลิป</a>`:'—'}</td>
+    <td>${stBadge(s.status)}</td>
+    <td>${s.status==='pending'?`<button class="ract" onclick="approveSlip('${s.id}','${s.room}','${s.month}','${s.payment_type}','${s.booking_id||''}')" title="อนุมัติ" style="font-size:11px;">✅</button><button class="ract" onclick="rejectSlip('${s.id}')" title="ไม่อนุมัติ" style="font-size:11px;">❌</button>`:s.approved_at?`<span style="font-size:9px;color:var(--text3);">${fmtD(s.approved_at)}</span>`:''}</td>
+  </tr>`).join('');
+}
+
+async function approveSlip(id,room,month,payType,bookingId){
+  const typeText=payType==='daily'?'📅 รายวัน':'🏠 รายเดือน';
+  if(!confirm(`อนุมัติสลิป ${typeText}\nห้อง ${room} เดือน ${month||'—'}?\n\n→ จะอัพเดตสถานะเป็น "paid" อัตโนมัติ`))return;
+  
+  await sb.from('payment_slips').update({status:'approved',approved_at:new Date().toISOString(),approved_by:'admin',amount_match:'match'}).eq('id',id);
+  
+  // Update status based on payment type
+  if(payType==='daily'&&bookingId){
+    // Mark booking as paid
+    await sb.from('ota_bookings').update({status:'PAID'}).eq('id',bookingId);
+  }
+  if(room&&month){
+    await sb.from('monthly_charges').update({status:'paid'}).eq('room',room).eq('month',month);
+  }
+  
+  toast(`ห้อง ${room} — อนุมัติ ✅ สถานะ → paid`,'ok');
+  loadSlips();
+  await loadMonth(curMonth);
+}
+
+async function rejectSlip(id){
+  const note=prompt('เหตุผล (เช่น ยอดไม่ตรง, สลิปไม่ชัด, สลิปซ้ำ):','ยอดไม่ตรงกับยอดที่ต้องชำระ');
+  if(note===null)return;
+  await sb.from('payment_slips').update({status:'rejected',admin_note:note||null,approved_at:new Date().toISOString(),amount_match:'mismatch'}).eq('id',id);
+  toast('ไม่อนุมัติสลิป — แจ้งลูกค้าแล้ว','ok');
+  loadSlips();
 }
 
 function closeM(id){document.getElementById(id).classList.remove('open');}
