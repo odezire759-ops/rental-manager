@@ -295,7 +295,8 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <div><div class="hname">J.Residence Property Management</div><div class="hsub">Samut Prakan · Near Suvarnabhumi</div></div>
   </div>
   <div class="hnav">
-    <button class="nbtn active" onclick="showSec('monthly',this)">📋 รายเดือน</button>
+    <button class="nbtn active" onclick="showSec('dashboard',this)">🏠 ภาพรวม</button>
+    <button class="nbtn" onclick="showSec('monthly',this)">📋 รายเดือน</button>
     <button class="nbtn" onclick="showSec('daily',this)">📅 รายวัน</button>
     <button class="nbtn" onclick="showSec('checkin',this)">🛂 แจ้งเข้าพัก</button>
     <button class="nbtn" onclick="showSec('booking',this)">🛎 จองห้อง</button>
@@ -323,8 +324,26 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 <!-- ══ CONTENT ══ -->
 <div class="content">
 
-<!-- ═══ MONTHLY SECTION ═══ -->
-<div id="sec-monthly" class="sec active">
+<!-- ═══ DASHBOARD — ALL ROOMS ═══ -->
+<div id="sec-dashboard" class="sec active">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:14px;font-weight:700;">🏠 ภาพรวมห้องพักทั้งหมด</span>
+      <span id="dash-summary" style="font-size:11px;color:var(--text3);"></span>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <span class="gbadge active" style="font-size:10px;">🏠 รายเดือน</span>
+      <span class="gbadge" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;font-size:10px;">📅 รายวัน</span>
+      <span class="gbadge" style="font-size:10px;">🛏คู่</span>
+      <span class="gbadge" style="font-size:10px;">🛏เดี่ยว</span>
+      <span class="gbadge" style="font-size:10px;">🛏🛏แฝด</span>
+    </div>
+  </div>
+  <div id="dash-floor-container"><div class="loading">กำลังโหลด...</div></div>
+</div>
+
+<!-- ═══ MONTHLY SECTION (only monthly rooms) ═══ -->
+<div id="sec-monthly" class="sec">
   <div id="floor-container"><div class="loading">กำลังโหลด...</div></div>
   <div class="card" style="margin-top:14px;">
     <div class="chdr"><span>📊 ตารางรายละเอียด</span><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div>
@@ -686,7 +705,7 @@ function getFloorName(fl){
 let curMonth='2026-03',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'[]');
 let eEC=0,eWC=0;
 let dailyM='03',selRoom='',curDailyDate='';
-let activeSec='monthly';
+let activeSec='dashboard';
 let masterRoomsLoaded=false;
 
 // ══════════════════════════════════
@@ -702,9 +721,7 @@ async function init(){
   renderKPIBar();
   await loadMasterRooms();
   await loadMonth(curMonth);
-  buildDateStrip();
-  await renderDaily();
-  loadBookings();
+  renderDashboard();
 }
 
 // Load ALL unique rooms from database (across all months) to build master floor map
@@ -722,7 +739,7 @@ async function loadMasterRooms(){
 // ══════════════════════════════════
 function renderKPIBar(){
   const el=document.getElementById('kpi-bar');
-  if(activeSec==='monthly'||activeSec==='booking'||activeSec==='checkin'){
+  if(activeSec==='monthly'||activeSec==='dashboard'||activeSec==='booking'||activeSec==='checkin'){
     el.innerHTML=`
       <div class="kt ky"><div class="klbl">รายรับรวม</div><div class="kval y" id="k-rev">—</div><div class="ksub">บาท</div></div>
       <div class="kt kb"><div class="klbl">ห้องทั้งหมด</div><div class="kval b" id="k-tot">—</div><div class="ksub">ห้อง</div></div>
@@ -826,15 +843,24 @@ async function loadMonth(m){
     }
   });
   document.getElementById('tinfo').textContent=mData.length+' ห้อง / '+ALL_ROOMS.length+' ห้องทั้งหมด';
-  renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData);renderMTable(mData);
+  renderKPIBar();updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');renderMTable(mData);
+  // Also update dashboard if visible
+  if(activeSec==='dashboard')renderDashboard();
 }
-function renderFloors(data){
-  const c=document.getElementById('floor-container');
+function renderFloors(data, containerId, filter){
+  containerId=containerId||'floor-container';
+  filter=filter||'all'; // 'all', 'monthly', 'daily'
+  const c=document.getElementById(containerId);
+  if(!c)return;
   const roomMap={};data.forEach(r=>roomMap[r.room]=r);
   const sortedFloors=Object.keys(FLOOR_ROOMS).sort((a,b)=>parseInt(a)-parseInt(b));
   let html='';
   for(const floor of sortedFloors){
-    const rooms=FLOOR_ROOMS[floor];
+    let rooms=FLOOR_ROOMS[floor];
+    // Filter rooms by type
+    if(filter==='monthly') rooms=rooms.filter(rm=>{const r=roomMap[rm];return !r||r.room_type!=='daily';});
+    else if(filter==='daily') rooms=rooms.filter(rm=>{const r=roomMap[rm];return r&&r.room_type==='daily';});
+    if(!rooms.length) continue; // skip empty floors
     const floorData=rooms.map(r=>roomMap[r]).filter(Boolean);
     const paid=floorData.filter(r=>r.status==='paid').length;
     const pend=floorData.filter(r=>r.status==='pending').length;
@@ -926,7 +952,7 @@ function renderFloors(data){
     </div>`;
   }
   c.innerHTML=html;
-  document.querySelectorAll('.rgrid[data-floor]').forEach(initDrag);
+  c.querySelectorAll('.rgrid[data-floor]').forEach(initDrag);
 }
 function toggleFloor(el,floor){
   el.classList.toggle('collapsed');
@@ -1459,13 +1485,24 @@ function showSec(id,btn){
   document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');btn.classList.add('active');
   renderKPIBar();
+  if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
   if(id==='booking'){loadBookings();refreshAvailRooms();}
-  if(id==='monthly'&&mData.length)updateMonthlyKPI(mData);
+  if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
   if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
     if(!document.getElementById('ci-checkin').value)document.getElementById('ci-checkin').value=t;
   }
+}
+
+function renderDashboard(){
+  renderFloors(mData,'dash-floor-container','all');
+  // Update summary
+  const daily=mData.filter(r=>r.room_type==='daily').length;
+  const monthly=mData.filter(r=>r.room_type!=='daily').length;
+  const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()).length;
+  const el=document.getElementById('dash-summary');
+  if(el)el.textContent=`${ALL_ROOMS.length} ห้อง · 🏠${monthly} รายเดือน · 📅${daily} รายวัน · ${occupied} มีผู้เช่า`;
 }
 
 // ══════════════════════════════════
