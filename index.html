@@ -322,6 +322,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('checkin',this)">🛂 แจ้งเข้าพัก</button>
     <button class="nbtn" onclick="showSec('booking',this)">🛎 จองห้อง</button>
     <button class="nbtn" onclick="showSec('slips',this)">💳 สลิป</button>
+    <button class="nbtn" onclick="showSec('staff',this)">👥 พนักงาน</button>
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
 </div>
@@ -702,18 +703,42 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       <tbody id="sl-tbody"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody></table>
     </div>
   </div>
+</div>
 
-  <!-- Staff Management -->
-  <div class="card" style="margin-top:14px;">
-    <div class="chdr"><span>👥 จัดการพนักงาน LINE</span></div>
-    <div style="padding:12px;">
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <select id="staff-user-select" style="flex:1;padding:8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;">
-          <option value="">— เลือก LINE user ที่จะเพิ่มเป็น staff —</option>
+<!-- ═══ STAFF — MANAGE LINE STAFF ═══ -->
+<div id="sec-staff" class="sec">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);"><div style="font-size:10px;color:var(--text3);font-weight:600;">LINE Users ทั้งหมด</div><div id="st-total" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">พนักงาน (Staff)</div><div id="st-staff" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">ผู้เช่า (Tenant)</div><div id="st-tenant" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div></div>
+  </div>
+
+  <!-- Add Staff -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>➕ เพิ่มพนักงาน</span></div>
+    <div style="padding:14px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">เลือก LINE user ที่เคยทักแชท Bot แล้ว → กดเพิ่มเป็น Staff → จะเห็น Rich Menu พนักงานทันที</div>
+      <div style="display:flex;gap:8px;">
+        <select id="staff-user-select" style="flex:1;padding:10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:13px;">
+          <option value="">— เลือก LINE user —</option>
         </select>
-        <button class="btn bp" onclick="promoteStaff()" style="font-size:12px;padding:6px 16px;">✅ เพิ่มเป็น Staff</button>
+        <button class="btn bp" onclick="promoteStaff()" style="font-size:13px;padding:8px 20px;">✅ เพิ่มเป็น Staff</button>
       </div>
-      <div id="staff-list"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+  </div>
+
+  <!-- Staff List -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>🔧 รายชื่อพนักงาน</span><button class="tbtn" onclick="loadStaffList()" style="font-size:10px;">🔄 รีเฟรช</button></div>
+    <div id="staff-list" style="padding:10px;"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+
+  <!-- All LINE Users -->
+  <div class="card">
+    <div class="chdr"><span>📱 LINE Users ทั้งหมด</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr><th>ชื่อ</th><th>Role</th><th>Step</th><th>ห้อง</th><th>อัพเดตล่าสุด</th><th></th></tr></thead>
+      <tbody id="st-tbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table>
     </div>
   </div>
 </div>
@@ -2003,7 +2028,8 @@ function showSec(id,btn){
   if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
   if(id==='booking'){loadBookings();refreshAvailRooms();}
-  if(id==='slips'){loadSlips();loadStaffList();}
+  if(id==='slips'){loadSlips();}
+  if(id==='staff'){loadStaffList();}
   if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
   if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
@@ -2996,28 +3022,52 @@ async function syncCheckins(){
 // ══════════════════════════════════
 async function loadStaffList(){
   if(!sb) return;
-  // Load all LINE users
-  const{data:all}=await sb.from('line_sessions').select('line_user_id,display_name,role,updated_at').order('role',{ascending:false}).order('display_name');
+  const{data:all}=await sb.from('line_sessions').select('line_user_id,display_name,role,step,room,updated_at').order('role',{ascending:false}).order('display_name');
+  const users=all||[];
   
-  // Populate dropdown with non-staff users
+  // KPI
+  const staffCount=users.filter(u=>u.role==='staff'||u.role==='admin').length;
+  const tenantCount=users.filter(u=>u.role==='tenant').length;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  s('st-total',users.length);
+  s('st-staff',staffCount);
+  s('st-tenant',tenantCount);
+  
+  // Dropdown (non-staff only)
   const sel=document.getElementById('staff-user-select');
   if(sel){
-    const tenants=(all||[]).filter(u=>u.role==='tenant'&&u.display_name);
-    sel.innerHTML='<option value="">— เลือก LINE user —</option>'+tenants.map(u=>'<option value="'+u.line_user_id+'">'+u.display_name+'</option>').join('');
+    const tenants=users.filter(u=>u.role==='tenant'&&u.display_name);
+    sel.innerHTML='<option value="">— เลือก LINE user ('+tenants.length+' คน) —</option>'+tenants.map(u=>'<option value="'+u.line_user_id+'">'+u.display_name+'</option>').join('');
   }
   
-  // Show staff list
-  const staff=(all||[]).filter(u=>u.role==='staff'||u.role==='admin');
+  // Staff cards
+  const staff=users.filter(u=>u.role==='staff'||u.role==='admin');
   const el=document.getElementById('staff-list');
   if(!staff.length){
-    el.innerHTML='<div style="text-align:center;padding:14px;color:var(--text3);font-size:12px;">ยังไม่มีพนักงานในระบบ<br>เลือก LINE user จาก dropdown แล้วกด "เพิ่มเป็น Staff"</div>';
-    return;
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;">ยังไม่มีพนักงานในระบบ<br>เลือก LINE user จาก dropdown ด้านบน แล้วกด "เพิ่มเป็น Staff"</div>';
+  } else {
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">'+staff.map(u=>{
+      const isAdmin=u.role==='admin';
+      const border=isAdmin?'var(--danger)':'var(--blue)';
+      const roleTxt=isAdmin?'👑 Admin':'🔧 Staff';
+      const roleColor=isAdmin?'#c62828':'#1565c0';
+      return '<div style="border:2px solid '+border+';border-radius:var(--r);padding:14px;background:var(--shell);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:800;font-size:15px;">'+(u.display_name||'ไม่ทราบชื่อ')+'</span><span style="background:'+roleColor+'18;color:'+roleColor+';padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;">'+roleTxt+'</span></div><div style="font-size:10px;color:var(--text3);margin-bottom:8px;">ID: '+u.line_user_id.slice(0,12)+'...</div><div style="display:flex;gap:6px;"><button onclick="demoteStaff(\''+u.line_user_id+'\',\''+(u.display_name||'')+'\')" style="flex:1;padding:6px;border:1px solid var(--danger);border-radius:var(--rs);background:#ffebee;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;">❌ ลบสิทธิ์ Staff</button></div></div>';
+    }).join('')+'</div>';
   }
-  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px;">'+staff.map(u=>{
-    const roleColor=u.role==='admin'?'#c62828':'#1565c0';
-    const roleTxt=u.role==='admin'?'👑 Admin':'🔧 Staff';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--shell);border-radius:var(--rs);"><div style="flex:1;"><span style="font-weight:700;font-size:13px;">'+u.display_name+'</span> <span style="background:'+roleColor+'22;color:'+roleColor+';padding:1px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+roleTxt+'</span></div><button onclick="demoteStaff(\''+u.line_user_id+'\',\''+u.display_name+'\')" style="padding:4px 10px;border:1px solid var(--danger);border-radius:var(--rs);background:#ffebee;color:#c62828;font-size:10px;font-weight:700;cursor:pointer;">ลบสิทธิ์</button></div>';
-  }).join('')+'</div>';
+  
+  // All users table
+  const tb=document.getElementById('st-tbody');
+  if(!users.length){tb.innerHTML='<tr><td colspan="6" class="empty">ยังไม่มี LINE user</td></tr>';return;}
+  const roleBadge=(r)=>({admin:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👑 Admin</span>',staff:'<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">🔧 Staff</span>',tenant:'<span style="background:#f5f5f5;color:#666;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">👤 Tenant</span>'})[r]||r;
+  tb.innerHTML=users.map(u=>'<tr><td style="font-weight:700;font-size:12px;">'+(u.display_name||'—')+'</td><td>'+roleBadge(u.role||'tenant')+'</td><td style="font-size:10px;color:var(--text3);">'+(u.step||'idle')+'</td><td class="mono" style="font-size:11px;">'+(u.room||'—')+'</td><td style="font-size:10px;color:var(--text3);">'+(u.updated_at?fmtD(u.updated_at):'—')+'</td><td>'+(u.role==='tenant'?'<button class="ract" onclick="promoteStaffDirect(\''+u.line_user_id+'\',\''+(u.display_name||'')+'\')" title="เพิ่มเป็น Staff" style="font-size:11px;">🔧→</button>':'')+'</td></tr>').join('');
+}
+
+async function promoteStaffDirect(uid,name){
+  if(!confirm('เพิ่ม "'+(name||uid)+'" เป็น Staff?'))return;
+  await sb.from('line_sessions').update({role:'staff'}).eq('line_user_id',uid);
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'staff'})})}catch(e){}
+  toast((name||uid)+' → Staff ✅','ok');
+  loadStaffList();
 }
 
 async function promoteStaff(){
@@ -3029,7 +3079,11 @@ async function promoteStaff(){
   
   const{error}=await sb.from('line_sessions').update({role:'staff'}).eq('line_user_id',uid);
   if(error){toast('Error: '+error.message,'err');return;}
-  toast(name+' → Staff ✅','ok');
+  
+  // Switch Rich Menu via Edge Function
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'staff'})})}catch(e){console.log('menu switch:',e)}
+  
+  toast(name+' → Staff ✅ Rich Menu เปลี่ยนแล้ว','ok');
   loadStaffList();
 }
 
@@ -3037,7 +3091,11 @@ async function demoteStaff(uid,name){
   if(!confirm('ลบสิทธิ์ staff ของ "'+name+'"?\nจะกลับเป็นผู้เช่าปกติ'))return;
   const{error}=await sb.from('line_sessions').update({role:'tenant'}).eq('line_user_id',uid);
   if(error){toast('Error: '+error.message,'err');return;}
-  toast(name+' → Tenant ✅','ok');
+  
+  // Switch Rich Menu back to tenant
+  try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:uid,role:'tenant'})})}catch(e){console.log('menu switch:',e)}
+  
+  toast(name+' → Tenant ✅ Rich Menu เปลี่ยนกลับแล้ว','ok');
   loadStaffList();
 }
 
