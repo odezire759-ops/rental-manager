@@ -2194,6 +2194,33 @@ async function saveCheckin(){
   
   const{error}=await sb.from('guest_checkins').insert(rec);
   if(error){toast('Error: '+error.message,'err');return;}
+  
+  // For daily stays: also create ota_bookings record so dashboard/daily views update
+  if(stayType==='daily'){
+    const guestName=curGuestType==='thai'
+      ?`${rec.thai_prefix||''}${rec.thai_first_name||''} ${rec.thai_last_name||''}`.trim()
+      :`${rec.first_name||''} ${rec.last_name||''}`.trim();
+    const nights=rec.nights||Math.max(1,Math.round((new Date(rec.check_out||rec.check_in)-new Date(rec.check_in))/86400000));
+    const totalAmt=rec.total_price||0;
+    
+    await sb.from('ota_bookings').insert({
+      source:'Walk-in',
+      booking_id:'WI-'+Date.now(),
+      status:'CONFIRMED',
+      guest_name:guestName,
+      check_in:rec.check_in,
+      check_out:rec.check_out||rec.check_in,
+      room_type:'Deluxe - Room Only',
+      total_amount:totalAmt,
+      commission:0,
+      room:room,
+      bed_type:(mData.find(x=>x.room===room)||{}).bed_type||'6ft'
+    });
+    
+    // Update room status to occupied
+    await sb.from('monthly_charges').update({room_status:'occupied'}).eq('room',room).eq('month',curMonth);
+  }
+  
   toast('บันทึกแจ้งเข้าพักสำเร็จ ✓','ok');
   
   // Reset form
@@ -2207,6 +2234,8 @@ async function saveCheckin(){
   document.getElementById('ci-custom-price').value='';
   document.getElementById('ci-discount').value='0';
   loadCheckins();loadCheckinStats();loadCheckinRooms();
+  // Refresh dashboard/daily if they were open
+  await loadMonth(curMonth);
 }
 
 async function loadCheckins(){
@@ -2257,7 +2286,7 @@ async function exportTM30(){
   const{data}=await sb.from('guest_checkins').select('*').eq('building','เจเรสซิเดนซ์').eq('guest_type','foreign').order('check_in',{ascending:false}).limit(200);
   if(!data?.length){toast('ไม่มีข้อมูลต่างชาติ','err');return;}
   
-  // Header texts (Thai red + English black)
+  // Exact headers from template
   const headers=[
     'ชื่อ\nFirst Name *',
     'ชื่อกลาง\nMiddle Name',
@@ -2265,36 +2294,27 @@ async function exportTM30(){
     'เพศ\nGender *',
     'เลขหนังสือเดินทาง\nPassport No. *',
     'สัญชาติ\nNationality *',
-    'วัน เดือน ปี เกิด\nBirth Date\nDD/MM/YYYY(ค.ศ. / A.D.)\nเช่น 17/06/1985 หรือ 10/00/1985\nหรือ 00/00/1985',
+    'วัน เดือน ปี เกิด\nBirth Date\nDD/MM/YYYY(ค.ศ. / A.D.) \nเช่น 17/06/1985 หรือ 10/00/1985\nหรือ 00/00/1985',
     'วันที่แจ้งออกจากที่พัก\nCheck-out Date\nDD/MM/YYYY(ค.ศ. / A.D.)\nเช่น 14/06/2023',
     'เบอร์โทรศัพท์\nPhone No.'
   ];
   
-  // Header style: blue background, red Thai text, bold, centered, wrapped
+  // Exact style from template: fill=FF99CCFF, Arial bold 10, center, wrap
   const hdrStyle={
-    fill:{fgColor:{rgb:'4472C4'}},
-    font:{bold:true,sz:11,color:{rgb:'FF0000'},name:'Tahoma'},
+    fill:{fgColor:{rgb:'99CCFF'}},
+    font:{bold:true,sz:10,name:'Arial'},
     alignment:{horizontal:'center',vertical:'center',wrapText:true},
-    border:{
-      top:{style:'thin',color:{rgb:'000000'}},
-      bottom:{style:'thin',color:{rgb:'000000'}},
-      left:{style:'thin',color:{rgb:'000000'}},
-      right:{style:'thin',color:{rgb:'000000'}}
-    }
+    border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}
   };
-  
   const dataStyle={
-    font:{sz:11,name:'Tahoma'},
-    alignment:{horizontal:'left',vertical:'center'},
-    border:{
-      top:{style:'thin',color:{rgb:'D0D0D0'}},
-      bottom:{style:'thin',color:{rgb:'D0D0D0'}},
-      left:{style:'thin',color:{rgb:'D0D0D0'}},
-      right:{style:'thin',color:{rgb:'D0D0D0'}}
-    }
+    font:{sz:11,name:'Calibri',color:{rgb:'000000'}},
+    alignment:{horizontal:'general',vertical:'bottom'}
+  };
+  const dateCenterStyle={
+    font:{sz:11,name:'Calibri',color:{rgb:'000000'}},
+    alignment:{horizontal:'center',vertical:'bottom'}
   };
   
-  // Build rows
   const rows=[headers];
   data.forEach(r=>{
     const bd=r.birth_date?new Date(r.birth_date).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
@@ -2304,24 +2324,23 @@ async function exportTM30(){
   
   const ws=XLSX.utils.aoa_to_sheet(rows);
   
-  // Apply header styles
+  // Apply header styles (row 1)
   for(let c=0;c<9;c++){
-    const addr=XLSX.utils.encode_cell({r:0,c:c});
+    const addr=XLSX.utils.encode_cell({r:0,c});
     if(ws[addr]) ws[addr].s=hdrStyle;
   }
-  
-  // Apply data styles
+  // Apply data styles (row 2+)
   for(let r=1;r<rows.length;r++){
     for(let c=0;c<9;c++){
-      const addr=XLSX.utils.encode_cell({r:r,c:c});
-      if(ws[addr]) ws[addr].s=dataStyle;
+      const addr=XLSX.utils.encode_cell({r,c});
+      if(ws[addr]) ws[addr].s=(c===6||c===7)?dateCenterStyle:dataStyle;
     }
   }
   
-  // Column widths
-  ws['!cols']=[{wch:18},{wch:16},{wch:16},{wch:10},{wch:22},{wch:16},{wch:28},{wch:28},{wch:16}];
-  // Header row height
-  ws['!rows']=[{hpt:85}];
+  // Exact column widths from template
+  ws['!cols']=[{wch:32.4},{wch:14.3},{wch:15.8},{wch:18.7},{wch:16.4},{wch:13.8},{wch:31.6},{wch:34.6},{wch:13.7}];
+  // Row 1 height = 79.5
+  ws['!rows']=[{hpt:79.5}];
   
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'แบบแจ้งที่พัก Inform Accom');
