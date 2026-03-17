@@ -95,8 +95,8 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .floor-body{border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);background:var(--white);padding:14px;}
 
 /* ══ ROOM CARDS ══ */
-.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
-.rcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .18s;position:relative;user-select:none;}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
+.rcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .18s;position:relative;user-select:none;}
 .rcard:hover{box-shadow:var(--sh2);transform:translateY(-2px);}
 .rcard.dragging{opacity:.35;cursor:grabbing;}
 .rcard.drag-over{border:2px dashed var(--gold);background:var(--gold-light);}
@@ -106,11 +106,14 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .rstripe.paid{background:linear-gradient(90deg,var(--success),#27ae60);}.rstripe.pending{background:linear-gradient(90deg,var(--gold),#f0c040);}.rstripe.vacant{background:var(--border2);}
 .rstripe.daily{background:linear-gradient(90deg,#42a5f5,#1e88e5);}
 .rdot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 4px;}
-.rnum{font-size:20px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;margin-top:3px;}
-.rname{font-size:11px;color:var(--text);font-weight:600;margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ramt{font-size:17px;font-weight:800;font-family:'JetBrains Mono',monospace;}
-.rdet{font-size:10px;color:var(--text2);margin-top:5px;display:flex;flex-direction:column;gap:2px;}
-.rdet .rate-line{display:flex;align-items:center;gap:4px;}
+.rnum{font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;margin-top:3px;}
+.rname{font-size:12px;color:var(--text);font-weight:600;margin:4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ramt{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.rdet{font-size:12px;color:var(--text2);margin-top:6px;display:flex;flex-direction:column;gap:3px;}
+.rdet .rate-line{display:flex;align-items:center;gap:5px;font-size:12px;}
+.rdet .rate-line .rate-badge{font-size:10px;padding:2px 8px;}
+.rdet .contract-line{display:flex;align-items:center;gap:4px;padding:3px 0;font-size:11px;font-weight:600;}
+.rdet .contract-line.expired{color:#c62828;}.rdet .contract-line.warning{color:#e65100;}.rdet .contract-line.ok{color:var(--text3);}
 .rtype-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.03em;margin-bottom:4px;}
 .rtype-monthly{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 .rtype-daily{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;}
@@ -1585,13 +1588,28 @@ function renderFloors(data, containerId, filter){
             const eBadge=RATES.elec[er]||RATES.elec.apt,wBadge=RATES.water[wr]||RATES.water.apt;
             const hasTenant=r.tenant_name&&r.tenant_name.trim();
             const amenities=[r.has_tv?'📺':'',r.has_fridge?'🧊':'',r.has_motorcycle?'🏍':'',r.has_car?'🚗':''].filter(Boolean).join('');
+            // Contract end date logic
+            let contractHtml='';
+            if(r.contract_end){
+              const cEnd=new Date(r.contract_end);
+              const now=new Date();
+              const diffDays=Math.round((cEnd-now)/86400000);
+              const cClass=diffDays<0?'expired':diffDays<=30?'warning':'ok';
+              const cIcon=diffDays<0?'🔴':diffDays<=30?'🟠':'📄';
+              const cLabel=diffDays<0?`หมดแล้ว ${Math.abs(diffDays)} วัน`:diffDays<=30?`เหลือ ${diffDays} วัน`:`หมด ${fmtD(r.contract_end)}`;
+              contractHtml=`<div class="contract-line ${cClass}">${cIcon} สัญญา: ${cLabel}</div>`;
+            }else if(hasTenant){
+              contractHtml=`<div class="contract-line ok" style="color:#bbb;">📄 สัญญา: ยังไม่ระบุ</div>`;
+            }
+            const elecUnits=(r.elec_new||0)-(r.elec_old||0);
+            const waterUnits=(r.water_new||0)-(r.water_old||0);
             return `<div class="rcard" draggable="true" data-room="${r.room}">
               <div class="rstripe ${st}"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div style="display:flex;gap:4px;align-items:center;">
                   <span class="rtype-badge rtype-monthly">🏠 รายเดือน</span>
                   <span class="gbadge">${bedIcon(r.bed_type)} ${bedTxt(r.bed_type)}</span>
-                  ${amenities?`<span style="font-size:11px;">${amenities}</span>`:''}
+                  ${amenities?`<span style="font-size:12px;">${amenities}</span>`:''}
                 </div>
                 <div class="rdot" style="background:${dc};box-shadow:0 0 4px ${dc};"></div>
               </div>
@@ -1599,10 +1617,11 @@ function renderFloors(data, containerId, filter){
               <div class="rname">${r.tenant_name||'—'}${r.phone?` · 📞${r.phone}`:''}</div>
               <div class="ramt">฿${Math.round(r.total||0).toLocaleString('th-TH')}</div>
               <div class="rdet">
-                ${r.rent>0?`<span>เช่า ฿${r.rent.toLocaleString()}</span>`:''}
-                ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}">⚡${eBadge.label}</span> ฿${Math.round(r.elec_cost).toLocaleString()}</div>`:''}
-                ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}">💧${wBadge.label}</span> ฿${Math.round(r.water_cost).toLocaleString()}</div>`:''}
-                ${r.contract_end?`<span>📄 สัญญา → ${fmtD(r.contract_end)}</span>`:''}
+                ${r.rent>0?`<span>🏠 เช่า <b>฿${r.rent.toLocaleString()}</b></span>`:''}
+                ${r.elec_cost>0?`<div class="rate-line"><span class="rate-badge ${eBadge.cls}">⚡ ${eBadge.label}</span> <b>฿${Math.round(r.elec_cost).toLocaleString()}</b> <span style="color:var(--text3);">(${elecUnits} หน่วย)</span></div>`:''}
+                ${r.water_cost>0?`<div class="rate-line"><span class="rate-badge ${wBadge.cls}">💧 ${wBadge.label}</span> <b>฿${Math.round(r.water_cost).toLocaleString()}</b> <span style="color:var(--text3);">(${waterUnits} หน่วย)</span></div>`:''}
+                ${(r.fridge_fee||0)+(r.parking_car||0)+(r.parking_moto||0)+(r.other||0)>0?`<span>📦 อื่นๆ <b>฿${Math.round((r.fridge_fee||0)+(r.parking_car||0)+(r.parking_moto||0)+(r.other||0)).toLocaleString()}</b></span>`:''}
+                ${contractHtml}
               </div>
               ${logLine}
               <div style="display:flex;gap:3px;margin-top:8px;">
