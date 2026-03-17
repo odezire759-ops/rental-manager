@@ -967,23 +967,6 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     </div>
   </div>
 
-<!-- ══ REPORT SECTION ══ -->
-<div id="sec-report" class="sec">
-  <div class="card" style="margin-bottom:14px;">
-    <div class="chdr">
-      <span>📈 รายงานสรุปรายรับรายเดือน — J.Residence</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <select id="rpt-year" onchange="loadReport()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);">
-          <option value="2026">2569 (2026)</option>
-          <option value="2025">2568 (2025)</option>
-        </select>
-        <button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="exportReportPDF()">📄 Export PDF</button>
-      </div>
-    </div>
-    <div class="cbdy" id="rpt-content"><div class="loading">กำลังโหลด...</div></div>
-  </div>
-</div>
-
 <!-- ═══ CUSTOMER PROFILE MODAL ═══ -->
 <div class="moverlay" id="cust-modal">
   <div class="modal" style="max-width:900px;width:95%;">
@@ -1107,6 +1090,23 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       </tr></thead>
       <tbody id="qt-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table>
     </div>
+  </div>
+</div>
+
+<!-- ══ REPORT SECTION ══ -->
+<div id="sec-report" class="sec">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr">
+      <span>📈 รายงานสรุปรายรับรายเดือน — J.Residence</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="rpt-year" onchange="loadReport()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);">
+          <option value="2026">2569 (2026)</option>
+          <option value="2025">2568 (2025)</option>
+        </select>
+        <button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="exportReportPDF()">📄 Export PDF</button>
+      </div>
+    </div>
+    <div class="cbdy" id="rpt-content"><div class="loading">กำลังโหลด...</div></div>
   </div>
 </div>
 
@@ -1380,6 +1380,11 @@ async function loadMasterRooms(){
 // ══════════════════════════════════
 function renderKPIBar(){
   const el=document.getElementById('kpi-bar');
+  // Hide KPI bar for sections that don't need it
+  if(['report','tax','vat','invoice','staff','slips'].includes(activeSec)){
+    el.innerHTML='';el.style.display='none';return;
+  }
+  el.style.display='';
   if(activeSec==='monthly'||activeSec==='dashboard'||activeSec==='booking'||activeSec==='checkin'){
     el.innerHTML=`
       <div class="kt ky"><div class="klbl">รายรับรวม</div><div class="kval y" id="k-rev">—</div><div class="ksub">บาท</div></div>
