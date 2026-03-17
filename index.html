@@ -6,6 +6,8 @@
 <title>J.Residence — Dashboard v2</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -330,6 +332,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('tax',this)">📊 บัญชี</button>
     <button class="nbtn" onclick="showSec('vat',this)">🧾 ภาษีขาย</button>
     <button class="nbtn" onclick="showSec('invoice',this)">📄 ใบเสร็จ</button>
+    <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
     <button class="nbtn" onclick="showSec('tax',this)">💼 สรรพากร</button>
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
@@ -963,6 +966,23 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       </div>
     </div>
   </div>
+
+<!-- ══ REPORT SECTION ══ -->
+<div id="sec-report" class="sec">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr">
+      <span>📈 รายงานสรุปรายรับรายเดือน — J.Residence</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="rpt-year" onchange="loadReport()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);">
+          <option value="2026">2569 (2026)</option>
+          <option value="2025">2568 (2025)</option>
+        </select>
+        <button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="exportReportPDF()">📄 Export PDF</button>
+      </div>
+    </div>
+    <div class="cbdy" id="rpt-content"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+</div>
 
 <!-- ═══ CUSTOMER PROFILE MODAL ═══ -->
 <div class="moverlay" id="cust-modal">
@@ -3038,6 +3058,340 @@ async function bulkMonthlyInvoice(type){
   toast(`ออกใบแจ้งหนี้ ${occupied.length} ห้อง สำเร็จ ✓`,'ok');
 }
 
+// ══════════════════════════════════════════════════════════════
+// รายงานสรุปรายรับรายเดือน
+// ══════════════════════════════════════════════════════════════
+let rptData=null;
+async function loadReport(){
+  const yr=document.getElementById('rpt-year').value;
+  const c=document.getElementById('rpt-content');
+  c.innerHTML='<div class="loading">กำลังโหลดข้อมูล...</div>';
+
+  // 1) Monthly charges (rent, elec, water, other)
+  const{data:mc}=await sb.from('monthly_charges').select('month,room,tenant_name,rent,elec_cost,water_cost,parking_car,parking_moto,fridge_fee,tv_fee,other,total,status,room_type').eq('building','เจเรสซิเดนซ์').gte('month',yr+'-01').lte('month',yr+'-12').order('month');
+
+  // 2) Daily invoices
+  const{data:di}=await sb.from('daily_invoices').select('invoice_no,grand_total,invoice_date,payment_status').gte('invoice_date',yr+'-01-01').lte('invoice_date',yr+'-12-31').eq('building','เจเรสซิเดนซ์');
+
+  // 3) OTA bookings
+  const{data:ota}=await sb.from('ota_bookings').select('source,total_amount,commission,check_in,status').gte('check_in',yr+'-01-01').lte('check_in',yr+'-12-31').neq('status','CANCELLED');
+
+  // Aggregate by month
+  const months=[];
+  for(let m=1;m<=12;m++){
+    const mm=String(m).padStart(2,'0');
+    const mKey=yr+'-'+mm;
+    const mmc=(mc||[]).filter(r=>r.month===mKey&&r.tenant_name&&r.rent>0);
+    const mdi=(di||[]).filter(r=>r.invoice_date&&r.invoice_date.startsWith(mKey));
+    const mota=(ota||[]).filter(r=>r.check_in&&r.check_in.startsWith(mKey));
+
+    const rentSum=mmc.reduce((a,r)=>a+Number(r.rent||0),0);
+    const elecSum=mmc.reduce((a,r)=>a+Number(r.elec_cost||0),0);
+    const waterSum=mmc.reduce((a,r)=>a+Number(r.water_cost||0),0);
+    const otherSum=mmc.reduce((a,r)=>a+Number(r.parking_car||0)+Number(r.parking_moto||0)+Number(r.fridge_fee||0)+Number(r.tv_fee||0)+Number(r.other||0),0);
+    const monthlyTotal=mmc.reduce((a,r)=>a+Number(r.total||0),0);
+    const paidCount=mmc.filter(r=>r.status==='paid').length;
+    const pendCount=mmc.filter(r=>r.status!=='paid').length;
+    const occupiedCount=mmc.length;
+
+    const dailyTotal=mdi.reduce((a,r)=>a+Number(r.grand_total||0),0);
+    const dailyCount=mdi.length;
+    const dailyPaid=mdi.filter(r=>r.payment_status==='paid').length;
+
+    const otaTotal=mota.reduce((a,r)=>a+Number(r.total_amount||0),0);
+    const otaCommission=mota.reduce((a,r)=>a+Number(r.commission||0),0);
+    const otaCount=mota.length;
+    const agodaCount=mota.filter(r=>r.source==='Agoda').length;
+    const travelokaCount=mota.filter(r=>r.source==='Traveloka').length;
+
+    months.push({
+      month:mKey, mm, label:TH_MONTHS[m-1]+' '+(parseInt(yr)+543),shortLabel:TH_MONTHS[m-1].substring(0,3)+'.',
+      rentSum,elecSum,waterSum,otherSum,monthlyTotal,paidCount,pendCount,occupiedCount,
+      dailyTotal,dailyCount,dailyPaid,
+      otaTotal,otaCommission,otaCount,agodaCount,travelokaCount,
+      grandTotal:monthlyTotal+dailyTotal+otaTotal
+    });
+  }
+  rptData={yr,months,mc:mc||[],di:di||[],ota:ota||[]};
+  renderReport(months,yr);
+}
+
+function renderReport(months,yr){
+  const c=document.getElementById('rpt-content');
+  const hasData=months.some(m=>m.grandTotal>0);
+  if(!hasData){c.innerHTML='<div class="empty" style="padding:40px;">ไม่มีข้อมูลรายรับในปี '+(parseInt(yr)+543)+'</div>';return;}
+
+  // Totals
+  const totRent=months.reduce((a,m)=>a+m.rentSum,0);
+  const totElec=months.reduce((a,m)=>a+m.elecSum,0);
+  const totWater=months.reduce((a,m)=>a+m.waterSum,0);
+  const totOther=months.reduce((a,m)=>a+m.otherSum,0);
+  const totMonthly=months.reduce((a,m)=>a+m.monthlyTotal,0);
+  const totDaily=months.reduce((a,m)=>a+m.dailyTotal,0);
+  const totOTA=months.reduce((a,m)=>a+m.otaTotal,0);
+  const totComm=months.reduce((a,m)=>a+m.otaCommission,0);
+  const totGrand=months.reduce((a,m)=>a+m.grandTotal,0);
+  const maxGrand=Math.max(...months.map(m=>m.grandTotal),1);
+
+  const fmt=v=>'฿'+Math.round(v).toLocaleString();
+  const fmtK=v=>v>=1000000?'฿'+(v/1000000).toFixed(1)+'M':v>=1000?'฿'+(v/1000).toFixed(0)+'K':'฿'+Math.round(v);
+
+  // KPI summary cards
+  let html=`<div id="rpt-printable">
+  <div style="text-align:center;margin-bottom:20px;padding:16px 0 10px;">
+    <div style="font-size:18px;font-weight:800;color:var(--text);">📈 รายงานสรุปรายรับ ประจำปี ${parseInt(yr)+543}</div>
+    <div style="font-size:13px;color:var(--text3);margin-top:2px;">ห้างหุ้นส่วนสามัญ เจ. เรสซิเดนซ์ / J.Residence</div>
+    <div style="font-size:11px;color:var(--text3);">พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})}</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px;">
+    <div style="background:linear-gradient(135deg,#fff8e1,#ffecb3);border:1px solid #ffe082;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:11px;color:#f57f17;font-weight:700;">💰 รายรับรวมทั้งปี</div>
+      <div style="font-size:22px;font-weight:800;color:#e65100;font-family:'JetBrains Mono',monospace;margin-top:4px;">${fmt(totGrand)}</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:1px solid #a5d6a7;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:11px;color:#2e7d32;font-weight:700;">🏠 รายเดือน</div>
+      <div style="font-size:20px;font-weight:800;color:#1b5e20;font-family:'JetBrains Mono',monospace;margin-top:4px;">${fmt(totMonthly)}</div>
+      <div style="font-size:10px;color:#388e3c;margin-top:2px;">${(totGrand>0?(totMonthly/totGrand*100).toFixed(0):0)}% ของรายรับรวม</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border:1px solid #90caf9;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:11px;color:#1565c0;font-weight:700;">📅 รายวัน (Walk-in)</div>
+      <div style="font-size:20px;font-weight:800;color:#0d47a1;font-family:'JetBrains Mono',monospace;margin-top:4px;">${fmt(totDaily)}</div>
+      <div style="font-size:10px;color:#1976d2;margin-top:2px;">${(totGrand>0?(totDaily/totGrand*100).toFixed(0):0)}%</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#fce4ec,#f8bbd0);border:1px solid #f48fb1;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:11px;color:#c62828;font-weight:700;">🌐 OTA (Agoda/Traveloka)</div>
+      <div style="font-size:20px;font-weight:800;color:#b71c1c;font-family:'JetBrains Mono',monospace;margin-top:4px;">${fmt(totOTA)}</div>
+      <div style="font-size:10px;color:#d32f2f;margin-top:2px;">Commission ${fmt(totComm)}</div>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:20px;">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;">📊 รายรับรวมรายเดือน</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:200px;padding:0 4px;">
+      ${months.map(m=>{
+        const pct=maxGrand>0?(m.grandTotal/maxGrand*100):0;
+        const monthlyPct=m.grandTotal>0?(m.monthlyTotal/m.grandTotal*100):0;
+        const dailyPct=m.grandTotal>0?(m.dailyTotal/m.grandTotal*100):0;
+        const otaPct=m.grandTotal>0?(m.otaTotal/m.grandTotal*100):0;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="font-size:9px;font-weight:700;color:var(--text2);">${m.grandTotal>0?fmtK(m.grandTotal):''}</div>
+          <div style="width:100%;height:${Math.max(pct,2)}%;border-radius:4px 4px 0 0;overflow:hidden;display:flex;flex-direction:column;">
+            <div style="flex:${monthlyPct};background:linear-gradient(180deg,#43a047,#66bb6a);"></div>
+            <div style="flex:${dailyPct};background:linear-gradient(180deg,#1976d2,#42a5f5);"></div>
+            <div style="flex:${otaPct};background:linear-gradient(180deg,#e65100,#ff9800);"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;white-space:nowrap;">${m.shortLabel}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:11px;">
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#43a047;vertical-align:middle;margin-right:4px;"></span>รายเดือน</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1976d2;vertical-align:middle;margin-right:4px;"></span>รายวัน</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#e65100;vertical-align:middle;margin-right:4px;"></span>OTA</span>
+    </div>
+  </div>
+
+  <!-- Stacked Detail: Rent breakdown -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:20px;">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;">🏠 แยกประเภทรายรับรายเดือน</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:180px;padding:0 4px;">
+      ${months.map(m=>{
+        const maxM=Math.max(...months.map(x=>x.monthlyTotal),1);
+        const pct=maxM>0?(m.monthlyTotal/maxM*100):0;
+        const rPct=m.monthlyTotal>0?(m.rentSum/m.monthlyTotal*100):0;
+        const ePct=m.monthlyTotal>0?(m.elecSum/m.monthlyTotal*100):0;
+        const wPct=m.monthlyTotal>0?(m.waterSum/m.monthlyTotal*100):0;
+        const oPct=m.monthlyTotal>0?(m.otherSum/m.monthlyTotal*100):0;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);">${m.monthlyTotal>0?fmtK(m.monthlyTotal):''}</div>
+          <div style="width:100%;height:${Math.max(pct,2)}%;border-radius:4px 4px 0 0;overflow:hidden;display:flex;flex-direction:column;">
+            <div style="flex:${rPct};background:#66bb6a;"></div>
+            <div style="flex:${ePct};background:#ffa726;"></div>
+            <div style="flex:${wPct};background:#42a5f5;"></div>
+            <div style="flex:${oPct};background:#ab47bc;"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;">${m.shortLabel}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;justify-content:center;gap:14px;margin-top:10px;font-size:11px;">
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#66bb6a;vertical-align:middle;margin-right:3px;"></span>ค่าเช่า</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ffa726;vertical-align:middle;margin-right:3px;"></span>ค่าไฟ</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#42a5f5;vertical-align:middle;margin-right:3px;"></span>ค่าน้ำ</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ab47bc;vertical-align:middle;margin-right:3px;"></span>อื่นๆ</span>
+    </div>
+  </div>
+
+  <!-- Occupancy bar -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:20px;">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;">🏢 จำนวนห้องเข้าพักรายเดือน</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:140px;padding:0 4px;">
+      ${months.map(m=>{
+        const maxOcc=Math.max(...months.map(x=>x.occupiedCount),1);
+        const pct=maxOcc>0?(m.occupiedCount/maxOcc*100):0;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="font-size:10px;font-weight:700;color:${m.occupiedCount>0?'var(--text)':'var(--text3)'};">${m.occupiedCount||''}</div>
+          <div style="width:100%;height:${Math.max(pct,2)}%;background:linear-gradient(180deg,#7e57c2,#b39ddb);border-radius:4px 4px 0 0;"></div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;">${m.shortLabel}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- Detail Table -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto;">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;">📋 ตารางสรุปรายเดือน (บาท)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'Sarabun',sans-serif;">
+      <thead>
+        <tr style="background:#f5f5f5;">
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:left;font-weight:700;white-space:nowrap;">เดือน</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:center;white-space:nowrap;">ห้อง</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;color:#2e7d32;">ค่าเช่า</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;color:#e65100;">ค่าไฟ</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;color:#1565c0;">ค่าน้ำ</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;color:#7b1fa2;">อื่นๆ</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;font-weight:700;white-space:nowrap;background:#e8f5e9;">รายเดือนรวม</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;background:#e3f2fd;">รายวัน</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;white-space:nowrap;background:#fce4ec;">OTA</th>
+          <th style="padding:8px 6px;border:1px solid #e0e0e0;text-align:right;font-weight:800;white-space:nowrap;background:#fff8e1;">รวมทั้งหมด</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${months.map((m,i)=>{
+          if(m.grandTotal===0)return '';
+          return `<tr style="${i%2?'background:#fafafa;':''}">
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;font-weight:600;">${m.label}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:center;">${m.occupiedCount}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;">${Math.round(m.rentSum).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;">${Math.round(m.elecSum).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;">${Math.round(m.waterSum).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;">${Math.round(m.otherSum).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;background:#f1f8e9;">${Math.round(m.monthlyTotal).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;background:#f3f8fd;">${Math.round(m.dailyTotal).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;background:#fdf2f4;">${Math.round(m.otaTotal).toLocaleString()}</td>
+            <td style="padding:7px 6px;border:1px solid #e0e0e0;text-align:right;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:12px;background:#fffde7;">${Math.round(m.grandTotal).toLocaleString()}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="background:#263238;color:#fff;font-weight:700;">
+          <td style="padding:8px 6px;border:1px solid #455a64;">รวมทั้งปี</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:center;">—</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totRent).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totElec).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totWater).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totOther).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totMonthly).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totDaily).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(totOTA).toLocaleString()}</td>
+          <td style="padding:8px 6px;border:1px solid #455a64;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;">${Math.round(totGrand).toLocaleString()}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Pie summary -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px;">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">💰 สัดส่วนรายรับ</div>
+      ${[
+        {label:'ค่าเช่า',val:totRent,color:'#66bb6a'},
+        {label:'ค่าไฟ',val:totElec,color:'#ffa726'},
+        {label:'ค่าน้ำ',val:totWater,color:'#42a5f5'},
+        {label:'อื่นๆ (รายเดือน)',val:totOther,color:'#ab47bc'},
+        {label:'รายวัน Walk-in',val:totDaily,color:'#1976d2'},
+        {label:'OTA',val:totOTA,color:'#e65100'}
+      ].map(x=>{
+        const pct=totGrand>0?(x.val/totGrand*100):0;
+        return `<div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${x.color};margin-right:4px;vertical-align:middle;"></span>${x.label}</span>
+            <span style="font-weight:700;font-family:'JetBrains Mono',monospace;">${fmt(x.val)} (${pct.toFixed(1)}%)</span>
+          </div>
+          <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${x.color};border-radius:4px;transition:width .5s;"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📊 สรุปสถิติ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">
+        <div style="background:#f9fbe7;border-radius:8px;padding:10px;text-align:center;">
+          <div style="color:var(--text3);font-size:10px;">เฉลี่ยรายรับ/เดือน</div>
+          <div style="font-size:16px;font-weight:800;color:#827717;font-family:'JetBrains Mono',monospace;">${fmt(totGrand/Math.max(months.filter(m=>m.grandTotal>0).length,1))}</div>
+        </div>
+        <div style="background:#fce4ec;border-radius:8px;padding:10px;text-align:center;">
+          <div style="color:var(--text3);font-size:10px;">OTA Commission รวม</div>
+          <div style="font-size:16px;font-weight:800;color:#c62828;font-family:'JetBrains Mono',monospace;">${fmt(totComm)}</div>
+        </div>
+        <div style="background:#e3f2fd;border-radius:8px;padding:10px;text-align:center;">
+          <div style="color:var(--text3);font-size:10px;">ใบเสร็จรายวันรวม</div>
+          <div style="font-size:16px;font-weight:800;color:#1565c0;font-family:'JetBrains Mono',monospace;">${months.reduce((a,m)=>a+m.dailyCount,0)} ใบ</div>
+        </div>
+        <div style="background:#e8f5e9;border-radius:8px;padding:10px;text-align:center;">
+          <div style="color:var(--text3);font-size:10px;">เดือนที่รายรับสูงสุด</div>
+          <div style="font-size:14px;font-weight:800;color:#2e7d32;">${months.reduce((max,m)=>m.grandTotal>max.grandTotal?m:max,months[0]).label}</div>
+          <div style="font-size:11px;color:#388e3c;font-family:'JetBrains Mono',monospace;">${fmt(Math.max(...months.map(m=>m.grandTotal)))}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>`;
+
+  c.innerHTML=html;
+}
+
+// Export PDF
+async function exportReportPDF(){
+  if(!rptData){toast('กรุณาโหลดรายงานก่อน','err');return;}
+  toast('กำลังสร้าง PDF...','ok');
+  const el=document.getElementById('rpt-printable');
+  if(!el){toast('ไม่พบข้อมูลรายงาน','err');return;}
+  try{
+    // Temporarily style for PDF capture
+    el.style.background='#fff';
+    el.style.padding='20px';
+    el.style.maxWidth='1100px';
+    const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:1100});
+    el.style.background='';el.style.padding='';el.style.maxWidth='';
+
+    const{jsPDF}=window.jspdf;
+    const imgW=canvas.width,imgH=canvas.height;
+    // A4 landscape or portrait based on content
+    const pdfW=210,pdfH=297;// A4 portrait mm
+    const margin=10;
+    const contentW=pdfW-margin*2;
+    const ratio=contentW/imgW;
+    const contentH=imgH*ratio;
+    const totalPages=Math.ceil(contentH/(pdfH-margin*2));
+    const pdf=new jsPDF('p','mm','a4');
+    
+    for(let page=0;page<totalPages;page++){
+      if(page>0)pdf.addPage();
+      const srcY=page*(pdfH-margin*2)/ratio;
+      const srcH=Math.min((pdfH-margin*2)/ratio,imgH-srcY);
+      const destH=srcH*ratio;
+      // Create temp canvas for this page slice
+      const pageCanvas=document.createElement('canvas');
+      pageCanvas.width=imgW;pageCanvas.height=srcH;
+      pageCanvas.getContext('2d').drawImage(canvas,0,srcY,imgW,srcH,0,0,imgW,srcH);
+      const pageData=pageCanvas.toDataURL('image/png');
+      pdf.addImage(pageData,'PNG',margin,margin,contentW,destH);
+      // Footer
+      pdf.setFontSize(8);pdf.setTextColor(150);
+      pdf.text('J.Residence — รายงานสรุปรายรับ '+rptData.yr+' | หน้า '+(page+1)+'/'+totalPages, pdfW/2,pdfH-5,{align:'center'});
+    }
+    pdf.save('JResidence_รายงานสรุป_'+rptData.yr+'.pdf');
+    toast('Export PDF สำเร็จ ✓','ok');
+  }catch(e){
+    console.error(e);
+    toast('Error: '+e.message,'err');
+  }
+}
+
 // ══════════════════════════════════
 // HELPERS
 // ══════════════════════════════════
@@ -3055,6 +3409,7 @@ function showSec(id,btn){
   if(id==='tax'){loadTaxMonths();loadTaxData();}
   if(id==='vat'){loadVatMonths();loadVatReport();loadVatHistory();}
   if(id==='invoice'){loadCustList();loadInvoices();loadInvFilterMonths();loadQuotations();}
+  if(id==='report'){loadReport();}
   if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
   if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
