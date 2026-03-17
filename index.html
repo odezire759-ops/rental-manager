@@ -98,12 +98,66 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 
 /* ══ ROOM CARDS ══ */
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
-.rcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .18s;position:relative;user-select:none;}
+.rgrid.card-sm{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;}
+.rgrid.card-lg{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+.rcard{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .18s;position:relative;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
 .rcard:hover{box-shadow:var(--sh2);transform:translateY(-2px);}
-.rcard.dragging{opacity:.35;cursor:grabbing;}
+.rcard.dragging{opacity:.35;cursor:grabbing;z-index:100;}
+.rcard.touch-drag{opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:scale(1.04);z-index:100;}
 .rcard.drag-over{border:2px dashed var(--gold);background:var(--gold-light);}
 .rcard.vacant{background:var(--shell);border-style:dashed;opacity:.65;}
 .rcard.daily-room{background:linear-gradient(135deg,#f0f7ff,#e8f4fd);border-color:#90caf9;}
+/* Small card overrides */
+.rgrid.card-sm .rcard{padding:8px;}
+.rgrid.card-sm .rnum{font-size:16px;}
+.rgrid.card-sm .rname{font-size:10px;margin:2px 0 4px;}
+.rgrid.card-sm .ramt{font-size:14px;}
+.rgrid.card-sm .rdet{font-size:10px;gap:1px;}
+.rgrid.card-sm .rdet .rate-line{font-size:10px;}
+.rgrid.card-sm .rtype-badge{font-size:7px;padding:1px 4px;}
+.rgrid.card-sm .gbadge{font-size:8px;padding:1px 4px;}
+.rgrid.card-sm .ract{padding:3px 5px;font-size:11px;}
+.rgrid.card-sm .contract-line{font-size:9px;}
+/* Large card overrides */
+.rgrid.card-lg .rnum{font-size:26px;}
+.rgrid.card-lg .rname{font-size:14px;}
+.rgrid.card-lg .ramt{font-size:22px;}
+.rgrid.card-lg .rdet{font-size:14px;}
+.rgrid.card-lg .ract{padding:6px 10px;font-size:15px;}
+/* Card size toggle */
+.card-size-bar{display:flex;gap:3px;align-items:center;}
+.card-size-bar button{padding:3px 8px;border:1px solid var(--border2);border-radius:4px;background:var(--shell);font-size:10px;cursor:pointer;font-weight:700;color:var(--text3);font-family:'Sarabun',sans-serif;}
+.card-size-bar button.active{background:var(--gold);color:#1a1a2e;border-color:var(--gold2);}
+/* Mobile responsive */
+@media(max-width:768px){
+  .rgrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;}
+  .rcard{padding:10px;}
+  .rnum{font-size:18px;}
+  .rname{font-size:11px;}
+  .ramt{font-size:15px;}
+  .rdet{font-size:10px;}
+  .rdet .rate-line{font-size:10px;}
+  .ract{padding:4px 5px;font-size:12px;}
+  .rtype-badge{font-size:8px;padding:1px 5px;}
+  .floor-stats{font-size:10px !important;}
+  .kpis{flex-wrap:wrap;}
+  .kt{min-width:calc(50% - 4px);}
+  .nav{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .nbtn{padding:0 10px;font-size:11px;white-space:nowrap;}
+  .tbar{flex-wrap:wrap;gap:4px;}
+  .g2{grid-template-columns:1fr !important;}
+  .modal{width:98% !important;max-width:98% !important;}
+}
+@media(max-width:480px){
+  .rgrid{grid-template-columns:1fr 1fr;gap:4px;}
+  .rcard{padding:8px;}
+  .rnum{font-size:16px;}
+  .rname{font-size:10px;margin:2px 0 3px;}
+  .ramt{font-size:13px;}
+  .rdet{font-size:9px;}
+  .ract{padding:3px 4px;font-size:10px;}
+  .floor-hdr{font-size:12px;padding:8px 10px;}
+}
 .rstripe{position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--r) var(--r) 0 0;}
 .rstripe.paid{background:linear-gradient(90deg,var(--success),#27ae60);}.rstripe.pending{background:linear-gradient(90deg,var(--gold),#f0c040);}.rstripe.vacant{background:var(--border2);}
 .rstripe.daily{background:linear-gradient(90deg,#42a5f5,#1e88e5);}
@@ -347,6 +401,12 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div class="seg" id="mseg"></div>
   <div class="sp"></div>
   <span id="tinfo" style="font-size:11px;color:var(--text3);font-weight:600;"></span>
+  <div class="card-size-bar">
+    <span style="font-size:9px;color:var(--text3);">🔍</span>
+    <button data-sz="s" onclick="setCardSize('s')">S</button>
+    <button data-sz="m" onclick="setCardSize('m')" class="active">M</button>
+    <button data-sz="l" onclick="setCardSize('l')">L</button>
+  </div>
   <button class="tbtn" onclick="exportXL()">⬇ Export</button>
   <button class="tbtn acc" onclick="generateNextMonth()">+ เดือน</button>
   <button class="tbtn acc" onclick="openAddRoom()">+ ห้อง</button>
@@ -1668,6 +1728,7 @@ function renderFloors(data, containerId, filter){
   }
   c.innerHTML=html;
   c.querySelectorAll('.rgrid[data-floor]').forEach(initDrag);
+  applyCardSize();
 }
 function toggleFloor(el,floor){
   el.classList.toggle('collapsed');
@@ -1697,6 +1758,7 @@ function renderMTable(d){
 }
 function initDrag(g){
   let drag=null;
+  // Desktop drag
   g.querySelectorAll('[draggable]').forEach(c=>{
     c.addEventListener('dragstart',e=>{drag=c;c.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
     c.addEventListener('dragend',()=>{c.classList.remove('dragging');g.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));saveOrder();});
@@ -1704,8 +1766,68 @@ function initDrag(g){
     c.addEventListener('dragleave',()=>c.classList.remove('drag-over'));
     c.addEventListener('drop',e=>{e.preventDefault();c.classList.remove('drag-over');if(drag&&drag!==c){const all=[...g.querySelectorAll('[data-room]')];all.indexOf(drag)<all.indexOf(c)?c.after(drag):c.before(drag);}});
   });
+  // Touch drag (iOS/iPad/Android)
+  let touchDrag=null,touchClone=null,touchStartX=0,touchStartY=0,touchMoved=false;
+  g.querySelectorAll('[data-room]').forEach(c=>{
+    c.addEventListener('touchstart',e=>{
+      if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return;
+      touchDrag=c;touchMoved=false;
+      const t=e.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;
+    },{passive:true});
+  });
+  g.addEventListener('touchmove',e=>{
+    if(!touchDrag)return;
+    const t=e.touches[0];
+    const dx=Math.abs(t.clientX-touchStartX),dy=Math.abs(t.clientY-touchStartY);
+    if(!touchMoved&&dx<10&&dy<10)return;
+    touchMoved=true;
+    e.preventDefault();
+    touchDrag.classList.add('touch-drag');
+    // Find target card under finger
+    touchDrag.style.pointerEvents='none';
+    const el=document.elementFromPoint(t.clientX,t.clientY);
+    touchDrag.style.pointerEvents='';
+    g.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
+    if(el){const card=el.closest('[data-room]');if(card&&card!==touchDrag)card.classList.add('drag-over');}
+  },{passive:false});
+  g.addEventListener('touchend',e=>{
+    if(!touchDrag)return;
+    if(touchMoved){
+      const over=g.querySelector('.drag-over');
+      if(over&&over!==touchDrag){
+        const all=[...g.querySelectorAll('[data-room]')];
+        all.indexOf(touchDrag)<all.indexOf(over)?over.after(touchDrag):over.before(touchDrag);
+        saveOrder();
+      }
+    }
+    touchDrag.classList.remove('touch-drag');
+    g.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
+    touchDrag=null;touchMoved=false;
+  });
 }
 function saveOrder(){rOrder=[...document.querySelectorAll('.rgrid [data-room]')].map(c=>c.dataset.room);localStorage.setItem('jro',JSON.stringify(rOrder));}
+
+// Card size toggle (S / M / L)
+let cardSize=localStorage.getItem('jCardSize')||'m';
+function setCardSize(sz){
+  cardSize=sz;
+  localStorage.setItem('jCardSize',sz);
+  document.querySelectorAll('.rgrid').forEach(g=>{
+    g.classList.remove('card-sm','card-lg');
+    if(sz==='s')g.classList.add('card-sm');
+    if(sz==='l')g.classList.add('card-lg');
+  });
+  document.querySelectorAll('.card-size-bar button').forEach(b=>{
+    b.classList.toggle('active',b.dataset.sz===sz);
+  });
+}
+function applyCardSize(){
+  document.querySelectorAll('.rgrid').forEach(g=>{
+    g.classList.remove('card-sm','card-lg');
+    if(cardSize==='s')g.classList.add('card-sm');
+    if(cardSize==='l')g.classList.add('card-lg');
+  });
+}
 
 // Toggle room type between daily and monthly
 async function setRoomType(room,newType){
@@ -6193,6 +6315,8 @@ let tt;function toast(msg,type='ok'){const t=document.getElementById('toast');t.
 window.onclick=e=>{if(e.target.classList.contains('moverlay'))e.target.classList.remove('open');};
 
 init();
+// Apply saved card size
+document.querySelectorAll('.card-size-bar button').forEach(b=>b.classList.toggle('active',b.dataset.sz===cardSize));
 </script>
 </body>
 </html>
