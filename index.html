@@ -305,6 +305,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .toast.show{opacity:1;}.toast.ok{background:var(--gold);color:#1a1a2e;}.toast.err{background:var(--danger);color:#fff;}
 .loading{text-align:center;padding:40px;color:var(--text3);font-weight:500;}
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:12px;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 </style>
 </head>
 <body>
@@ -323,6 +324,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('booking',this)">🛎 จองห้อง</button>
     <button class="nbtn" onclick="showSec('slips',this)">💳 สลิป</button>
     <button class="nbtn" onclick="showSec('staff',this)">👥 พนักงาน</button>
+    <button class="nbtn" onclick="showSec('tax',this)">📊 บัญชี</button>
+    <button class="nbtn" onclick="showSec('vat',this)">🧾 ภาษีขาย</button>
+    <button class="nbtn" onclick="showSec('invoice',this)">📄 ใบเสร็จ</button>
+    <button class="nbtn" onclick="showSec('tax',this)">💼 สรรพากร</button>
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
 </div>
@@ -333,14 +338,11 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 <!-- ══ TOOLBAR ══ -->
 <div class="tbar">
   <span class="tlbl">เดือน</span>
-  <div class="seg" id="mseg">
-    <button class="sb" onclick="selMonth('2026-01',this)">ม.ค. 69</button>
-    <button class="sb" onclick="selMonth('2026-02',this)">ก.พ. 69</button>
-    <button class="sb active" onclick="selMonth('2026-03',this)">มี.ค. 69</button>
-  </div>
+  <div class="seg" id="mseg"></div>
   <div class="sp"></div>
   <span id="tinfo" style="font-size:11px;color:var(--text3);font-weight:600;"></span>
   <button class="tbtn" onclick="exportXL()">⬇ Export</button>
+  <button class="tbtn acc" onclick="generateNextMonth()">+ เดือน</button>
   <button class="tbtn acc" onclick="openAddRoom()">+ ห้อง</button>
 </div>
 
@@ -668,6 +670,44 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <div class="chdr">📋 รายการจองล่าสุด</div>
     <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>แขก</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>แหล่งที่มา</th><th>ราคา</th></tr></thead><tbody id="btbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
   </div>
+
+  <!-- จองห้องรายเดือน -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>🏠 จองห้องรายเดือน (ผู้เช่าใหม่)</span></div>
+    <div class="cbdy">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">จองห้องว่างสำหรับผู้เช่ารายเดือนใหม่ — เลือกเดือนที่จะเข้าอยู่ แล้วกรอกข้อมูล</div>
+      <div class="fg">
+        <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month"></select></div>
+        <div class="fr"><label>ห้อง (เฉพาะห้องว่าง)</label><select id="res-room"><option value="">— เลือกเดือนก่อน —</option></select></div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>ชื่อผู้เช่า</label><input type="text" id="res-name" placeholder="ชื่อ-นามสกุล"></div>
+        <div class="fr"><label>เบอร์โทร</label><input type="tel" id="res-phone" placeholder="08x-xxx-xxxx"></div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>ค่าเช่า (฿/เดือน)</label><input type="number" id="res-rent" value="4500"></div>
+        <div class="fr"><label>ค่ามัดจำ (฿)</label><input type="number" id="res-deposit" value="0"></div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="res-contract" value="12"></div>
+        <div class="fr"><label>ประเภทเตียง</label><select id="res-bed"><option value="6ft">🛏 6 ฟุต</option><option value="5ft">🛏 5 ฟุต</option><option value="twin">🛏🛏 คู่</option></select></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-tv"> 📺 ทีวี</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-fridge"> 🧊 ตู้เย็น</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-car"> 🚗 จอดรถยนต์</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
+      </div>
+      <div class="fg"><div class="fr"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า"></div></div>
+      <button class="btn bp" style="width:100%;margin-top:10px;padding:10px;" onclick="submitReservation()">📝 บันทึกจองห้อง</button>
+    </div>
+  </div>
+
+  <!-- ตารางจองรายเดือน -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📋 รายการจองรายเดือน</span><button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ผู้เช่า</th><th>เดือนเริ่ม</th><th>ค่าเช่า</th><th>มัดจำ</th><th>สถานะ</th><th></th></tr></thead><tbody id="res-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+  </div>
 </div>
 </div>
 
@@ -741,9 +781,312 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
       <tbody id="st-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table>
     </div>
   </div>
+
+  <!-- Blacklist -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>⛔ Blacklist (ลูกค้าห้ามเช่า)</span><span id="bl-count" style="background:#ffebee;color:#c62828;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:8px;">0</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr><th>ชื่อ</th><th>เบอร์โทร</th><th>ห้องเดิม</th><th>เหตุผล</th><th>หนี้ค้าง</th><th>วันที่</th></tr></thead>
+      <tbody id="bl-tbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+<!-- ═══ TAX — บัญชีสรรพากร ═══ -->
+<div id="sec-tax" class="sec">
+  <!-- KPI -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">รายรับรวม (เดือนนี้)</div><div id="tx-income" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);"><div style="font-size:10px;color:var(--text3);font-weight:600;">รายจ่ายรวม</div><div id="tx-expense" style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);"><div style="font-size:10px;color:var(--text3);font-weight:600;">กำไรสุทธิ</div><div id="tx-profit" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">แก้ไขแล้ว</div><div id="tx-edited" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>📊 บัญชีสรรพากร — แก้ไขได้แยกจากบัญชีจริง</span></div>
+    <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <select id="tx-month" onchange="loadTaxData()" style="padding:8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></select>
+      <button class="btn bp" onclick="syncTaxFromReal()" style="font-size:12px;padding:6px 14px;">🔄 ดึงจากข้อมูลจริง</button>
+      <button class="btn bp" onclick="exportTaxExcel()" style="font-size:12px;padding:6px 14px;">⬇ Export Excel</button>
+      <div class="sp"></div>
+      <span style="font-size:10px;color:var(--text3);">💡 แก้ไขตัวเลขได้โดยตรง — คลิกที่ช่องตัวเลขแล้วพิมพ์ค่าใหม่</span>
+    </div>
+  </div>
+
+  <!-- Monthly Summary (editable expenses) -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>🏢 สรุปรายเดือน — ค่าใช้จ่ายกลาง (แก้ไขได้)</span></div>
+    <div style="padding:12px;" id="tx-summary">
+      <div class="loading">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- Room-by-room tax data -->
+  <div class="card">
+    <div class="chdr"><span>🏠 รายละเอียดรายห้อง (ชุดสรรพากร)</span><span id="tx-room-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>ห้อง</th><th>ผู้เช่า</th><th>ค่าเช่าจริง</th><th>ค่าเช่า(สรรพากร)</th><th>ค่าไฟ(สรรพากร)</th><th>ค่าน้ำ(สรรพากร)</th><th>อื่นๆ(สรรพากร)</th><th>รวม(สรรพากร)</th><th>ส่วนต่าง</th><th></th>
+      </tr></thead>
+      <tbody id="tx-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
 </div>
 
-<!-- ══ EDIT MODAL ══ -->
+<!-- ══ VAT REPORT ══ -->
+<div id="sec-vat" class="sec">
+  <!-- Controls -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>🧾 รายงานภาษีขาย <span class="vat-pct">7%</span></span></div>
+    <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <select id="vat-month" onchange="loadVatReport()" style="padding:8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></select>
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="vat-inc" checked onchange="loadVatReport()"> ราคารวม VAT</label>
+      <button class="btn bp" onclick="exportVatExcel()" style="font-size:12px;padding:6px 14px;">⬇ Export Excel</button>
+      <div class="sp"></div>
+      <span style="font-size:12px;font-weight:700;color:var(--gold2);background:var(--bg2);padding:4px 12px;border-radius:8px;">อัตราปัจจุบัน: <span class="vat-pct">7%</span></span>
+      <button class="btn" onclick="saveVatRate()" style="font-size:11px;padding:4px 10px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">⚙ เปลี่ยนอัตรา</button>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">ภาษีขายรวม (เดือน)</div><div id="vat-total" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">ค่าเช่ารายเดือน (ยกเว้น VAT)</div><div id="vat-rent" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);"><div style="font-size:10px;color:var(--text3);font-weight:600;">VAT รายได้อื่นๆ</div><div id="vat-other" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid #9c27b0;"><div style="font-size:10px;color:var(--text3);font-weight:600;">VAT ห้องพักรายวัน</div><div id="vat-daily" style="font-size:22px;font-weight:800;color:#9c27b0;font-family:'JetBrains Mono',monospace;">—</div></div>
+  </div>
+
+  <!-- Monthly VAT Summary -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>📋 สรุปภาษีขายรายเดือน — แบ่งตามประเภท</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>ประเภทรายได้</th><th>ยอดรวม</th><th>ยอดก่อน VAT</th><th><span class="vat-pct">7%</span></th>
+      </tr></thead>
+      <tbody id="vat-summary-tbody"></tbody>
+      <tfoot><tr style="font-weight:800;background:var(--bg2);">
+        <td>รวมทั้งหมด</td><td id="vs-total" class="mono">—</td><td id="vs-before" class="mono">—</td><td id="vs-vat" class="mono" style="color:var(--danger);">—</td>
+      </tr></tfoot></table>
+    </div>
+  </div>
+
+  <!-- Monthly detail by room -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="chdr"><span>🏠 ภาษีขายรายเดือน — แยกรายห้อง</span><span id="vat-m-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>ห้อง</th><th>ผู้เช่า</th><th>ค่าเช่า (ยกเว้น)</th><th>รายได้อื่นๆ</th><th>VAT อื่นๆ <span class="vat-pct">7%</span></th><th>ยอดรวม</th><th>VAT รวม</th>
+      </tr></thead>
+      <tbody id="vat-monthly-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Daily VAT -->
+  <div class="card">
+    <div class="chdr"><span>📅 ภาษีขายรายวัน (ห้องพักรายวัน)</span><span id="vat-d-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>วันที่</th><th>ห้อง</th><th>แขก</th><th>แหล่ง</th><th>Check-in</th><th>Check-out</th><th>ยอดรวม</th><th>ก่อน VAT</th><th><span class="vat-pct">7%</span></th>
+      </tr></thead>
+      <tbody id="vat-daily-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- VAT Rate History -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📜 ประวัติอัตรา VAT</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>อัตรา</th><th>เริ่มใช้</th><th>สิ้นสุด</th><th>หมายเหตุ</th>
+      </tr></thead>
+      <tbody id="vat-hist-tbody"><tr><td colspan="4" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ INVOICE SECTION ══ -->
+<div id="sec-invoice" class="sec">
+  <div class="g2">
+    <!-- Create Invoice Form -->
+    <div class="card">
+      <div class="chdr">📄 ออกใบวางบิล / ใบเสร็จรายวัน</div>
+      <div class="cbdy">
+        <div class="fg"><div class="fr"><label>ลูกค้า</label>
+          <select id="iv-cust" onchange="fillCust()" style="font-size:12px;">
+            <option value="">— เลือกลูกค้า หรือพิมพ์ชื่อด้านล่าง —</option>
+          </select>
+        </div></div>
+        <div class="fg">
+          <div class="fr"><label>ชื่อ</label><input type="text" id="iv-name" placeholder="ชื่อบุคคล / บริษัท"></div>
+          <div class="fr"><label>Tax ID</label><input type="text" id="iv-tax" placeholder="เลขประจำตัวผู้เสียภาษี"></div>
+        </div>
+        <div class="fg">
+          <div class="fr" style="flex:2;"><label>ที่อยู่</label><input type="text" id="iv-addr" placeholder="ที่อยู่"></div>
+          <div class="fr"><label>สาขา</label><select id="iv-branch"><option value="สำนักงานใหญ่">สำนักงานใหญ่</option><option value="สาขา">สาขา</option></select></div>
+        </div>
+        <div class="fsec" style="margin-top:10px;">รายละเอียดห้องพัก</div>
+        <div class="fg">
+          <div class="fr"><label>Check-in</label><input type="date" id="iv-ci"></div>
+          <div class="fr"><label>Check-out</label><input type="date" id="iv-co" onchange="calcInv()"></div>
+        </div>
+        <div class="fg">
+          <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="iv-ppn" value="750" oninput="calcInv()"></div>
+          <div class="fr"><label>จำนวนห้อง</label><input type="number" id="iv-rooms" value="1" min="1" oninput="calcInv()"></div>
+        </div>
+        <div style="background:var(--bg2);border-radius:var(--rs);padding:10px;margin:8px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;"><span>จำนวนคืน:</span><span id="iv-nights" style="font-weight:700;">0</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;"><span>ยอดรวม:</span><span id="iv-amount" style="font-weight:700;">฿0</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;"><span>ก่อน VAT:</span><span id="iv-bvat" style="font-weight:700;">฿0</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--danger);"><span>VAT <span class="vat-pct">7%</span>:</span><span id="iv-vat" style="font-weight:700;">฿0</span></div>
+        </div>
+        <div class="fg">
+          <div class="fr"><label>การชำระ</label><select id="iv-pay"><option value="เงินสด">เงินสด</option><option value="เงินโอน">เงินโอน</option></select></div>
+          <div class="fr"><label>หมายเหตุ</label><input type="text" id="iv-note" placeholder="(ถ้ามี)"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <button class="btn bp" style="flex:1;padding:10px;" onclick="saveInvoice('invoice')">📋 ออกใบวางบิล</button>
+          <button class="btn bp" style="flex:1;padding:10px;background:var(--success);" onclick="saveInvoice('receipt')">🧾 ออกใบเสร็จ</button>
+        </div>
+        <button class="btn" style="width:100%;margin-top:6px;padding:8px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;font-size:11px;" onclick="saveInvoice('both')">📋+🧾 ออกทั้งใบวางบิล + ใบเสร็จ</button>
+      </div>
+    </div>
+    <!-- Customer DB -->
+    <div class="card">
+      <div class="chdr"><span>👤 ฐานข้อมูลลูกค้า</span><button class="tbtn" onclick="addNewCust()" style="font-size:10px;">+ เพิ่ม</button></div>
+      <div style="padding:8px 12px;"><input type="text" id="cust-search" placeholder="🔍 ค้นหาชื่อ / Tax ID..." oninput="filterCustList()" style="width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+      <div style="max-height:500px;overflow-y:auto;">
+        <table class="dtbl"><thead><tr><th>ชื่อ</th><th>Tax ID</th><th>ครั้ง</th><th></th></tr></thead>
+        <tbody id="iv-cust-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+<!-- ═══ CUSTOMER PROFILE MODAL ═══ -->
+<div class="moverlay" id="cust-modal">
+  <div class="modal" style="max-width:900px;width:95%;">
+    <div class="mhdr"><span class="mtitle" id="cust-modal-title">👤 ประวัติลูกค้า</span><button class="mclose" onclick="closeM('cust-modal')">×</button></div>
+    <div class="mbdy" style="max-height:80vh;overflow-y:auto;">
+      <!-- Customer Info -->
+      <div id="cust-profile-info" style="margin-bottom:14px;"></div>
+      <!-- KPI -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;" id="cust-kpi"></div>
+      <!-- Stay History -->
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;">🏨 ประวัติเข้าพัก</div>
+        <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>วันเข้า</th><th>วันออก</th><th>คืน</th><th>ห้อง</th><th>แขก</th><th>แหล่ง</th><th>ยอด</th></tr></thead>
+        <tbody id="cust-stays-tbody"></tbody></table></div>
+      </div>
+      <!-- Invoice History -->
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;">📄 ประวัติใบวางบิล / ใบเสร็จ</div>
+        <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>เลขที่ IVD</th><th>เลขที่ RD</th><th>วันที่</th><th>รายละเอียด</th><th>ยอด</th><th>สถานะ</th></tr></thead>
+        <tbody id="cust-invoices-tbody"></tbody></table></div>
+      </div>
+      <!-- Quotation History -->
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;">📝 ประวัติใบเสนอราคา</div>
+        <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>เลขที่</th><th>วันที่</th><th>ประเภท</th><th>ยอด</th><th>สถานะ</th></tr></thead>
+        <tbody id="cust-quotes-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- ═══ UNPAID ALERTS ═══ -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0;">
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);"><div style="font-size:10px;color:var(--text3);font-weight:600;">⚠️ ค้างชำระ</div><div id="iv-unpaid-count" style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;">—</div><div style="font-size:10px;color:var(--text3);" id="iv-unpaid-amt">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid #e65100;"><div style="font-size:10px;color:var(--text3);font-weight:600;">🔴 เกินกำหนด</div><div id="iv-overdue-count" style="font-size:22px;font-weight:800;color:#e65100;font-family:'JetBrains Mono',monospace;">—</div><div style="font-size:10px;color:var(--text3);" id="iv-overdue-amt">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">✅ ชำระแล้ว (เดือนนี้)</div><div id="iv-paid-count" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div><div style="font-size:10px;color:var(--text3);" id="iv-paid-amt">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">💰 รวมบิลทั้งหมด</div><div id="iv-total-count" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div><div style="font-size:10px;color:var(--text3);" id="iv-total-amt">—</div></div>
+  </div>
+
+  <!-- ═══ UNPAID LIST ═══ -->
+  <div class="card" style="margin-bottom:14px;" id="iv-unpaid-card">
+    <div class="chdr" style="background:#fff3e0;"><span>⚠️ รายการค้างชำระ — ต้องติดตาม</span><span id="iv-unpaid-badge" style="background:var(--danger);color:#fff;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:8px;">0</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>เลขที่</th><th>ลูกค้า</th><th>Check-in</th><th>ยอด</th><th>กำหนดชำระ</th><th>เกิน(วัน)</th><th>หมายเหตุ</th><th></th>
+      </tr></thead>
+      <tbody id="iv-unpaid-tbody"><tr><td colspan="8" class="empty">ไม่มีรายการค้างชำระ ✅</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ═══ INVOICE LIST ═══ -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📋 รายการใบวางบิล / ใบเสร็จ</span>
+      <select id="iv-filter-month" onchange="loadInvoices()" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;margin-left:8px;"></select>
+      <select id="iv-filter-status" onchange="loadInvoices()" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;margin-left:4px;">
+        <option value="">ทั้งหมด</option><option value="unpaid">❌ ค้างชำระ</option><option value="paid">✅ จ่ายแล้ว</option><option value="cancelled">🚫 ยกเลิก</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>เลขที่ IVD</th><th>เลขที่ RD</th><th>วันที่</th><th>ลูกค้า</th><th>Check-in</th><th>คืน</th><th>ยอดรวม</th><th>สถานะ</th><th>ชำระ</th><th></th>
+      </tr></thead>
+      <tbody id="iv-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ═══ QUOTATION ═══ -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📝 ใบเสนอราคา (Quotation)</span><button class="tbtn" onclick="toggleQuoteForm()" id="qt-toggle-btn" style="font-size:11px;">+ สร้างใหม่</button></div>
+    <div id="qt-form" style="display:none;padding:12px;">
+      <div class="fg">
+        <div class="fr"><label>ประเภท</label>
+          <select id="qt-type" onchange="qtTypeChange()" style="font-size:12px;">
+            <option value="daily">🏨 รายวัน</option><option value="monthly">🏠 รายเดือน</option><option value="custom">📋 กำหนดเอง</option>
+          </select>
+        </div>
+        <div class="fr"><label>ลูกค้า</label>
+          <select id="qt-cust" onchange="fillQtCust()" style="font-size:12px;">
+            <option value="">— เลือก หรือพิมพ์ด้านล่าง —</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>ชื่อลูกค้า/บริษัท</label><input type="text" id="qt-name" placeholder="ชื่อ"></div>
+        <div class="fr"><label>Tax ID</label><input type="text" id="qt-tax" placeholder="เลขประจำตัวผู้เสียภาษี"></div>
+      </div>
+      <div class="fg">
+        <div class="fr" style="flex:2;"><label>ที่อยู่</label><input type="text" id="qt-addr" placeholder="ที่อยู่"></div>
+      </div>
+      <div class="fg"><div class="fr" style="flex:2;"><label>เรื่อง</label><input type="text" id="qt-subject" value="เสนอราคาห้องพัก"></div></div>
+
+      <!-- ITEMS -->
+      <div class="fsec" style="margin-top:10px;">รายการ <button onclick="addQtItem()" style="font-size:10px;padding:2px 10px;border:1px dashed var(--gold);background:#fffde7;border-radius:4px;cursor:pointer;">+ เพิ่มรายการ</button></div>
+      <div id="qt-items"></div>
+
+      <!-- Totals -->
+      <div style="background:var(--bg2);border-radius:var(--rs);padding:10px;margin:8px 0;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;"><span>รวม:</span><span id="qt-subtotal" style="font-weight:700;">฿0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;"><span>ก่อน VAT:</span><span id="qt-bvat" style="font-weight:700;">฿0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--danger);"><span>VAT <span class="vat-pct">7%</span>:</span><span id="qt-vat" style="font-weight:700;">฿0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-top:4px;border-top:1px solid var(--border2);padding-top:4px;"><span>รวมทั้งสิ้น:</span><span id="qt-grand">฿0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;margin-top:6px;color:#1565c0;"><span>หัก ณ ที่จ่าย (%):</span><input type="number" id="qt-wht-pct" value="0" min="0" max="10" step="0.5" style="width:60px;padding:2px 6px;font-size:12px;text-align:right;border:1px solid var(--border2);border-radius:var(--rs);" oninput="calcQt()"><span id="qt-wht-amt" style="font-weight:700;">฿0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;color:var(--gold2);margin-top:4px;"><span>ยอดชำระสุทธิ:</span><span id="qt-net">฿0</span></div>
+      </div>
+
+      <div class="fg"><div class="fr" style="flex:2;"><label>เงื่อนไข / หมายเหตุ</label><textarea id="qt-terms" rows="3" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-family:'Sarabun',sans-serif;">- ราคาห้องพัก มีจัดชุดที่นอน, ทีวีตู้เย็นเล็ก พร้อมชุดที่นอน อินเตอร์เน็ต และมีบริการ
+ทำความสะอาดห้องพักพร้อมเปลี่ยนผ้าขนหนู2 ผืน สบู่แชมพูทุกวัน</textarea></div></div>
+      <div class="fg">
+        <div class="fr"><label>ใบเสนอราคามีผล (วัน)</label><input type="number" id="qt-valid" value="30"></div>
+      </div>
+      <button class="btn bp" style="width:100%;padding:10px;margin-top:8px;" onclick="saveQuotation()">📝 บันทึก + พิมพ์ใบเสนอราคา</button>
+    </div>
+  </div>
+
+  <!-- Quotation list -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>📋 รายการใบเสนอราคา</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtbl"><thead><tr>
+        <th>เลขที่</th><th>วันที่</th><th>ลูกค้า</th><th>ประเภท</th><th>ยอดรวม</th><th>สถานะ</th><th></th>
+      </tr></thead>
+      <tbody id="qt-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
 <div class="moverlay" id="emod">
   <div class="modal">
     <div class="mhdr"><span class="mtitle" id="etitle">แก้ไขห้อง</span><button class="mclose" onclick="closeM('emod')">×</button></div>
@@ -941,11 +1284,45 @@ function getFloorName(fl){
   return `ชั้น ${fl}`;
 }
 
-let curMonth='2026-03',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'[]');
+let curMonth='',mData=[],rOrder=JSON.parse(localStorage.getItem('jro')||'[]');
 let eEC=0,eWC=0;
 let dailyM='03',selRoom='',curDailyDate='';
 let activeSec='dashboard';
 let masterRoomsLoaded=false;
+
+const thaiMonths={'01':'ม.ค.','02':'ก.พ.','03':'มี.ค.','04':'เม.ย.','05':'พ.ค.','06':'มิ.ย.','07':'ก.ค.','08':'ส.ค.','09':'ก.ย.','10':'ต.ค.','11':'พ.ย.','12':'ธ.ค.'};
+function monthLabel(m){
+  const[y,mm]=m.split('-');
+  const thY=String((parseInt(y)+543)%100);
+  return (thaiMonths[mm]||mm)+' '+thY;
+}
+
+async function loadMonthButtons(){
+  const{data}=await sb.from('monthly_charges').select('month').eq('building','เจเรสซิเดนซ์');
+  const months=[...new Set((data||[]).map(r=>r.month))].sort();
+  if(months.length===0) return;
+  curMonth=months[months.length-1]; // default = latest month
+  const seg=document.getElementById('mseg');
+  seg.innerHTML=months.map(m=>'<button class="sb'+(m===curMonth?' active':'')+'" onclick="selMonth(\''+m+'\',this)">'+monthLabel(m)+'</button>').join('');
+}
+
+async function generateNextMonth(){
+  // Calculate next month from curMonth
+  const[y,mm]=curMonth.split('-');
+  let ny=parseInt(y),nm=parseInt(mm)+1;
+  if(nm>12){nm=1;ny++;}
+  const nextM=ny+'-'+String(nm).padStart(2,'0');
+  
+  if(!confirm('สร้างข้อมูลเดือน '+monthLabel(nextM)+' จากข้อมูลเดือน '+monthLabel(curMonth)+'?\n\n→ คัดลอกรายชื่อผู้เช่า + ค่าเช่า\n→ Reset ค่าน้ำ/ไฟ/ยอดรวม = 0\n→ สถานะทุกห้อง = pending'))return;
+  
+  const{data,error}=await sb.rpc('generate_new_month',{target_month:nextM});
+  if(error){toast('Error: '+error.message,'err');return;}
+  if(data && data[0] && data[0].skipped > 0){toast('เดือน '+monthLabel(nextM)+' มีอยู่แล้ว ('+data[0].skipped+' ห้อง)','err');return;}
+  
+  toast('สร้างเดือน '+monthLabel(nextM)+' สำเร็จ ✅ ('+((data&&data[0])?data[0].inserted:0)+' ห้อง)','ok');
+  await loadMonthButtons();
+  selMonth(nextM,null);
+}
 
 // ══════════════════════════════════
 // INIT
@@ -958,6 +1335,8 @@ async function init(){
   document.getElementById('bco').value=t;
   curDailyDate=t;
   renderKPIBar();
+  await loadVatSettings();
+  await loadMonthButtons();
   await loadMasterRooms();
   await loadMonth(curMonth);
   renderDashboard();
@@ -1059,9 +1438,10 @@ function updateMonthlyKPI(d){
 // ══════════════════════════════════
 function selMonth(m,btn){
   curMonth=m;
-  dailyM=m.split('-')[1]; // sync daily month e.g. '2026-03' → '03'
+  dailyM=m.split('-')[1];
   document.querySelectorAll('#mseg .sb').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn){btn.classList.add('active');}
+  else{document.querySelectorAll('#mseg .sb').forEach(b=>{if(b.textContent.trim()===monthLabel(m))b.classList.add('active');});}
   loadMonth(m);
   if(activeSec==='daily'){buildDateStrip();renderDaily();}
 }
@@ -1232,7 +1612,7 @@ function renderFloors(data, containerId, filter){
                 ${isDash?`
                   <button class="ract" onclick="quickStatus('${r.room}','cleaning')" title="ทำความสะอาด">🧹</button>
                   <button class="ract" onclick="quickStatus('${r.room}','repairing')" title="แจ้งซ่อม">🔧</button>
-                  ${hasTenant?`<button class="ract" onclick="moveOut('${r.room}')" title="ย้ายออก" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;">🚪</button>`
+                  ${hasTenant?`<button class="ract" onclick="moveOut('${r.room}')" title="แจ้งออก" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;">🚪</button><button class="ract" onclick="abandonRoom('${r.room}')" title="หนี/ทิ้งห้อง" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;">⚠️</button>`
                     :`<button class="ract" onclick="setRoomType('${r.room}','daily')" title="เปลี่ยนเป็นรายวัน" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅→</button>`}
                 `:(!hasTenant?`<button class="ract" onclick="setRoomType('${r.room}','daily')" title="เปลี่ยนเป็นรายวัน" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅→</button>`:'')}
               </div>
@@ -1388,13 +1768,67 @@ async function toggleP(room,cur){await sb.from('monthly_charges').update({status
 
 // Move out tenant (clear tenant data)
 async function moveOut(room){
-  if(!confirm(`ยืนยันย้ายผู้เช่าออกจากห้อง ${room}?`))return;
-  const{error}=await sb.from('monthly_charges').update({tenant_name:'',rent:0,elec_old:null,elec_new:null,elec_cost:0,water_old:null,water_new:null,water_cost:0,parking_car:0,parking_moto:0,fridge_fee:0,other:0,total:0,status:'pending',has_tv:false,has_fridge:false,has_motorcycle:false,has_car:false,contract_months:null,contract_end:null,phone:null}).eq('room',room).eq('month',curMonth);
+  const r=mData.find(x=>x.room===room);
+  if(!r||!r.tenant_name){toast('ห้อง '+room+' ไม่มีผู้เช่า','err');return;}
+  
+  const reason=prompt('ห้อง '+room+' — '+r.tenant_name+'\n\nเหตุผลแจ้งออก:\n1. หมดสัญญา\n2. ย้ายออกก่อนกำหนด\n3. อื่นๆ\n\nพิมพ์เหตุผล:','หมดสัญญา');
+  if(reason===null)return;
+  
+  const today=new Date().toISOString().split('T')[0];
+  const checkoutDate=prompt('วันที่ออก (YYYY-MM-DD):',today);
+  if(!checkoutDate)return;
+  
+  const note=prompt('หมายเหตุเพิ่มเติม (ถ้ามี):','');
+  if(note===null)return;
+  
+  if(!confirm('ยืนยันแจ้งออก\n\nห้อง: '+room+'\nผู้เช่า: '+r.tenant_name+'\nเหตุผล: '+reason+'\nวันออก: '+checkoutDate+'\n\nระบบจะ:\n✓ เดือนนี้: เปลี่ยนสถานะเป็น checkout\n✓ เดือนถัดไป: ลบผู้เช่า → ห้องว่าง\n✓ บันทึก log แจ้งออก'))return;
+  
+  const{data,error}=await sb.rpc('checkout_room',{
+    p_room:room, p_month:curMonth, p_checkout_date:checkoutDate, p_reason:reason, p_note:note||''
+  });
   if(error){toast('Error: '+error.message,'err');return;}
-  await sb.from('room_logs').insert({building:'เจเรสซิเดนซ์',room,log_type:'status_change',status:'ready',description:'ย้ายผู้เช่าออก'});
-  toast(`ห้อง ${room} — ย้ายออกแล้ว ✓`,'ok');
+  
+  toast('ห้อง '+room+' — '+r.tenant_name+' แจ้งออกสำเร็จ ✅','ok');
   await loadMonth(curMonth);
 }
+
+async function abandonRoom(room){
+  const r=mData.find(x=>x.room===room);
+  if(!r||!r.tenant_name){toast('ห้อง '+room+' ไม่มีผู้เช่า','err');return;}
+  
+  // Calculate debt
+  const{data:debts}=await sb.from('monthly_charges').select('month,total').eq('room',room).eq('building','เจเรสซิเดนซ์').eq('status','pending').gt('total',0);
+  const totalDebt=(debts||[]).reduce((s,d)=>s+Number(d.total||0),0);
+  const debtMonths=(debts||[]).map(d=>monthLabel(d.month)+' ฿'+Number(d.total).toLocaleString()).join('\n  ');
+  
+  const reason=prompt('⚠️ ห้อง '+room+' — '+r.tenant_name+'\n\nหนี้ค้างชำระ: ฿'+totalDebt.toLocaleString()+'\n  '+(debtMonths||'ไม่มี')+'\n\nเหตุผล:','หนีห้อง ไม่ติดต่อ');
+  if(reason===null)return;
+  
+  const note=prompt('รายละเอียดเพิ่มเติม:\n(เช่น ทิ้งของไว้, ล็อคห้องไม่ได้, ติดต่อญาติแล้ว)','');
+  if(note===null)return;
+  
+  const doBlacklist=confirm('เพิ่ม "'+r.tenant_name+'" เข้า Blacklist?\n\n→ ป้องกันไม่ให้เช่าอีก');
+  
+  if(!confirm('⚠️ ยืนยันบันทึกหนี/ทิ้งห้อง\n\nห้อง: '+room+'\nผู้เช่า: '+r.tenant_name+'\nเหตุผล: '+reason+'\nหนี้ค้าง: ฿'+totalDebt.toLocaleString()+'\nBlacklist: '+(doBlacklist?'ใช่':'ไม่')+'\n\nระบบจะ:\n✓ บันทึกหนี/ทิ้งห้อง\n✓ เดือนถัดไป → ห้องว่าง\n'+(doBlacklist?'✓ เพิ่มชื่อใน Blacklist':'')))return;
+  
+  const{data,error}=await sb.rpc('abandon_room',{
+    p_room:room, p_month:curMonth, p_reason:reason, p_note:note||'', p_add_blacklist:doBlacklist
+  });
+  if(error){toast('Error: '+error.message,'err');return;}
+  
+  toast('ห้อง '+room+' — บันทึกหนี/ทิ้งห้องแล้ว ⚠️','ok');
+  await loadMonth(curMonth);
+}
+
+async function loadBlacklist(){
+  const{data}=await sb.from('blacklist').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false});
+  const tb=document.getElementById('bl-tbody');
+  if(!tb)return;
+  if(!data||!data.length){tb.innerHTML='<tr><td colspan="6" class="empty">ไม่มีรายชื่อ Blacklist</td></tr>';return;}
+  document.getElementById('bl-count').textContent=data.length;
+  tb.innerHTML=data.map(b=>'<tr><td style="font-weight:700;">'+b.name+'</td><td>'+(b.phone||'—')+'</td><td class="mono">'+(b.room||'—')+'</td><td style="font-size:11px;">'+b.reason+'</td><td class="mono" style="color:var(--danger);font-weight:700;">฿'+(b.outstanding_debt||0).toLocaleString()+'</td><td style="font-size:10px;color:var(--text3);">'+fmtD(b.created_at)+'</td></tr>').join('');
+}
+
 async function showHist(){
   const room=document.getElementById('eroom').value;closeM('emod');
   document.getElementById('htitle').textContent=`ประวัติห้อง ${room}`;document.getElementById('hbody').innerHTML='<div class="loading">กำลังโหลด...</div>';document.getElementById('hmod').classList.add('open');
@@ -2027,9 +2461,12 @@ function showSec(id,btn){
   renderKPIBar();
   if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
-  if(id==='booking'){loadBookings();refreshAvailRooms();}
+  if(id==='booking'){loadBookings();refreshAvailRooms();loadResMonths();loadReservations();}
   if(id==='slips'){loadSlips();}
-  if(id==='staff'){loadStaffList();}
+  if(id==='staff'){loadStaffList();loadBlacklist();}
+  if(id==='tax'){loadTaxMonths();loadTaxData();}
+  if(id==='vat'){loadVatMonths();loadVatReport();loadVatHistory();}
+  if(id==='invoice'){loadCustList();loadInvoices();loadInvFilterMonths();loadQuotations();}
   if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
   if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
     const t=new Date().toISOString().split('T')[0];
@@ -3278,8 +3715,1252 @@ async function rejectSlip(id){
   loadSlips();
 }
 
+// ══════════════════════════════════
+// 🏠 MONTHLY RESERVATION
+// ══════════════════════════════════
+async function loadResMonths(){
+  const{data}=await sb.from('monthly_charges').select('month').eq('building','เจเรสซิเดนซ์');
+  const months=[...new Set((data||[]).map(r=>r.month))].sort();
+  const sel=document.getElementById('res-month');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— เลือกเดือน —</option>'+months.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('');
+  sel.onchange=loadResRooms;
+}
+async function loadResRooms(){
+  const m=document.getElementById('res-month').value;
+  const sel=document.getElementById('res-room');
+  if(!m){sel.innerHTML='<option value="">— เลือกเดือนก่อน —</option>';return;}
+  const{data}=await sb.from('monthly_charges').select('room,tenant_name,room_type').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
+  const empty=(data||[]).filter(r=>(!r.tenant_name||r.tenant_name.trim()==='')&&r.room_type==='monthly');
+  if(!empty.length){sel.innerHTML='<option value="">ไม่มีห้องว่าง เดือน '+monthLabel(m)+'</option>';return;}
+  sel.innerHTML='<option value="">— เลือกห้อง ('+empty.length+' ว่าง) —</option>'+empty.map(r=>'<option value="'+r.room+'">ห้อง '+r.room+'</option>').join('');
+}
+async function submitReservation(){
+  const m=document.getElementById('res-month').value;
+  const room=document.getElementById('res-room').value;
+  const name=document.getElementById('res-name').value.trim();
+  const phone=document.getElementById('res-phone').value.trim();
+  const rent=Number(document.getElementById('res-rent').value)||0;
+  const deposit=Number(document.getElementById('res-deposit').value)||0;
+  const contract=Number(document.getElementById('res-contract').value)||12;
+  const bed=document.getElementById('res-bed').value;
+  const note=document.getElementById('res-note').value.trim();
+  
+  if(!m){toast('กรุณาเลือกเดือน','err');return;}
+  if(!room){toast('กรุณาเลือกห้อง','err');return;}
+  if(!name){toast('กรุณาใส่ชื่อผู้เช่า','err');return;}
+  if(!rent){toast('กรุณาใส่ค่าเช่า','err');return;}
+  
+  if(!confirm('จองห้อง '+room+' เดือน '+monthLabel(m)+'\nผู้เช่า: '+name+'\nค่าเช่า: ฿'+rent.toLocaleString()+'\nมัดจำ: ฿'+deposit.toLocaleString()+'\n\nบันทึก?'))return;
+  
+  const{error}=await sb.from('monthly_reservations').insert({
+    room, start_month:m, tenant_name:name, phone:phone||null,
+    rent, deposit, contract_months:contract, bed_type:bed,
+    has_tv:document.getElementById('res-tv').checked,
+    has_fridge:document.getElementById('res-fridge').checked,
+    has_car:document.getElementById('res-car').checked,
+    has_motorcycle:document.getElementById('res-moto').checked,
+    note:note||null, created_by:'admin',
+  });
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('จองห้อง '+room+' สำเร็จ ✅ '+name,'ok');
+  document.getElementById('res-name').value='';
+  document.getElementById('res-phone').value='';
+  document.getElementById('res-note').value='';
+  loadReservations();
+  loadResRooms();
+}
+async function loadReservations(){
+  const{data}=await sb.from('monthly_reservations').select('*').eq('building','เจเรสซิเดนซ์').order('start_month').order('room');
+  const tb=document.getElementById('res-tbody');
+  if(!data||!data.length){tb.innerHTML='<tr><td colspan="7" class="empty">ยังไม่มีรายการจอง</td></tr>';return;}
+  const stBadge=(s)=>({reserved:'<span style="background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">📝 จอง</span>',confirmed:'<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">✅ ยืนยัน</span>',moved_in:'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">🏠 เข้าอยู่แล้ว</span>',cancelled:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">❌ ยกเลิก</span>'})[s]||s;
+  tb.innerHTML=data.map(r=>'<tr><td class="mono" style="font-weight:800;">'+r.room+'</td><td>'+r.tenant_name+'</td><td>'+monthLabel(r.start_month)+'</td><td class="mono">฿'+(r.rent||0).toLocaleString()+'</td><td class="mono">฿'+(r.deposit||0).toLocaleString()+'</td><td>'+stBadge(r.status)+'</td><td style="white-space:nowrap;">'+(r.status==='reserved'?'<button class="ract" onclick="confirmRes(\''+r.id+'\')" title="ย้ายเข้า">🏠</button><button class="ract" onclick="cancelRes(\''+r.id+'\')" title="ยกเลิก" style="color:var(--danger);">❌</button>':'')+'</td></tr>').join('');
+}
+async function confirmRes(id){
+  if(!confirm('ยืนยันย้ายเข้า?\n→ จะอัพเดตข้อมูลผู้เช่าในเดือนที่จอง'))return;
+  const{data,error}=await sb.rpc('confirm_reservation',{p_id:id});
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast(data||'ย้ายเข้าสำเร็จ ✅','ok');
+  loadReservations();
+  await loadMonth(curMonth);
+}
+async function cancelRes(id){
+  const note=prompt('เหตุผลยกเลิก:','');
+  if(note===null)return;
+  await sb.from('monthly_reservations').update({status:'cancelled',note:note}).eq('id',id);
+  toast('ยกเลิกจองแล้ว','ok');
+  loadReservations();
+}
+
+// ══════════════════════════════════
+// 📊 TAX ACCOUNTING (สรรพากร)
+// ══════════════════════════════════
+async function loadTaxMonths(){
+  const sel=document.getElementById('tx-month');
+  if(!sel)return;
+  const{data}=await sb.from('tax_records').select('month').eq('building','เจเรสซิเดนซ์');
+  const months=[...new Set((data||[]).map(r=>r.month))].sort();
+  if(!months.length){sel.innerHTML='<option value="">ยังไม่มีข้อมูล — กด "ดึงจากข้อมูลจริง"</option>';return;}
+  sel.innerHTML=months.map(m=>'<option value="'+m+'"'+(m===curMonth?' selected':'')+'>'+monthLabel(m)+'</option>').join('');
+}
+async function loadTaxData(){
+  const m=document.getElementById('tx-month')?.value;
+  if(!m)return;
+  const{data:rooms}=await sb.from('tax_records').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
+  const recs=rooms||[];
+  const{data:summ}=await sb.from('tax_monthly_summary').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').maybeSingle();
+  const s=summ||{};
+  
+  const totalActual=recs.reduce((a,r)=>a+Number(r.actual_total||0),0);
+  const totalTax=recs.reduce((a,r)=>a+Number(r.tax_total||0),0);
+  const totalDiff=totalActual-totalTax;
+  const edited=recs.filter(r=>Number(r.diff||0)!==0).length;
+  document.getElementById('tx-income').textContent='฿'+totalTax.toLocaleString();
+  document.getElementById('tx-expense').textContent='฿'+Number(s.expense_total||0).toLocaleString();
+  document.getElementById('tx-profit').textContent='฿'+Number(s.net_profit||0).toLocaleString();
+  document.getElementById('tx-edited').textContent=edited+'/'+recs.length;
+  document.getElementById('tx-room-count').textContent=recs.length+' ห้อง | ส่วนต่างรวม ฿'+totalDiff.toLocaleString();
+  
+  // Summary card - expenses
+  const se=document.getElementById('tx-summary');
+  se.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+    <div><label style="font-size:11px;color:var(--text3);">ค่าน้ำส่วนกลาง</label><input type="number" value="${s.expense_water||0}" onchange="updateTaxSummary('${m}','expense_water',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+    <div><label style="font-size:11px;color:var(--text3);">ค่าไฟส่วนกลาง</label><input type="number" value="${s.expense_elec||0}" onchange="updateTaxSummary('${m}','expense_elec',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+    <div><label style="font-size:11px;color:var(--text3);">เงินเดือนพนักงาน</label><input type="number" value="${s.expense_salary||0}" onchange="updateTaxSummary('${m}','expense_salary',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+    <div><label style="font-size:11px;color:var(--text3);">ค่าซ่อมบำรุง</label><input type="number" value="${s.expense_repair||0}" onchange="updateTaxSummary('${m}','expense_repair',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+    <div><label style="font-size:11px;color:var(--text3);">วัสดุสิ้นเปลือง</label><input type="number" value="${s.expense_supplies||0}" onchange="updateTaxSummary('${m}','expense_supplies',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+    <div><label style="font-size:11px;color:var(--text3);">อื่นๆ</label><input type="number" value="${s.expense_other||0}" onchange="updateTaxSummary('${m}','expense_other',this.value)" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;"></div>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:20px;font-size:12px;font-weight:700;">
+    <span style="color:var(--success);">รายรับ: ฿${Number(s.income_total||0).toLocaleString()}</span>
+    <span style="color:var(--danger);">รายจ่าย: ฿${Number(s.expense_total||0).toLocaleString()}</span>
+    <span style="color:var(--blue);">กำไรสุทธิ: ฿${Number(s.net_profit||0).toLocaleString()}</span>
+  </div>`;
+  
+  // Room table
+  const tb=document.getElementById('tx-tbody');
+  if(!recs.length){tb.innerHTML='<tr><td colspan="10" class="empty">ไม่มีข้อมูล — กด "ดึงจากข้อมูลจริง"</td></tr>';return;}
+  tb.innerHTML=recs.filter(r=>Number(r.actual_total)>0||r.tenant_name).map(r=>{
+    const d=Number(r.diff||0);
+    const diffBadge=d===0?'<span style="font-size:9px;color:var(--text3);">—</span>':'<span style="background:'+(d>0?'#fff3e0':'#e8f5e9')+';color:'+(d>0?'#e65100':'#2e7d32')+';padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">฿'+d.toLocaleString()+'</span>';
+    return '<tr>'
+      +'<td class="mono" style="font-weight:800;">'+r.room+'</td>'
+      +'<td style="font-size:11px;">'+(r.tenant_name||'—').substring(0,15)+'</td>'
+      +'<td class="mono" style="color:var(--text3);font-size:10px;">'+Number(r.actual_rent||0).toLocaleString()+'</td>'
+      +'<td class="mono">'+Number(r.tax_rent||0).toLocaleString()+'</td>'
+      +'<td class="mono">'+Number(r.tax_elec||0).toLocaleString()+'</td>'
+      +'<td class="mono">'+Number(r.tax_water||0).toLocaleString()+'</td>'
+      +'<td class="mono">'+Number(r.tax_other||0).toLocaleString()+'</td>'
+      +'<td class="mono" style="font-weight:700;color:var(--success);">'+Number(r.tax_total||0).toLocaleString()+'</td>'
+      +'<td>'+diffBadge+'</td>'
+      +'<td><button class="ract" onclick="editTaxRoom(\''+r.id+'\',\''+r.room+'\')" title="แก้ไข">✏️</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+async function syncTaxFromReal(){
+  const m=document.getElementById('tx-month')?.value||curMonth;
+  const pct=prompt('ดึงข้อมูลจริงเดือน '+monthLabel(m)+'\n\nปรับลดยอด (%):\n0 = เท่ากับจริง\n10 = ลด 10%\n20 = ลด 20%','0');
+  if(pct===null)return;
+  if(!confirm('ดึงข้อมูลจริง → บัญชีสรรพากร เดือน '+monthLabel(m)+'\nปรับลด '+pct+'%\n\nดำเนินการ?'))return;
+  const{data,error}=await sb.rpc('generate_tax_records',{p_month:m,p_adjust_pct:Number(pct)||0});
+  if(error){toast('Error: '+error.message,'err');return;}
+  const r=data&&data[0]?data[0]:{inserted:0};
+  toast('ดึงข้อมูลเรียบร้อย ✅ ('+r.inserted+' ห้อง | จริง ฿'+Number(r.total_actual||0).toLocaleString()+' → สรรพากร ฿'+Number(r.total_tax||0).toLocaleString()+')','ok');
+  loadTaxMonths();loadTaxData();
+}
+
+async function editTaxRoom(id,room){
+  const{data:r}=await sb.from('tax_records').select('*').eq('id',id).single();
+  if(!r)return;
+  const rent=prompt('ห้อง '+room+' — ค่าเช่า (จริง: ฿'+Number(r.actual_rent||0).toLocaleString()+'):',r.tax_rent||0);if(rent===null)return;
+  const elec=prompt('ค่าไฟ (จริง: ฿'+Number(r.actual_elec||0).toLocaleString()+'):',r.tax_elec||0);if(elec===null)return;
+  const water=prompt('ค่าน้ำ (จริง: ฿'+Number(r.actual_water||0).toLocaleString()+'):',r.tax_water||0);if(water===null)return;
+  const other=prompt('อื่นๆ (จริง: ฿'+Number(r.actual_other||0).toLocaleString()+'):',r.tax_other||0);if(other===null)return;
+  const total=Number(rent)+Number(elec)+Number(water)+Number(other);
+  
+  await sb.from('tax_records').update({
+    tax_rent:Number(rent), tax_elec:Number(elec), tax_water:Number(water),
+    tax_other:Number(other), updated_at:new Date().toISOString()
+  }).eq('id',id);
+  toast('แก้ไขห้อง '+room+' สำเร็จ ✅ สรรพากร ฿'+total.toLocaleString(),'ok');
+  loadTaxData();
+}
+
+async function updateTaxSummary(m,field,val){
+  await sb.from('tax_monthly_summary').update({[field]:Number(val),updated_at:new Date().toISOString()}).eq('month',m).eq('building','เจเรสซิเดนซ์');
+  loadTaxData();
+}
+
+async function exportTaxExcel(){
+  const m=document.getElementById('tx-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');return;}
+  const{data:rooms}=await sb.from('tax_records').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
+  const{data:summ}=await sb.from('tax_monthly_summary').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').maybeSingle();
+  if(!rooms?.length){toast('ไม่มีข้อมูล','err');return;}
+  const s=summ||{};
+  
+  const wb=XLSX.utils.book_new();
+  const ws1Data=[['บัญชีสรรพากร — '+monthLabel(m)+' — เจเรสซิเดนซ์'],
+    ['ห้อง','ผู้เช่า','ค่าเช่า(จริง)','ค่าเช่า(สรรพากร)','ค่าไฟ(สรรพากร)','ค่าน้ำ(สรรพากร)','อื่นๆ(สรรพากร)','รวม(สรรพากร)','ส่วนต่าง']
+  ];
+  rooms.filter(r=>Number(r.actual_total)>0||r.tenant_name).forEach(r=>{
+    ws1Data.push([r.room,r.tenant_name||'',Number(r.actual_rent||0),Number(r.tax_rent||0),Number(r.tax_elec||0),Number(r.tax_water||0),Number(r.tax_other||0),Number(r.tax_total||0),Number(r.diff||0)]);
+  });
+  const tTax=rooms.reduce((a,r)=>a+Number(r.tax_total||0),0);
+  const tActual=rooms.reduce((a,r)=>a+Number(r.actual_total||0),0);
+  ws1Data.push([]);
+  ws1Data.push(['','','รวมจริง','','','','','รวมสรรพากร','ส่วนต่าง']);
+  ws1Data.push(['','',tActual,'','','','',tTax,tActual-tTax]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws1Data),'รายรับ');
+  
+  const ws2Data=[['สรุปค่าใช้จ่าย — '+monthLabel(m)],[],['รายการ','จำนวน (฿)'],
+    ['ค่าน้ำส่วนกลาง',Number(s.expense_water||0)],['ค่าไฟส่วนกลาง',Number(s.expense_elec||0)],
+    ['เงินเดือนพนักงาน',Number(s.expense_salary||0)],['ค่าซ่อมบำรุง',Number(s.expense_repair||0)],
+    ['วัสดุสิ้นเปลือง',Number(s.expense_supplies||0)],['อื่นๆ',Number(s.expense_other||0)],
+    [],['รายจ่ายรวม',Number(s.expense_total||0)],
+    [],['รายรับรวม(สรรพากร)',tTax],['รายจ่ายรวม',Number(s.expense_total||0)],['กำไรสุทธิ',tTax-Number(s.expense_total||0)],
+  ];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws2Data),'สรุป');
+  XLSX.writeFile(wb,'Tax_JResidence_'+m+'.xlsx');
+  toast('Export บัญชีสรรพากร สำเร็จ ✅','ok');
+}
+
+// ══════════════════════════════════
+// 🧾 VAT REPORT
+// ══════════════════════════════════
+// VAT config (loaded from DB)
+let VAT_RATE=7, VAT_EXEMPT_RENT=true, VAT_EXEMPT_DAILY=false, VAT_EFFECTIVE='';
+
+async function loadVatSettings(){
+  const{data}=await sb.from('app_settings').select('key,value').in('key',['vat_rate','vat_effective_date','vat_exempt_rent','vat_exempt_daily']);
+  (data||[]).forEach(s=>{
+    if(s.key==='vat_rate') VAT_RATE=Number(s.value)||7;
+    if(s.key==='vat_effective_date') VAT_EFFECTIVE=s.value;
+    if(s.key==='vat_exempt_rent') VAT_EXEMPT_RENT=s.value==='true';
+    if(s.key==='vat_exempt_daily') VAT_EXEMPT_DAILY=s.value==='true';
+  });
+  // Update UI labels
+  document.querySelectorAll('.vat-pct').forEach(el=>el.textContent=VAT_RATE+'%');
+}
+
+function calcVat(amount, inclusive){
+  const a=Number(amount)||0;
+  const r=VAT_RATE/100;
+  if(inclusive){return{total:a, before:Math.round(a/(1+r)*100)/100, vat:Math.round((a-a/(1+r))*100)/100};}
+  return{total:Math.round(a*(1+r)*100)/100, before:a, vat:Math.round(a*r*100)/100};
+}
+
+async function saveVatRate(){
+  const newRate=prompt('อัตรา VAT ปัจจุบัน: '+VAT_RATE+'%\n\nใส่อัตราใหม่ (ตัวเลข):',VAT_RATE);
+  if(newRate===null)return;
+  const rate=Number(newRate);
+  if(isNaN(rate)||rate<0||rate>30){toast('อัตราไม่ถูกต้อง','err');return;}
+  const effDate=prompt('วันที่เริ่มใช้อัตราใหม่ (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);
+  if(!effDate)return;
+  const note=prompt('หมายเหตุ (เช่น ปรับขึ้นตาม พ.ร.ฎ.):','');
+  if(note===null)return;
+  if(!confirm('เปลี่ยนอัตรา VAT\n\nจาก: '+VAT_RATE+'%\nเป็น: '+rate+'%\nเริ่ม: '+effDate+'\n\nยืนยัน?'))return;
+  
+  // Close old rate
+  await sb.from('vat_rate_history').update({effective_to:effDate}).is('effective_to',null);
+  // Insert new rate
+  await sb.from('vat_rate_history').insert({rate,effective_from:effDate,note:note||'เปลี่ยนอัตรา VAT'});
+  // Update settings
+  await sb.from('app_settings').update({value:String(rate),updated_at:new Date().toISOString()}).eq('key','vat_rate');
+  await sb.from('app_settings').update({value:effDate,updated_at:new Date().toISOString()}).eq('key','vat_effective_date');
+  
+  toast('เปลี่ยนอัตรา VAT เป็น '+rate+'% สำเร็จ ✅','ok');
+  await loadVatSettings();
+  loadVatReport();
+}
+
+async function loadVatHistory(){
+  const{data}=await sb.from('vat_rate_history').select('*').order('effective_from',{ascending:false});
+  const tb=document.getElementById('vat-hist-tbody');
+  if(!tb)return;
+  if(!data?.length){tb.innerHTML='<tr><td colspan="4" class="empty">ไม่มีประวัติ</td></tr>';return;}
+  tb.innerHTML=(data||[]).map(r=>'<tr><td class="mono" style="font-weight:700;font-size:16px;color:var(--gold2);">'+r.rate+'%</td><td class="mono">'+fmtD(r.effective_from)+'</td><td class="mono">'+(r.effective_to?fmtD(r.effective_to):'<span style="color:var(--success);font-weight:700;">ปัจจุบัน</span>')+'</td><td style="font-size:11px;">'+(r.note||'—')+'</td></tr>').join('');
+}
+
+async function loadVatMonths(){
+  const{data}=await sb.from('monthly_charges').select('month').eq('building','เจเรสซิเดนซ์');
+  const months=[...new Set((data||[]).map(r=>r.month))].sort();
+  const sel=document.getElementById('vat-month');
+  if(!sel)return;
+  sel.innerHTML=months.map(m=>'<option value="'+m+'"'+(m===curMonth?' selected':'')+'>'+monthLabel(m)+'</option>').join('');
+}
+
+async function loadVatReport(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m)return;
+  const inc=document.getElementById('vat-inc')?.checked??true;
+  
+  // === MONTHLY DATA ===
+  const{data:mRooms}=await sb.from('monthly_charges').select('room,tenant_name,rent,elec_cost,water_cost,parking_car,parking_moto,tv_fee,fridge_fee,other,total')
+    .eq('month',m).eq('building','เจเรสซิเดนซ์').gt('total',0).order('room');
+  const rooms=mRooms||[];
+  
+  let sumRent=0,sumOther=0,vatOther=0;
+  const mRows=rooms.map(r=>{
+    const rent=Number(r.rent||0);
+    const otherAmt=Number(r.elec_cost||0)+Number(r.water_cost||0)+Number(r.parking_car||0)+Number(r.parking_moto||0)+Number(r.tv_fee||0)+Number(r.fridge_fee||0)+Number(r.other||0);
+    const vOther=calcVat(otherAmt,inc);
+    sumRent+=rent; sumOther+=otherAmt;
+    vatOther+=vOther.vat;
+    return '<tr>'
+      +'<td class="mono" style="font-weight:800;">'+r.room+'</td>'
+      +'<td style="font-size:11px;">'+(r.tenant_name||'—').substring(0,15)+'</td>'
+      +'<td class="mono" style="color:var(--text3);">'+rent.toLocaleString()+'</td>'
+      +'<td class="mono">'+otherAmt.toLocaleString()+'</td>'
+      +'<td class="mono" style="color:var(--danger);">'+vOther.vat.toLocaleString()+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+Number(r.total||0).toLocaleString()+'</td>'
+      +'<td class="mono" style="font-weight:700;color:var(--danger);">'+vOther.vat.toLocaleString()+'</td>'
+      +'</tr>';
+  });
+  document.getElementById('vat-monthly-tbody').innerHTML=mRows.join('')
+    +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="2">รวมรายเดือน</td>'
+    +'<td class="mono" style="color:var(--text3);">'+sumRent.toLocaleString()+'</td>'
+    +'<td class="mono">'+sumOther.toLocaleString()+'</td><td class="mono" style="color:var(--danger);">'+vatOther.toLocaleString()+'</td>'
+    +'<td class="mono">'+(sumRent+sumOther).toLocaleString()+'</td><td class="mono" style="color:var(--danger);">'+vatOther.toLocaleString()+'</td></tr>';
+  document.getElementById('vat-m-count').textContent=rooms.length+' ห้อง';
+  
+  // === DAILY DATA ===
+  const y=m.split('-')[0], mm=m.split('-')[1];
+  const startD=m+'-01';
+  const endD=y+'-'+mm+'-31';
+  const{data:dBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount')
+    .eq('building','เจเรสซิเดนซ์').gte('check_in',startD).lte('check_in',endD).order('check_in');
+  const bks=dBookings||[];
+  
+  let sumDaily=0, vatDaily=0;
+  const dRows=bks.map(b=>{
+    const amt=Number(b.total_amount||0);
+    const v=calcVat(amt,inc);
+    sumDaily+=amt; vatDaily+=v.vat;
+    const srcBadge={'Agoda':'🟠','Traveloka':'🔴','Walk-in':'🔵','Booking.com':'🔵'}[b.source]||'⚫';
+    return '<tr>'
+      +'<td class="mono">'+fmtD(b.check_in)+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+(b.room||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(b.guest_name||'—').substring(0,20)+'</td>'
+      +'<td>'+srcBadge+' '+(b.source||'')+'</td>'
+      +'<td class="mono">'+fmtD(b.check_in)+'</td>'
+      +'<td class="mono">'+fmtD(b.check_out)+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+amt.toLocaleString()+'</td>'
+      +'<td class="mono">'+v.before.toLocaleString()+'</td>'
+      +'<td class="mono" style="color:var(--danger);">'+v.vat.toLocaleString()+'</td>'
+      +'</tr>';
+  });
+  document.getElementById('vat-daily-tbody').innerHTML=dRows.join('')
+    +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="6">รวมรายวัน</td>'
+    +'<td class="mono">'+sumDaily.toLocaleString()+'</td>'
+    +'<td class="mono">'+calcVat(sumDaily,inc).before.toLocaleString()+'</td>'
+    +'<td class="mono" style="color:var(--danger);">'+vatDaily.toLocaleString()+'</td></tr>';
+  document.getElementById('vat-d-count').textContent=bks.length+' รายการ';
+  
+  // === KPI (rent has NO VAT) ===
+  const totalVat=vatOther+vatDaily;
+  document.getElementById('vat-total').textContent='฿'+Math.round(totalVat).toLocaleString();
+  document.getElementById('vat-rent').textContent='฿'+sumRent.toLocaleString();
+  document.getElementById('vat-other').textContent='฿'+Math.round(vatOther).toLocaleString();
+  document.getElementById('vat-daily').textContent='฿'+Math.round(vatDaily).toLocaleString();
+  
+  // === SUMMARY TABLE (rent = exempt) ===
+  const vOtherAll=calcVat(sumOther,inc);
+  const vDailyAll=calcVat(sumDaily,inc);
+  const vatableTotal=sumOther+sumDaily;
+  const grandTotal=sumRent+sumOther+sumDaily;
+  
+  document.getElementById('vat-summary-tbody').innerHTML=
+    '<tr style="background:#f5f5f5;"><td style="font-weight:700;">🏠 ค่าเช่ารายเดือน</td><td class="mono">'+sumRent.toLocaleString()+'</td><td class="mono">'+sumRent.toLocaleString()+'</td><td class="mono" style="color:var(--text3);">ยกเว้น VAT</td></tr>'
+    +'<tr><td style="font-weight:700;">⚡ ค่าไฟ+น้ำ+อื่นๆ (รายเดือน)</td><td class="mono">'+sumOther.toLocaleString()+'</td><td class="mono">'+vOtherAll.before.toLocaleString()+'</td><td class="mono" style="color:var(--danger);font-weight:700;">'+vatOther.toLocaleString()+'</td></tr>'
+    +'<tr><td style="font-weight:700;">📅 ห้องพักรายวัน</td><td class="mono">'+sumDaily.toLocaleString()+'</td><td class="mono">'+vDailyAll.before.toLocaleString()+'</td><td class="mono" style="color:var(--danger);font-weight:700;">'+vatDaily.toLocaleString()+'</td></tr>';
+  
+  document.getElementById('vs-total').textContent='฿'+grandTotal.toLocaleString();
+  document.getElementById('vs-before').textContent='฿'+(grandTotal-totalVat).toLocaleString();
+  document.getElementById('vs-vat').textContent='฿'+Math.round(totalVat).toLocaleString();
+}
+
+async function exportVatExcel(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');return;}
+  const inc=document.getElementById('vat-inc')?.checked??true;
+  const label=inc?'(ราคารวม VAT)':'(ราคาไม่รวม VAT)';
+  
+  const{data:mRooms}=await sb.from('monthly_charges').select('room,tenant_name,rent,elec_cost,water_cost,parking_car,parking_moto,tv_fee,fridge_fee,other,total')
+    .eq('month',m).eq('building','เจเรสซิเดนซ์').gt('total',0).order('room');
+  const y=m.split('-')[0],mm=m.split('-')[1];
+  const{data:dBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount')
+    .eq('building','เจเรสซิเดนซ์').gte('check_in',m+'-01').lte('check_in',y+'-'+mm+'-31').order('check_in');
+  
+  const wb=XLSX.utils.book_new();
+  
+  // Sheet 1: สรุปภาษีขาย
+  const ws1=[['รายงานภาษีขาย VAT '+VAT_RATE+'% — '+monthLabel(m)+' — เจเรสซิเดนซ์ '+label],
+    ['* ค่าเช่าอสังหาริมทรัพย์ ยกเว้น VAT ตาม พ.ร.บ.ภาษีมูลค่าเพิ่ม'],[],
+    ['ประเภทรายได้','ยอดรวม','ยอดก่อน VAT','VAT '+VAT_RATE+'%','หมายเหตุ']];
+  let tRent=0,tOther=0,tDaily=0,vOther=0,vDaily=0;
+  (mRooms||[]).forEach(r=>{
+    const rent=Number(r.rent||0); tRent+=rent;
+    const oth=Number(r.elec_cost||0)+Number(r.water_cost||0)+Number(r.parking_car||0)+Number(r.parking_moto||0)+Number(r.tv_fee||0)+Number(r.fridge_fee||0)+Number(r.other||0);
+    tOther+=oth; vOther+=calcVat(oth,inc).vat;
+  });
+  (dBookings||[]).forEach(b=>{const a=Number(b.total_amount||0);tDaily+=a;vDaily+=calcVat(a,inc).vat;});
+  ws1.push(['ค่าเช่ารายเดือน',tRent,tRent,0,'ยกเว้น VAT']);
+  ws1.push(['ค่าไฟ+น้ำ+อื่นๆ (รายเดือน)',tOther,tOther-vOther,vOther,'VAT '+VAT_RATE+'%']);
+  ws1.push(['ห้องพักรายวัน',tDaily,tDaily-vDaily,vDaily,'VAT '+VAT_RATE+'%']);
+  ws1.push([]);
+  ws1.push(['รวมทั้งหมด',tRent+tOther+tDaily,(tRent+tOther+tDaily)-(vOther+vDaily),vOther+vDaily]);
+  ws1.push([]);
+  ws1.push(['รวมฐานภาษี (เฉพาะที่ต้องเสีย VAT)',tOther+tDaily,(tOther+tDaily)-(vOther+vDaily),vOther+vDaily]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws1),'สรุปภาษีขาย');
+  
+  // Sheet 2: รายเดือนแยกห้อง
+  const ws2=[['ภาษีขายรายเดือน — '+monthLabel(m)],
+    ['* ค่าเช่า = ยกเว้น VAT | ค่าไฟ+น้ำ+อื่นๆ = VAT '+VAT_RATE+'%'],[],
+    ['ห้อง','ผู้เช่า','ค่าเช่า (ยกเว้น)','รายได้อื่นๆ','VAT อื่นๆ 7%','รวม','VAT รวม']];
+  (mRooms||[]).forEach(r=>{
+    const rent=Number(r.rent||0);
+    const oth=Number(r.elec_cost||0)+Number(r.water_cost||0)+Number(r.parking_car||0)+Number(r.parking_moto||0)+Number(r.tv_fee||0)+Number(r.fridge_fee||0)+Number(r.other||0);
+    ws2.push([r.room,r.tenant_name||'',rent,oth,calcVat(oth,inc).vat,rent+oth,calcVat(oth,inc).vat]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws2),'รายเดือน');
+  
+  // Sheet 3: รายวัน
+  const ws3=[['ภาษีขายรายวัน — '+monthLabel(m)],[],
+    ['วันที่','ห้อง','แขก','แหล่ง','Check-in','Check-out','ยอดรวม','ก่อน VAT','VAT '+VAT_RATE+'%']];
+  (dBookings||[]).forEach(b=>{
+    const a=Number(b.total_amount||0);const v=calcVat(a,inc);
+    ws3.push([b.check_in,b.room||'',b.guest_name||'',b.source||'',b.check_in,b.check_out,a,v.before,v.vat]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws3),'รายวัน');
+  
+  XLSX.writeFile(wb,'VAT_Report_'+m+'_JResidence.xlsx');
+  toast('Export รายงานภาษีขาย สำเร็จ ✅','ok');
+}
+
+// ══════════════════════════════════
+// 📄 INVOICE SYSTEM
+// ══════════════════════════════════
+const SHOP={name:'ห้างหุ้นส่วนสามัญ เจ. เรสซิเดนซ์ / J.Residence',
+  addr_th:'สำนักงานใหญ่ : 19/9 หมู่ที่ 6 ถนน ศรีนครินทร์ ตำบล บางเมืองใหม่ อำเภอ เมือง จังหวัด สมุทรปราการ 10270',
+  addr_en:'Head Office : 19/9 Moo 6 Srinakarin Road Bangmuaeng mai Mueang Samutprakarn 10270',
+  tel:'080-1766571 , 02-3856919', tax:'0992002541070',
+  bank:'กรุงเทพฯ สาขา บางจาก ชื่อบัญชี ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์ เลขที่บัญชี 179-4-74602-2'};
+
+let custDB=[];
+async function loadCustList(){
+  const{data}=await sb.from('billing_customers').select('*').order('name');
+  custDB=data||[];
+  const sel=document.getElementById('iv-cust');
+  sel.innerHTML='<option value="">— เลือกลูกค้า —</option>'+custDB.map(c=>'<option value="'+c.id+'">'+c.name+(c.tax_id?' ('+c.tax_id+')':'')+'</option>').join('');
+  
+  // Get visit counts from invoices + ota_bookings by customer name
+  const{data:ivCounts}=await sb.from('daily_invoices').select('customer_name').eq('status','active');
+  const{data:otaCounts}=await sb.from('ota_bookings').select('guest_name');
+  const nameCount={};
+  (ivCounts||[]).forEach(r=>{const n=r.customer_name;nameCount[n]=(nameCount[n]||0)+1;});
+  (otaCounts||[]).forEach(r=>{const n=r.guest_name;nameCount[n]=(nameCount[n]||0)+1;});
+  
+  const tb=document.getElementById('iv-cust-tbody');
+  tb.innerHTML=custDB.map(c=>{
+    const cnt=nameCount[c.name]||0;
+    return '<tr class="cust-row" data-name="'+c.name+'" data-tax="'+(c.tax_id||'')+'">'
+      +'<td style="font-size:11px;cursor:pointer;" onclick="openCustProfile(\''+c.id+'\')"><span style="color:var(--blue);text-decoration:underline;">'+c.name+'</span></td>'
+      +'<td class="mono" style="font-size:10px;">'+(c.tax_id||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;text-align:center;">'+(cnt>0?'<span style="background:var(--blue);color:#fff;padding:1px 8px;border-radius:8px;font-size:10px;">'+cnt+'</span>':'—')+'</td>'
+      +'<td style="white-space:nowrap;">'
+        +'<button class="ract" onclick="openCustProfile(\''+c.id+'\')" title="ดูประวัติ" style="font-size:10px;">📋</button>'
+        +'<button class="ract" onclick="selectCust(\''+c.id+'\')" title="เลือก" style="font-size:10px;">✓</button>'
+      +'</td></tr>';
+  }).join('');
+  
+  const t=new Date().toISOString().split('T')[0];
+  if(!document.getElementById('iv-ci').value)document.getElementById('iv-ci').value=t;
+  if(!document.getElementById('iv-co').value){const d=new Date();d.setDate(d.getDate()+1);document.getElementById('iv-co').value=d.toISOString().split('T')[0];}
+  calcInv();
+}
+function filterCustList(){
+  const q=(document.getElementById('cust-search').value||'').toLowerCase();
+  document.querySelectorAll('.cust-row').forEach(r=>{
+    const name=(r.dataset.name||'').toLowerCase();
+    const tax=(r.dataset.tax||'').toLowerCase();
+    r.style.display=(name.includes(q)||tax.includes(q))?'':'none';
+  });
+}
+async function openCustProfile(custId){
+  const c=custDB.find(x=>x.id===custId);
+  if(!c){toast('ไม่พบข้อมูลลูกค้า','err');return;}
+  
+  document.getElementById('cust-modal-title').textContent='👤 '+c.name;
+  document.getElementById('cust-modal').classList.add('open');
+  
+  // Info card
+  document.getElementById('cust-profile-info').innerHTML=
+    '<div style="background:var(--bg2);border-radius:var(--rs);padding:12px;display:flex;flex-wrap:wrap;gap:16px;">'
+    +'<div><span style="font-size:10px;color:var(--text3);">ชื่อ</span><div style="font-weight:700;">'+c.name+'</div></div>'
+    +(c.tax_id?'<div><span style="font-size:10px;color:var(--text3);">Tax ID</span><div class="mono">'+c.tax_id+'</div></div>':'')
+    +(c.phone?'<div><span style="font-size:10px;color:var(--text3);">โทร</span><div>'+c.phone+'</div></div>':'')
+    +(c.address?'<div style="flex:2;min-width:200px;"><span style="font-size:10px;color:var(--text3);">ที่อยู่</span><div style="font-size:12px;">'+c.address+'</div></div>':'')
+    +'</div>';
+  
+  // Load stays from ota_bookings (match by name — fuzzy)
+  const{data:stays}=await sb.from('ota_bookings').select('*')
+    .eq('building','เจเรสซิเดนซ์').order('check_in',{ascending:false});
+  // Match by customer name (exact or contains)
+  const custStays=(stays||[]).filter(s=>{
+    const gn=(s.guest_name||'').toLowerCase();
+    const cn=c.name.toLowerCase();
+    return gn.includes(cn)||cn.includes(gn);
+  });
+  
+  // Also check daily_invoices
+  const{data:invoices}=await sb.from('daily_invoices').select('*')
+    .eq('building','เจเรสซิเดนซ์')
+    .or('customer_name.ilike.%'+c.name+'%,customer_id.eq.'+custId)
+    .order('invoice_date',{ascending:false});
+  const custInv=invoices||[];
+  
+  // Quotations
+  const{data:quotes}=await sb.from('quotations').select('*')
+    .eq('building','เจเรสซิเดนซ์')
+    .or('customer_name.ilike.%'+c.name+'%,customer_id.eq.'+custId)
+    .order('quote_date',{ascending:false});
+  const custQt=quotes||[];
+  
+  // Also get individual guest stays linked to this company from invoices
+  const invGuests=custInv.map(iv=>iv.description||'').join(' ');
+  
+  // KPI
+  const totalStays=custStays.length+custInv.length;
+  const totalRevenue=custStays.reduce((a,s)=>a+Number(s.total_amount||0),0)+custInv.reduce((a,iv)=>a+Number(iv.grand_total||0),0);
+  const totalNights=custStays.reduce((a,s)=>{
+    if(s.check_in&&s.check_out)return a+Math.max(1,Math.round((new Date(s.check_out)-new Date(s.check_in))/86400000));
+    return a;
+  },0)+custInv.reduce((a,iv)=>a+(iv.nights||0),0);
+  const unpaidInv=custInv.filter(iv=>iv.payment_status==='unpaid'&&iv.status==='active');
+  const unpaidAmt=unpaidInv.reduce((a,iv)=>a+Number(iv.grand_total||0),0);
+  const firstVisit=custStays.length?custStays[custStays.length-1].check_in:(custInv.length?custInv[custInv.length-1].invoice_date:'—');
+  const lastVisit=custStays.length?custStays[0].check_in:(custInv.length?custInv[0].invoice_date:'—');
+  
+  document.getElementById('cust-kpi').innerHTML=
+    '<div class="card" style="padding:10px 14px;border-left:3px solid var(--gold);"><div style="font-size:10px;color:var(--text3);">รวมเข้าพัก</div><div style="font-size:20px;font-weight:800;color:var(--gold2);">'+totalStays+' ครั้ง</div><div style="font-size:10px;color:var(--text3);">'+totalNights+' คืน</div></div>'
+    +'<div class="card" style="padding:10px 14px;border-left:3px solid var(--success);"><div style="font-size:10px;color:var(--text3);">รายรับรวม</div><div style="font-size:20px;font-weight:800;color:var(--success);">฿'+totalRevenue.toLocaleString()+'</div></div>'
+    +(unpaidAmt>0?'<div class="card" style="padding:10px 14px;border-left:3px solid var(--danger);"><div style="font-size:10px;color:var(--text3);">ค้างชำระ</div><div style="font-size:20px;font-weight:800;color:var(--danger);">฿'+unpaidAmt.toLocaleString()+'</div><div style="font-size:10px;color:var(--danger);">'+unpaidInv.length+' รายการ</div></div>':'')
+    +'<div class="card" style="padding:10px 14px;border-left:3px solid var(--blue);"><div style="font-size:10px;color:var(--text3);">เข้าพักครั้งแรก</div><div style="font-size:14px;font-weight:700;">'+fmtD(firstVisit)+'</div><div style="font-size:10px;color:var(--text3);">ล่าสุด: '+fmtD(lastVisit)+'</div></div>';
+  
+  // Stays table
+  const stb=document.getElementById('cust-stays-tbody');
+  if(!custStays.length&&!custInv.filter(iv=>iv.check_in).length){
+    stb.innerHTML='<tr><td colspan="7" class="empty">ยังไม่มีประวัติเข้าพัก</td></tr>';
+  } else {
+    // Combine OTA + invoices stays
+    const allStays=[
+      ...custStays.map(s=>({ci:s.check_in,co:s.check_out,nights:s.check_in&&s.check_out?Math.max(1,Math.round((new Date(s.check_out)-new Date(s.check_in))/86400000)):1,room:s.room||'—',guest:s.guest_name,source:s.source,amount:Number(s.total_amount||0)})),
+      ...custInv.filter(iv=>iv.check_in).map(iv=>({ci:iv.check_in,co:iv.check_out,nights:iv.nights||1,room:'—',guest:iv.customer_name,source:'ใบวางบิล',amount:Number(iv.grand_total||0)}))
+    ].sort((a,b)=>b.ci.localeCompare(a.ci));
+    
+    // Dedup by check_in+amount
+    const seen=new Set();
+    const unique=allStays.filter(s=>{const k=s.ci+'|'+s.amount;if(seen.has(k))return false;seen.add(k);return true;});
+    
+    const srcBadge=(s)=>({'Agoda':'🟠 Agoda','Traveloka':'🔴 Traveloka','Walk-in':'🔵 Walk-in','Booking.com':'🔵 Booking','ใบวางบิล':'📋 บิล'}[s]||s);
+    stb.innerHTML=unique.map(s=>'<tr>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(s.ci)+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(s.co)+'</td>'
+      +'<td class="mono" style="text-align:center;">'+s.nights+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+(s.room||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(s.guest||'').substring(0,25)+'</td>'
+      +'<td style="font-size:10px;">'+srcBadge(s.source)+'</td>'
+      +'<td class="mono" style="font-weight:700;">฿'+s.amount.toLocaleString()+'</td>'
+      +'</tr>').join('')
+      +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="6">รวม '+unique.length+' ครั้ง</td><td class="mono">฿'+unique.reduce((a,s)=>a+s.amount,0).toLocaleString()+'</td></tr>';
+  }
+  
+  // Invoices table
+  const itb=document.getElementById('cust-invoices-tbody');
+  if(!custInv.length){
+    itb.innerHTML='<tr><td colspan="6" class="empty">ยังไม่มีใบวางบิล</td></tr>';
+  } else {
+    const payBadge=(r)=>{
+      if(r.status==='cancelled')return'🚫';
+      if(r.payment_status==='paid')return'<span style="color:var(--success);">✅ จ่ายแล้ว</span>';
+      return'<span style="color:var(--danger);">❌ ค้างชำระ</span>';
+    };
+    itb.innerHTML=custInv.map(r=>'<tr>'
+      +'<td class="mono" style="font-size:11px;">'+(r.invoice_no||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(r.receipt_no||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.invoice_date)+'</td>'
+      +'<td style="font-size:11px;">'+(r.description||'').substring(0,40)+'</td>'
+      +'<td class="mono" style="font-weight:700;">฿'+Number(r.grand_total||0).toLocaleString()+'</td>'
+      +'<td>'+payBadge(r)+'</td>'
+      +'</tr>').join('');
+  }
+  
+  // Quotes table
+  const qtb=document.getElementById('cust-quotes-tbody');
+  if(!custQt.length){
+    qtb.innerHTML='<tr><td colspan="5" class="empty">ยังไม่มีใบเสนอราคา</td></tr>';
+  } else {
+    qtb.innerHTML=custQt.map(r=>'<tr>'
+      +'<td class="mono" style="font-size:11px;">'+(r.quote_no||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.quote_date)+'</td>'
+      +'<td style="font-size:11px;">'+({daily:'🏨 รายวัน',monthly:'🏠 รายเดือน',custom:'📋'}[r.quote_type]||'')+'</td>'
+      +'<td class="mono" style="font-weight:700;">฿'+Number(r.grand_total||0).toLocaleString()+'</td>'
+      +'<td>'+r.status+'</td>'
+      +'</tr>').join('');
+  }
+}
+function fillCust(){
+  const id=document.getElementById('iv-cust').value;
+  const c=custDB.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('iv-name').value=c.name;
+  document.getElementById('iv-addr').value=c.address||'';
+  document.getElementById('iv-tax').value=c.tax_id||'';
+  document.getElementById('iv-branch').value=c.branch||'สำนักงานใหญ่';
+}
+function selectCust(id){document.getElementById('iv-cust').value=id;fillCust();}
+function calcInv(){
+  const ci=document.getElementById('iv-ci').value;
+  const co=document.getElementById('iv-co').value;
+  const ppn=Number(document.getElementById('iv-ppn').value)||0;
+  const rooms=Number(document.getElementById('iv-rooms').value)||1;
+  let nights=1;
+  if(ci&&co){const d1=new Date(ci),d2=new Date(co);nights=Math.max(1,Math.round((d2-d1)/(86400000)));}
+  const amount=nights*ppn*rooms;
+  const v=calcVat(amount,true);
+  document.getElementById('iv-nights').textContent=nights;
+  document.getElementById('iv-amount').textContent='฿'+amount.toLocaleString();
+  document.getElementById('iv-bvat').textContent='฿'+v.before.toLocaleString();
+  document.getElementById('iv-vat').textContent='฿'+v.vat.toLocaleString();
+}
+function numToThaiText(n){
+  const th=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+  const unit=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  if(n===0)return'ศูนย์บาทถ้วน';
+  const int=Math.floor(n),dec=Math.round((n-int)*100);
+  let s='',num=int,pos=0;
+  while(num>0){
+    const d=num%10;
+    if(d!==0){
+      if(pos===1&&d===2)s='ยี่สิบ'+s;
+      else if(pos===1&&d===1)s='สิบ'+s;
+      else if(pos===0&&d===1&&int>1)s='เอ็ด'+s;
+      else s=th[d]+unit[pos]+s;
+    }
+    num=Math.floor(num/10);pos++;
+  }
+  s+='บาท';
+  if(dec===0)s+='ถ้วน';
+  else{
+    const d1=Math.floor(dec/10),d2=dec%10;
+    if(d1>0){if(d1===2)s+='ยี่สิบ';else if(d1===1)s+='สิบ';else s+=th[d1]+'สิบ';}
+    if(d2>0){if(d2===1&&dec>1)s+='เอ็ด';else s+=th[d2];}
+    s+='สตางค์';
+  }
+  return s;
+}
+async function saveInvoice(type){
+  const name=document.getElementById('iv-name').value.trim();
+  if(!name){toast('กรุณาใส่ชื่อลูกค้า','err');return;}
+  const ci=document.getElementById('iv-ci').value;
+  const co=document.getElementById('iv-co').value;
+  if(!ci||!co){toast('กรุณาใส่วันที่ Check-in / Check-out','err');return;}
+  const ppn=Number(document.getElementById('iv-ppn').value)||0;
+  const rooms=Number(document.getElementById('iv-rooms').value)||1;
+  const nights=Math.max(1,Math.round((new Date(co)-new Date(ci))/86400000));
+  const amount=nights*ppn*rooms;
+  const v=calcVat(amount,true);
+  
+  // Get invoice/receipt numbers
+  const{data:invNo}=await sb.rpc('gen_invoice_no',{p_month:curMonth});
+  let rcptNo=null;
+  if(type==='receipt'||type==='both'){
+    const{data:rn}=await sb.rpc('gen_receipt_no',{p_month:curMonth});
+    rcptNo=rn;
+  }
+  
+  const fmtCI=new Date(ci).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+  const fmtCO=new Date(co).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+  const desc='ค่าบริการห้องพัก (คืนวันที่ '+fmtCI+' - '+fmtCO+') ราคาคืนละ '+ppn.toLocaleString()+' บาท'+(rooms>1?' จำนวน '+rooms+' ห้อง':'');
+  
+  const rec={
+    invoice_no:invNo, receipt_no:rcptNo, invoice_date:new Date().toISOString().split('T')[0],
+    customer_name:name, customer_address:document.getElementById('iv-addr').value||null,
+    customer_tax_id:document.getElementById('iv-tax').value||null,
+    customer_branch:document.getElementById('iv-branch').value,
+    customer_id:document.getElementById('iv-cust').value||null,
+    description:desc, check_in:ci, check_out:co, nights, price_per_night:ppn, num_rooms:rooms,
+    amount, before_vat:v.before, vat_amount:v.vat, grand_total:amount,
+    amount_text:numToThaiText(amount),
+    payment_method:document.getElementById('iv-pay').value,
+    payment_amount:amount, ref_invoice:invNo,
+    payment_status:(type==='receipt'||type==='both')?'paid':'unpaid',
+    paid_amount:(type==='receipt'||type==='both')?amount:0,
+    due_date:ci,
+    note:document.getElementById('iv-note').value||null
+  };
+  
+  const{data,error}=await sb.from('daily_invoices').insert(rec).select().single();
+  if(error){toast('Error: '+error.message,'err');return;}
+  
+  const label=type==='both'?'ใบวางบิล '+invNo+' + ใบเสร็จ '+rcptNo:type==='receipt'?'ใบเสร็จ '+rcptNo:'ใบวางบิล '+invNo;
+  toast(label+' สำเร็จ ✅','ok');
+  loadInvoices();
+  
+  // Auto print
+  if(type==='invoice'||type==='both') printInvoice(data.id,'invoice');
+  if(type==='receipt'||type==='both') setTimeout(()=>printInvoice(data.id,'receipt'),1000);
+}
+async function loadInvFilterMonths(){
+  const{data}=await sb.from('daily_invoices').select('invoice_date').eq('building','เจเรสซิเดนซ์');
+  const months=[...new Set((data||[]).map(r=>r.invoice_date?.substring(0,7)).filter(Boolean))].sort();
+  const sel=document.getElementById('iv-filter-month');
+  sel.innerHTML='<option value="">ทั้งหมด</option>'+months.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('');
+}
+async function loadInvoices(){
+  const m=document.getElementById('iv-filter-month')?.value;
+  const st=document.getElementById('iv-filter-status')?.value;
+  let q=sb.from('daily_invoices').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(200);
+  if(m){q=q.gte('invoice_date',m+'-01').lte('invoice_date',m+'-31');}
+  if(st==='unpaid')q=q.in('payment_status',['unpaid','partial','overdue']).eq('status','active');
+  if(st==='paid')q=q.eq('payment_status','paid');
+  if(st==='cancelled')q=q.eq('status','cancelled');
+  const{data}=await q;
+  const recs=data||[];
+  const tb=document.getElementById('iv-tbody');
+  if(!recs.length){tb.innerHTML='<tr><td colspan="10" class="empty">ไม่มีรายการ</td></tr>';return;}
+  
+  const payBadge=(r)=>{
+    if(r.status==='cancelled')return'<span style="background:#f5f5f5;color:#999;padding:1px 6px;border-radius:4px;font-size:9px;">🚫 ยกเลิก</span>';
+    if(r.payment_status==='paid')return'<span style="background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;">✅ จ่ายแล้ว</span>';
+    const overdue=r.due_date&&new Date(r.due_date)<new Date();
+    if(overdue)return'<span style="background:#ffebee;color:#c62828;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;animation:pulse 1.5s infinite;">🔴 เกินกำหนด</span>';
+    return'<span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;">❌ ค้างชำระ</span>';
+  };
+  
+  tb.innerHTML=recs.map(r=>{
+    return '<tr'+(r.status==='cancelled'?' style="opacity:0.4;"':'')+(r.payment_status==='unpaid'&&r.due_date&&new Date(r.due_date)<new Date()?' style="background:#fff8f0;"':'')+'>'
+      +'<td class="mono" style="font-size:11px;font-weight:700;">'+(r.invoice_no||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(r.receipt_no||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.invoice_date)+'</td>'
+      +'<td style="font-size:11px;">'+(r.customer_name||'').substring(0,20)+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.check_in)+'</td>'
+      +'<td class="mono">'+(r.nights||'')+'</td>'
+      +'<td class="mono" style="font-weight:700;">฿'+Number(r.grand_total||0).toLocaleString()+'</td>'
+      +'<td>'+payBadge(r)+'</td>'
+      +'<td style="font-size:10px;">'+(r.payment_method||'')+'</td>'
+      +'<td style="white-space:nowrap;">'
+        +(r.payment_status!=='paid'&&r.status==='active'?'<button class="ract" onclick="markPaid(\''+r.id+'\',\''+r.invoice_no+'\')" title="บันทึกชำระแล้ว" style="font-size:10px;background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;">💰</button>':'')
+        +(r.status==='active'?'<button class="ract" onclick="printInvoice(\''+r.id+'\',\'invoice\')" title="พิมพ์ใบวางบิล" style="font-size:10px;">📋</button>':'')
+        +(r.receipt_no&&r.status==='active'?'<button class="ract" onclick="printInvoice(\''+r.id+'\',\'receipt\')" title="พิมพ์ใบเสร็จ" style="font-size:10px;">🧾</button>':'')
+        +(r.status==='active'&&!r.receipt_no?'<button class="ract" onclick="issueReceipt(\''+r.id+'\')" title="ออกใบเสร็จ" style="font-size:10px;background:#e3f2fd;color:#1565c0;">🧾+</button>':'')
+      +'</td></tr>';
+  }).join('');
+  
+  // Load unpaid panel
+  loadUnpaidPanel();
+}
+
+async function loadUnpaidPanel(){
+  const{data}=await sb.from('daily_invoices').select('*')
+    .eq('building','เจเรสซิเดนซ์').eq('status','active').in('payment_status',['unpaid','partial'])
+    .order('due_date');
+  const recs=data||[];
+  const today=new Date();
+  
+  // KPI
+  const overdue=recs.filter(r=>r.due_date&&new Date(r.due_date)<today);
+  const allUnpaid=recs;
+  
+  document.getElementById('iv-unpaid-count').textContent=allUnpaid.length+' รายการ';
+  document.getElementById('iv-unpaid-amt').textContent='฿'+allUnpaid.reduce((a,r)=>a+Number(r.grand_total||0),0).toLocaleString();
+  document.getElementById('iv-overdue-count').textContent=overdue.length+' รายการ';
+  document.getElementById('iv-overdue-amt').textContent='฿'+overdue.reduce((a,r)=>a+Number(r.grand_total||0),0).toLocaleString();
+  document.getElementById('iv-unpaid-badge').textContent=allUnpaid.length;
+  
+  // Paid this month
+  const thisM=curMonth||new Date().toISOString().substring(0,7);
+  const{data:paidData}=await sb.from('daily_invoices').select('grand_total')
+    .eq('building','เจเรสซิเดนซ์').eq('status','active').eq('payment_status','paid')
+    .gte('invoice_date',thisM+'-01').lte('invoice_date',thisM+'-31');
+  const paidRecs=paidData||[];
+  document.getElementById('iv-paid-count').textContent=paidRecs.length+' รายการ';
+  document.getElementById('iv-paid-amt').textContent='฿'+paidRecs.reduce((a,r)=>a+Number(r.grand_total||0),0).toLocaleString();
+  
+  // Total
+  const{data:allData}=await sb.from('daily_invoices').select('grand_total').eq('building','เจเรสซิเดนซ์').eq('status','active');
+  document.getElementById('iv-total-count').textContent=(allData||[]).length+' รายการ';
+  document.getElementById('iv-total-amt').textContent='฿'+(allData||[]).reduce((a,r)=>a+Number(r.grand_total||0),0).toLocaleString();
+  
+  // Unpaid table
+  const tb=document.getElementById('iv-unpaid-tbody');
+  if(!allUnpaid.length){
+    tb.innerHTML='<tr><td colspan="8" class="empty" style="color:var(--success);">✅ ไม่มีรายการค้างชำระ</td></tr>';
+    document.getElementById('iv-unpaid-card').style.display='none';
+    return;
+  }
+  document.getElementById('iv-unpaid-card').style.display='';
+  tb.innerHTML=allUnpaid.map(r=>{
+    const days=r.due_date?Math.max(0,Math.floor((today-new Date(r.due_date))/86400000)):0;
+    const isOD=days>0;
+    return '<tr style="background:'+(isOD?'#fff8f0':'#fffde7')+';">'
+      +'<td class="mono" style="font-size:11px;font-weight:700;">'+(r.invoice_no||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(r.customer_name||'').substring(0,25)+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.check_in)+'</td>'
+      +'<td class="mono" style="font-weight:700;color:var(--danger);">฿'+Number(r.grand_total||0).toLocaleString()+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+fmtD(r.due_date)+'</td>'
+      +'<td style="text-align:center;'+(isOD?'color:#c62828;font-weight:700;':'')+'">'+
+        (isOD?'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">'+days+' วัน</span>':'—')+'</td>'
+      +'<td style="font-size:10px;">'+(r.follow_up_note||'<span style="color:var(--text3);">—</span>')+'</td>'
+      +'<td style="white-space:nowrap;">'
+        +'<button class="ract" onclick="markPaid(\''+r.id+'\',\''+r.invoice_no+'\')" title="ชำระแล้ว" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;">💰</button>'
+        +'<button class="ract" onclick="addFollowUp(\''+r.id+'\')" title="บันทึกติดตาม" style="font-size:10px;">📝</button>'
+      +'</td></tr>';
+  }).join('');
+}
+
+async function markPaid(id,invNo){
+  const method=prompt(invNo+' — วิธีชำระ:\n1. เงินสด\n2. เงินโอน\n\nพิมพ์:','เงินสด');
+  if(!method)return;
+  const payDate=prompt('วันที่ชำระ (YYYY-MM-DD):',new Date().toISOString().split('T')[0]);
+  if(!payDate)return;
+  
+  // Generate receipt number
+  const{data:rcptNo}=await sb.rpc('gen_receipt_no',{p_month:payDate.substring(0,7)});
+  
+  if(!confirm('บันทึกชำระ '+invNo+'\nวิธี: '+method+'\nวันที่: '+payDate+'\nใบเสร็จ: '+rcptNo+'\n\nยืนยัน?'))return;
+  
+  await sb.from('daily_invoices').update({
+    payment_status:'paid', payment_date:payDate, payment_method:method,
+    receipt_no:rcptNo, paid_amount:null // will be set from grand_total below
+  }).eq('id',id);
+  // Set paid_amount = grand_total
+  const{data:inv}=await sb.from('daily_invoices').select('grand_total').eq('id',id).single();
+  if(inv)await sb.from('daily_invoices').update({paid_amount:inv.grand_total}).eq('id',id);
+  
+  toast('ชำระ '+invNo+' สำเร็จ ✅ ใบเสร็จ '+rcptNo,'ok');
+  loadInvoices();
+}
+
+async function issueReceipt(id){
+  const{data:inv}=await sb.from('daily_invoices').select('*').eq('id',id).single();
+  if(!inv)return;
+  const{data:rcptNo}=await sb.rpc('gen_receipt_no',{p_month:inv.invoice_date?.substring(0,7)||curMonth});
+  if(!confirm('ออกใบเสร็จ '+rcptNo+' สำหรับ '+inv.invoice_no+'?\nลูกค้า: '+inv.customer_name+'\nยอด: ฿'+Number(inv.grand_total).toLocaleString()))return;
+  await sb.from('daily_invoices').update({receipt_no:rcptNo,payment_status:'paid',paid_amount:inv.grand_total,payment_date:new Date().toISOString().split('T')[0]}).eq('id',id);
+  toast('ออกใบเสร็จ '+rcptNo+' สำเร็จ ✅','ok');
+  loadInvoices();
+  printInvoice(id,'receipt');
+}
+
+async function addFollowUp(id){
+  const note=prompt('บันทึกการติดตาม:\n(เช่น โทรแล้ว/ส่ง Line แล้ว/นัดจ่าย xx)');
+  if(note===null)return;
+  const nextDate=prompt('นัดติดตามครั้งถัดไป (YYYY-MM-DD):','');
+  await sb.from('daily_invoices').update({
+    follow_up_note:note, follow_up_date:nextDate||null
+  }).eq('id',id);
+  toast('บันทึกติดตาม ✅','ok');
+  loadInvoices();
+}
+async function addNewCust(){
+  const name=prompt('ชื่อลูกค้า/บริษัท:');if(!name)return;
+  const addr=prompt('ที่อยู่:','');
+  const tax=prompt('เลขประจำตัวผู้เสียภาษี:','');
+  const phone=prompt('เบอร์โทร:','');
+  await sb.from('billing_customers').insert({name,address:addr||null,tax_id:tax||null,phone:phone||null,is_company:tax?true:false});
+  toast('เพิ่มลูกค้า '+name+' ✅','ok');
+  loadCustList();
+}
+
+// ═══ PRINT INVOICE / RECEIPT ═══
+function printInvoice(id,type){
+  sb.from('daily_invoices').select('*').eq('id',id).single().then(({data:r})=>{
+    if(!r)return;
+    const isReceipt=type==='receipt';
+    const title=isReceipt?'ใบเสร็จรับเงิน / ใบกำกับภาษี':'ใบวางบิล / ใบแจ้งหนี้';
+    const titleEN=isReceipt?'RECEIPT / TAX INVOICE':'BILLING NOTE / INVOICE';
+    const docNo=isReceipt?(r.receipt_no||'—'):(r.invoice_no||'—');
+    const noPrefix=isReceipt?'เลขที่/No.':'เลขที่/No.';
+    const ci=r.check_in?new Date(r.check_in+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'numeric',year:'numeric'}).replace(/(\d+)\/(\d+)\/(\d+)/,(m,d,mo,y)=>d+'/'+mo+'/'+(Number(y))):'';
+    const co=r.check_out?new Date(r.check_out+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'numeric',year:'numeric'}).replace(/(\d+)\/(\d+)\/(\d+)/,(m,d,mo,y)=>d+'/'+mo+'/'+(Number(y))):'';
+    const invDate=new Date(r.invoice_date+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    const hasTax=r.customer_tax_id&&r.customer_tax_id.trim();
+    const isHQ=r.customer_branch==='สำนักงานใหญ่';
+    
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;font-size:13px;color:#000;background:#fff;}
+.page{width:210mm;min-height:297mm;padding:15mm 20mm;margin:auto;position:relative;}
+.hdr{font-weight:700;font-size:18px;text-align:center;margin-bottom:4px;}
+.hdr-en{font-size:14px;text-align:center;margin-bottom:12px;}
+.shop{font-weight:700;font-size:13px;margin-bottom:2px;}
+.shop-addr{font-size:11px;margin-bottom:1px;}
+.row{display:flex;justify-content:space-between;margin:3px 0;font-size:12px;}
+.lbl{font-weight:700;}
+table{width:100%;border-collapse:collapse;margin:10px 0;}
+th,td{border:1px solid #000;padding:4px 8px;font-size:12px;text-align:left;}
+th{background:#f0f0f0;font-weight:700;text-align:center;}
+.r{text-align:right;}
+.c{text-align:center;}
+.total-box{width:300px;margin-left:auto;margin-top:-1px;}
+.total-box td{font-size:12px;}
+.footer{margin-top:20px;font-size:11px;}
+.sign{margin-top:40px;text-align:right;padding-right:40px;}
+.sign-line{border-top:1px solid #000;width:200px;margin-left:auto;margin-top:30px;}
+.check{display:inline-block;width:14px;height:14px;border:1px solid #000;text-align:center;font-size:11px;line-height:14px;margin-right:4px;}
+.check.on{background:#000;color:#fff;}
+@media print{.page{padding:10mm 15mm;}.no-print{display:none;}}
+</style></head><body>
+<div style="text-align:center;padding:10px;" class="no-print">
+  <button onclick="window.print()" style="padding:10px 30px;font-size:16px;cursor:pointer;">🖨 พิมพ์</button>
+  <button onclick="window.close()" style="padding:10px 20px;font-size:14px;cursor:pointer;margin-left:10px;">✕ ปิด</button>
+</div>
+<div class="page">
+  <div class="hdr">${title}</div>
+  <div class="hdr-en">${titleEN}</div>
+  <div class="shop">${SHOP.name}</div>
+  <div class="shop-addr">${SHOP.addr_th}</div>
+  <div class="shop-addr">${SHOP.addr_en}</div>
+  <div class="shop-addr">โทร / Tel.${SHOP.tel}</div>
+  <div class="shop-addr">เลขประจำตัวผู้เสียภาษี/Tax ID : ${SHOP.tax}</div>
+  <div style="margin-top:10px;display:flex;justify-content:space-between;">
+    <div><span class="lbl">ชื่อผู้รับบริการ/Customer :</span> ${r.customer_name}</div>
+    <div><span class="lbl">วันที่/Date :</span> ${invDate}</div>
+  </div>
+  <div><span class="lbl">ที่อยู่/Address :</span> ${r.customer_address||''}</div>
+  ${hasTax?`<div style="margin-top:6px;display:flex;align-items:center;gap:20px;">
+    <span>เลขประจำตัวผู้เสียภาษี/Tax ID ${r.customer_tax_id}</span>
+    <span class="check${isHQ?' on':''}"></span> สำนักงานใหญ่
+    <span class="check${!isHQ?' on':''}"></span> สาขา
+    <span style="margin-left:auto;"><span class="lbl">${noPrefix} :</span> ${docNo}</span>
+  </div>`:`<div style="text-align:right;margin-top:4px;"><span class="lbl">${noPrefix} :</span> ${docNo}</div>`}
+  <table>
+    <thead><tr><th style="width:40px;">ลำดับที่<br>Items</th><th>รายละเอียด<br>Description</th><th style="width:70px;">Check-in</th><th style="width:70px;">Check-Out</th><th style="width:60px;">จำนวนคืน<br>No.of Nights</th><th style="width:80px;">จำนวนเงิน<br>Amount</th></tr></thead>
+    <tbody>
+      <tr><td class="c">1</td><td>${r.description||''}</td><td class="c">${ci}</td><td class="c">${co}</td><td class="c">${r.nights||''}</td><td class="r">${Number(r.amount||0).toLocaleString('th-TH',{minimumFractionDigits:2})}</td></tr>
+      <tr style="height:60px;"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="total-box">
+    <table><tbody>
+      <tr><td class="r" style="border:1px solid #000;">รวมก่อนภาษี / Total Before Vat</td><td class="r" style="width:100px;border:1px solid #000;">${Number(r.before_vat||0).toLocaleString('th-TH',{minimumFractionDigits:2})}</td></tr>
+      <tr><td class="r" style="border:1px solid #000;">ภาษีมูลค่าเพิ่ม / Vat</td><td class="r" style="border:1px solid #000;">${Number(r.vat_amount||0).toLocaleString('th-TH',{minimumFractionDigits:2})}</td></tr>
+      <tr><td class="r" style="border:1px solid #000;font-weight:700;">จำนวนเงินรวมทั้งสิ้น<br>Grand Total</td><td class="r" style="border:1px solid #000;font-weight:700;font-size:14px;">${Number(r.grand_total||0).toLocaleString('th-TH',{minimumFractionDigits:2})}</td></tr>
+    </tbody></table>
+  </div>
+  <div style="display:flex;margin-top:6px;font-size:12px;"><span class="lbl" style="margin-right:10px;">ตัวอักษร</span><span>${r.amount_text||''}</span></div>
+  ${isReceipt?`
+  <div style="margin-top:14px;display:flex;gap:30px;font-size:12px;align-items:center;">
+    <span class="check${r.payment_method==='เงินสด'?' on':''}"></span> เงินสด &nbsp; จำนวน &nbsp; ${r.payment_method==='เงินสด'?Number(r.payment_amount||0).toLocaleString('th-TH',{minimumFractionDigits:2})+' บาท':'_________ บาท'}
+    <span class="check${r.payment_method==='เงินโอน'?' on':''}"></span> เงินโอน &nbsp; วันที่ _______ &nbsp; จำนวน &nbsp; ${r.payment_method==='เงินโอน'?Number(r.payment_amount||0).toLocaleString('th-TH',{minimumFractionDigits:2})+' บาท':'_________ บาท'}
+  </div>
+  <div style="margin-top:10px;font-size:12px;">อ้างอิงใบแจ้งหนี้เลขที่ / Ref. Invoice : ${r.ref_invoice||r.invoice_no||''}</div>
+  <div class="sign"><div class="sign-line"></div><div style="text-align:center;margin-top:4px;">ผู้รับเงิน</div></div>
+  `:`
+  <div class="footer">หมายเหตุ กำหนดชำระเงินภายในวันเข้าพัก</div>
+  <div style="margin-top:10px;font-size:11px;text-align:center;">วิธีการชำระเงิน<br>เงินสด หรือ โอน ผ่านบัญชีธนาคาร ${SHOP.bank}</div>
+  <div class="sign"><div class="sign-line"></div><div style="text-align:center;margin-top:4px;">ผู้รับวางบิล</div></div>
+  `}
+</div>
+</body></html>`;
+    
+    const w=window.open('','_blank','width=800,height=1100');
+    w.document.write(html);
+    w.document.close();
+  });
+}
+
+// ══════════════════════════════════
+// 📝 QUOTATION
+// ══════════════════════════════════
+let qtItems=[];
+function toggleQuoteForm(){
+  const f=document.getElementById('qt-form');
+  f.style.display=f.style.display==='none'?'':'none';
+  if(f.style.display!=='none'){
+    // Populate customer dropdown
+    const sel=document.getElementById('qt-cust');
+    sel.innerHTML='<option value="">— เลือก —</option>'+custDB.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+    if(!qtItems.length) qtTypeChange();
+  }
+}
+function fillQtCust(){
+  const c=custDB.find(x=>x.id===document.getElementById('qt-cust').value);
+  if(!c)return;
+  document.getElementById('qt-name').value=c.name;
+  document.getElementById('qt-addr').value=c.address||'';
+  document.getElementById('qt-tax').value=c.tax_id||'';
+}
+function qtTypeChange(){
+  const t=document.getElementById('qt-type').value;
+  qtItems=[];
+  if(t==='daily'){
+    qtItems=[{desc:'ค่าบริการห้องพัก Deluxe room 28 sqm.',room:'Deluxe room 28 sqm.',guest:'',ci:'',co:'',nights:1,ppn:750,rooms:1,total:750}];
+    document.getElementById('qt-wht-pct').value=0;
+  } else if(t==='monthly'){
+    qtItems=[
+      {desc:'ค่าเช่าห้องพักรายเดือน',unit:'เดือน',qty:1,price:4500,total:4500,is_rent:true},
+      {desc:'ค่าไฟฟ้า (หน่วยละ 8.50 บาท)',unit:'หน่วย',qty:0,price:8.50,total:0},
+      {desc:'ค่าน้ำประปา (หน่วยละ 20 บาท)',unit:'หน่วย',qty:0,price:20,total:0},
+      {desc:'เงินประกันห้อง (คืนเมื่อย้ายออก)',unit:'ครั้ง',qty:1,price:4500,total:4500},
+      {desc:'ค่าที่จอดรถยนต์',unit:'เดือน',qty:0,price:1000,total:0},
+      {desc:'ค่าที่จอดมอเตอร์ไซค์',unit:'เดือน',qty:0,price:300,total:0},
+    ];
+    document.getElementById('qt-wht-pct').value=5;
+    document.getElementById('qt-subject').value='เสนอราคาห้องพักรายเดือน';
+  } else {
+    qtItems=[{desc:'',unit:'',qty:1,price:0,total:0}];
+    document.getElementById('qt-wht-pct').value=0;
+  }
+  renderQtItems();calcQt();
+}
+function addQtItem(){
+  const t=document.getElementById('qt-type').value;
+  if(t==='daily')qtItems.push({desc:'ค่าบริการห้องพัก',room:'Deluxe room 28 sqm.',guest:'',ci:'',co:'',nights:1,ppn:750,rooms:1,total:750});
+  else qtItems.push({desc:'',unit:'',qty:1,price:0,total:0});
+  renderQtItems();calcQt();
+}
+function removeQtItem(i){qtItems.splice(i,1);renderQtItems();calcQt();}
+
+function renderQtItems(){
+  const t=document.getElementById('qt-type').value;
+  const c=document.getElementById('qt-items');
+  if(t==='daily'){
+    c.innerHTML=qtItems.map((it,i)=>'<div style="background:#fafafa;border:1px solid var(--border2);border-radius:var(--rs);padding:8px;margin:4px 0;">'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;">'
+      +'<div style="flex:2;"><label style="font-size:10px;">ชื่อแขก</label><input type="text" value="'+(it.guest||'')+'" onchange="qtItems['+i+'].guest=this.value" style="width:100%;padding:4px;font-size:11px;"></div>'
+      +'<div><label style="font-size:10px;">ห้อง</label><input type="text" value="'+(it.room||'')+'" onchange="qtItems['+i+'].room=this.value" style="width:100%;padding:4px;font-size:11px;"></div>'
+      +'<div><label style="font-size:10px;">Check-in</label><input type="date" value="'+(it.ci||'')+'" onchange="qtItems['+i+'].ci=this.value;autoCalcNights('+i+')" style="padding:4px;font-size:11px;"></div>'
+      +'<div><label style="font-size:10px;">Check-out</label><input type="date" value="'+(it.co||'')+'" onchange="qtItems['+i+'].co=this.value;autoCalcNights('+i+')" style="padding:4px;font-size:11px;"></div>'
+      +'<div style="width:50px;"><label style="font-size:10px;">คืน</label><input type="number" value="'+(it.nights||1)+'" onchange="qtItems['+i+'].nights=Number(this.value);calcQt()" style="width:100%;padding:4px;font-size:11px;text-align:center;"></div>'
+      +'<div style="width:70px;"><label style="font-size:10px;">ราคา/คืน</label><input type="number" value="'+(it.ppn||0)+'" onchange="qtItems['+i+'].ppn=Number(this.value);calcQt()" style="width:100%;padding:4px;font-size:11px;text-align:right;"></div>'
+      +'<div style="width:40px;"><label style="font-size:10px;">ห้อง</label><input type="number" value="'+(it.rooms||1)+'" min="1" onchange="qtItems['+i+'].rooms=Number(this.value);calcQt()" style="width:100%;padding:4px;font-size:11px;text-align:center;"></div>'
+      +'<button onclick="removeQtItem('+i+')" style="padding:4px 8px;background:#ffebee;color:#c62828;border:none;border-radius:4px;cursor:pointer;font-size:10px;">✕</button>'
+      +'</div></div>').join('');
+  } else {
+    c.innerHTML=qtItems.map((it,i)=>'<div style="display:flex;gap:6px;align-items:end;margin:3px 0;">'
+      +'<div style="flex:2;"><label style="font-size:10px;">รายการ</label><input type="text" value="'+(it.desc||'')+'" onchange="qtItems['+i+'].desc=this.value" style="width:100%;padding:4px;font-size:11px;"></div>'
+      +'<div style="width:60px;"><label style="font-size:10px;">หน่วย</label><input type="text" value="'+(it.unit||'')+'" onchange="qtItems['+i+'].unit=this.value" style="width:100%;padding:4px;font-size:11px;text-align:center;"></div>'
+      +'<div style="width:50px;"><label style="font-size:10px;">จำนวน</label><input type="number" value="'+(it.qty||0)+'" onchange="qtItems['+i+'].qty=Number(this.value);calcQt()" style="width:100%;padding:4px;font-size:11px;text-align:center;"></div>'
+      +'<div style="width:80px;"><label style="font-size:10px;">ราคา/หน่วย</label><input type="number" value="'+(it.price||0)+'" onchange="qtItems['+i+'].price=Number(this.value);calcQt()" style="width:100%;padding:4px;font-size:11px;text-align:right;"></div>'
+      +'<div style="width:80px;font-size:11px;font-weight:700;text-align:right;padding-bottom:4px;">฿'+(it.total||0).toLocaleString()+'</div>'
+      +'<button onclick="removeQtItem('+i+')" style="padding:4px 8px;background:#ffebee;color:#c62828;border:none;border-radius:4px;cursor:pointer;font-size:10px;margin-bottom:2px;">✕</button>'
+      +'</div>').join('');
+  }
+}
+function autoCalcNights(i){
+  const it=qtItems[i];
+  if(it.ci&&it.co){it.nights=Math.max(1,Math.round((new Date(it.co)-new Date(it.ci))/86400000));}
+  renderQtItems();calcQt();
+}
+function calcQt(){
+  const t=document.getElementById('qt-type').value;
+  qtItems.forEach(it=>{
+    if(t==='daily')it.total=(it.nights||1)*(it.ppn||0)*(it.rooms||1);
+    else it.total=(it.qty||0)*(it.price||0);
+  });
+  const sub=qtItems.reduce((a,it)=>a+it.total,0);
+  
+  if(t==='monthly'){
+    // ═══ รายเดือน: แยก ค่าเช่า (ยกเว้น VAT) vs อื่นๆ (VAT 7%) ═══
+    const rentTotal=qtItems.filter(it=>it.is_rent).reduce((a,it)=>a+it.total,0);
+    const otherTotal=qtItems.filter(it=>!it.is_rent).reduce((a,it)=>a+it.total,0);
+    const vOther=calcVat(otherTotal,true); // VAT เฉพาะรายได้อื่นๆ
+    const totalVat=vOther.vat;
+    const totalBeforeVat=rentTotal+vOther.before;
+    const grandTotal=rentTotal+otherTotal; // ยอดรวมจริง (ค่าเช่า+อื่นๆรวมVAT)
+    
+    // หัก ณ ที่จ่าย 5% จากค่าเช่า (ไม่มี VAT จึงหักจากยอดเต็ม)
+    const whtPct=Number(document.getElementById('qt-wht-pct').value)||0;
+    const whtAmt=Math.round(rentTotal*whtPct/100*100)/100;
+    const netPay=grandTotal-whtAmt;
+    
+    document.getElementById('qt-subtotal').textContent='฿'+sub.toLocaleString();
+    document.getElementById('qt-bvat').textContent='฿'+totalBeforeVat.toLocaleString()+' (เช่า ฿'+rentTotal.toLocaleString()+' ยกเว้น VAT)';
+    document.getElementById('qt-vat').textContent='฿'+totalVat.toLocaleString()+' (เฉพาะค่าน้ำ/ไฟ/อื่นๆ)';
+    document.getElementById('qt-grand').textContent='฿'+grandTotal.toLocaleString();
+    document.getElementById('qt-wht-amt').textContent='฿'+whtAmt.toLocaleString()+' (จากค่าเช่า ฿'+rentTotal.toLocaleString()+')';
+    document.getElementById('qt-net').textContent='฿'+netPay.toLocaleString();
+  } else {
+    // ═══ รายวัน / custom: VAT ทั้งยอด ═══
+    const v=calcVat(sub,true);
+    const whtPct=Number(document.getElementById('qt-wht-pct').value)||0;
+    const whtAmt=Math.round(v.before*whtPct/100*100)/100;
+    const netPay=sub-whtAmt;
+    
+    document.getElementById('qt-subtotal').textContent='฿'+sub.toLocaleString();
+    document.getElementById('qt-bvat').textContent='฿'+v.before.toLocaleString();
+    document.getElementById('qt-vat').textContent='฿'+v.vat.toLocaleString();
+    document.getElementById('qt-grand').textContent='฿'+sub.toLocaleString();
+    document.getElementById('qt-wht-amt').textContent='฿'+whtAmt.toLocaleString();
+    document.getElementById('qt-net').textContent='฿'+netPay.toLocaleString();
+  }
+  if(t!=='daily')renderQtItems();
+}
+
+async function saveQuotation(){
+  const name=document.getElementById('qt-name').value.trim();
+  if(!name){toast('กรุณาใส่ชื่อลูกค้า','err');return;}
+  const t=document.getElementById('qt-type').value;
+  const sub=qtItems.reduce((a,it)=>a+it.total,0);
+  if(sub<=0){toast('ยอดรวมต้องมากกว่า 0','err');return;}
+  
+  let bVat,vatAmt;
+  const whtPct=Number(document.getElementById('qt-wht-pct').value)||0;
+  let whtAmt=0;
+  
+  if(t==='monthly'){
+    const rentTotal=qtItems.filter(it=>it.is_rent).reduce((a,it)=>a+it.total,0);
+    const otherTotal=qtItems.filter(it=>!it.is_rent).reduce((a,it)=>a+it.total,0);
+    const vOther=calcVat(otherTotal,true);
+    bVat=rentTotal+vOther.before;
+    vatAmt=vOther.vat;
+    whtAmt=Math.round(rentTotal*whtPct/100*100)/100;
+  } else {
+    const v=calcVat(sub,true);
+    bVat=v.before; vatAmt=v.vat;
+    whtAmt=Math.round(v.before*whtPct/100*100)/100;
+  }
+  
+  const{data:qno}=await sb.rpc('gen_quote_no',{p_month:curMonth});
+  const rec={
+    quote_no:qno, quote_type:t,
+    customer_name:name, customer_address:document.getElementById('qt-addr').value||null,
+    customer_tax_id:document.getElementById('qt-tax').value||null,
+    customer_id:document.getElementById('qt-cust').value||null,
+    subject:document.getElementById('qt-subject').value,
+    items:qtItems, subtotal:sub,
+    discount_pct:whtPct, discount_amt:whtAmt,
+    before_vat:bVat, vat_amount:vatAmt, grand_total:sub,
+    amount_text:numToThaiText(sub),
+    terms:document.getElementById('qt-terms').value||null,
+    validity_days:Number(document.getElementById('qt-valid').value)||30,
+  };
+  const{data,error}=await sb.from('quotations').insert(rec).select().single();
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('ใบเสนอราคา '+qno+' สำเร็จ ✅','ok');
+  loadQuotations();
+  printQuotation(data.id);
+}
+
+async function loadQuotations(){
+  const{data}=await sb.from('quotations').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(50);
+  const tb=document.getElementById('qt-tbody');
+  if(!data?.length){tb.innerHTML='<tr><td colspan="7" class="empty">ยังไม่มีรายการ</td></tr>';return;}
+  const stMap={active:'📝',accepted:'✅',rejected:'❌',expired:'⏰',cancelled:'🚫'};
+  tb.innerHTML=(data||[]).map(r=>'<tr><td class="mono" style="font-weight:700;font-size:11px;">'+r.quote_no+'</td><td class="mono" style="font-size:11px;">'+fmtD(r.quote_date)+'</td><td style="font-size:11px;">'+(r.customer_name||'').substring(0,20)+'</td><td style="font-size:11px;">'+({daily:'🏨 รายวัน',monthly:'🏠 รายเดือน',custom:'📋'}[r.quote_type]||'')+'</td><td class="mono" style="font-weight:700;">฿'+Number(r.grand_total||0).toLocaleString()+'</td><td>'+(stMap[r.status]||'')+' '+r.status+'</td><td><button class="ract" onclick="printQuotation(\''+r.id+'\')" title="พิมพ์">🖨</button></td></tr>').join('');
+}
+
+function printQuotation(id){
+  sb.from('quotations').select('*').eq('id',id).single().then(({data:q})=>{
+    if(!q)return;
+    const items=q.items||[];
+    const isDaily=q.quote_type==='daily';
+    const qDate=new Date(q.quote_date+'T00:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+    const introDaily=items.length?'ตามที่ท่านมีความประสงค์เข้าพักที่ เจเรสซิเดนซ์เซอร์วิสอพาร์ทเม้นท์ราคาห้องพัก สำหรับ 2 ท่าน คืนละ '+Number(items[0].ppn||750).toLocaleString()+' .-':'';
+    const introMonthly='ตามที่ท่านมีความประสงค์เช่าห้องพักรายเดือนที่ เจเรสซิเดนซ์เซอร์วิสอพาร์ทเม้นท์ รายละเอียดดังนี้';
+    const intro=q.intro_text||(isDaily?introDaily:introMonthly);
+    
+    let itemsHTML='';
+    if(isDaily){
+      itemsHTML='<table><thead><tr><th style="width:35px;">No.</th><th>Guest Name</th><th>Room</th><th>Period</th><th style="width:80px;">Total</th></tr></thead><tbody>';
+      items.forEach((it,i)=>{
+        const ci=it.ci?new Date(it.ci+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
+        const co=it.co?new Date(it.co+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
+        itemsHTML+='<tr><td class="c">'+(i+1)+'</td><td>'+(it.guest||'-')+'</td><td>'+(it.room||'Deluxe room 28 sqm.')+'</td><td class="c">Check in '+ci+' - Check out '+co+' ('+(it.nights||1)+' Nights)'+(it.rooms>1?' x'+it.rooms+' rooms':'')+'</td><td class="r">'+Number(it.total||0).toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+      });
+      itemsHTML+='</tbody></table>';
+    } else {
+      itemsHTML='<table><thead><tr><th style="width:35px;">No.</th><th>รายการ</th><th style="width:60px;">หน่วย</th><th style="width:50px;">จำนวน</th><th style="width:80px;">ราคา/หน่วย</th><th style="width:80px;">รวม</th></tr></thead><tbody>';
+      items.forEach((it,i)=>{
+        if(it.total>0||it.desc) itemsHTML+='<tr><td class="c">'+(i+1)+'</td><td>'+it.desc+'</td><td class="c">'+(it.unit||'')+'</td><td class="c">'+(it.qty||'')+'</td><td class="r">'+(it.price?Number(it.price).toLocaleString('th-TH',{minimumFractionDigits:2}):'')+'</td><td class="r">'+(it.total?Number(it.total).toLocaleString('th-TH',{minimumFractionDigits:2}):'—')+'</td></tr>';
+      });
+      itemsHTML+='</tbody></table>';
+    }
+    
+    // Calculate totals for print
+    const isMonthly=q.quote_type==='monthly';
+    const rentTotal=isMonthly?items.filter(it=>it.is_rent).reduce((a,it)=>a+(it.total||0),0):0;
+    const otherTotal=isMonthly?items.filter(it=>!it.is_rent).reduce((a,it)=>a+(it.total||0),0):0;
+    const vOther=isMonthly?calcVat(otherTotal,true):{before:0,vat:0};
+    const netPay=Number(q.grand_total||0)-Number(q.discount_amt||0);
+    
+    // Build totals rows
+    let totalsRows='';
+    if(isMonthly&&rentTotal>0){
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;font-size:11px;">ค่าเช่า (ยกเว้น VAT)</td><td class="r" style="width:100px;border:1px solid #000;">'+rentTotal.toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;font-size:11px;">รวมค่าบริการอื่นๆ ก่อนภาษี</td><td class="r" style="border:1px solid #000;">'+vOther.before.toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;font-size:11px;">ภาษีมูลค่าเพิ่ม /Vat (เฉพาะค่าบริการ)</td><td class="r" style="border:1px solid #000;">'+vOther.vat.toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+    } else {
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;">รวมก่อนภาษี / Total before Vat</td><td class="r" style="width:100px;border:1px solid #000;">'+Number(q.before_vat||0).toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;">ภาษีมูลค่าเพิ่ม /Vat</td><td class="r" style="border:1px solid #000;">'+Number(q.vat_amount||0).toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+    }
+    totalsRows+='<tr><td class="r" style="border:1px solid #000;font-weight:700;">จำนวนเงินรวมทั้งสิ้น / Grand Total</td><td class="r" style="border:1px solid #000;font-weight:700;font-size:14px;">'+Number(q.grand_total||0).toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+    if(q.discount_pct>0){
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;">หัก ณ ที่จ่าย '+q.discount_pct+'% '+(isMonthly?'(จากค่าเช่า ฿'+rentTotal.toLocaleString()+')':'')+'</td><td class="r" style="border:1px solid #000;">'+Number(q.discount_amt||0).toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+      totalsRows+='<tr><td class="r" style="border:1px solid #000;font-weight:700;color:#1565c0;">ยอดชำระสุทธิ</td><td class="r" style="border:1px solid #000;font-weight:700;font-size:14px;color:#1565c0;">'+netPay.toLocaleString('th-TH',{minimumFractionDigits:2})+'</td></tr>';
+    }
+    
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบเสนอราคา ${q.quote_no}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;font-size:13px;color:#000;background:#fff;}
+.page{width:210mm;min-height:297mm;padding:15mm 20mm;margin:auto;}
+.hdr-line{font-size:11px;text-align:center;margin-bottom:10px;}
+.title{font-size:20px;font-weight:700;text-align:center;margin:10px 0 4px;}
+.title-en{font-size:14px;text-align:center;margin-bottom:15px;color:#666;}
+.row{display:flex;justify-content:space-between;margin:2px 0;font-size:12px;}
+.lbl{font-weight:700;}
+table{width:100%;border-collapse:collapse;margin:10px 0;}
+th,td{border:1px solid #000;padding:4px 8px;font-size:12px;}
+th{background:#f5f5f5;font-weight:700;text-align:center;}
+.r{text-align:right;} .c{text-align:center;}
+.total-box{width:300px;margin-left:auto;}
+.total-box td{font-size:12px;}
+.terms{margin-top:15px;font-size:12px;line-height:1.6;}
+.sign{margin-top:30px;text-align:center;padding-right:0;}
+.sign-line{border-top:1px solid #000;width:200px;margin:30px auto 4px;}
+@media print{.page{padding:10mm 15mm;}.no-print{display:none;}}
+</style></head><body>
+<div style="text-align:center;padding:10px;" class="no-print">
+  <button onclick="window.print()" style="padding:10px 30px;font-size:16px;cursor:pointer;">🖨 พิมพ์</button>
+  <button onclick="window.close()" style="padding:10px 20px;font-size:14px;cursor:pointer;margin-left:10px;">✕ ปิด</button>
+</div>
+<div class="page">
+  <div class="hdr-line">19.9 หมู่ 6 ซ.ศรีเพชรการเคหะ ถ. ศรีนครินทร์ ต. บางเมืองใหม่ อ.เมือง จ.สมุทรปราการ 10270 โทร 080-1766571</div>
+  <div class="title">ใบเสนอราคา (QUOTATION)</div>
+  <div class="row" style="margin-top:15px;"><span></span><span>วันที่ ${qDate}</span></div>
+  <div class="row"><span></span><span>เลขที่ ${q.quote_no}</span></div>
+  <div style="margin-top:10px;font-size:12px;">เรียน ฝ่ายจัดซื้อ</div>
+  <div style="font-size:12px;font-weight:700;">${q.customer_name}</div>
+  ${q.customer_tax_id?'<div style="font-size:12px;">เลขประจำตัวผู้เสียภาษีอากร : '+q.customer_tax_id+'</div>':''}
+  ${q.customer_address?'<div style="font-size:12px;">ที่อยู่ '+q.customer_address+'</div>':''}
+  <div style="font-size:12px;margin-top:6px;">เรื่อง ${q.subject||'เสนอราคาห้องพัก'}</div>
+  <div style="font-size:12px;margin-top:8px;">${intro}</div>
+  ${itemsHTML}
+  <div class="total-box">
+    <table><tbody>
+      ${totalsRows}
+    </tbody></table>
+  </div>
+  <div class="terms"><div style="font-weight:700;">เงื่อนไขและรายละเอียด</div><div style="white-space:pre-wrap;">${(q.terms||'').replace(/</g,'&lt;')}</div></div>
+  <div style="margin-top:10px;font-size:12px;text-align:center;">เจเรสซิเดนซ์ หวังเป็นอย่างยิ่งว่าจะได้รับพิจารณาจากท่านตามสมควรและขอขอบพระคุณล่วงหน้า ณ โอกาสนี้</div>
+  <div class="sign"><div style="font-size:12px;">ผู้เสนอราคา</div><div class="sign-line"></div><div>นายกิตติพันธ์ หล่อวิเชียรรุ่ง</div><div style="font-size:11px;">ผู้จัดการทั่วไป</div></div>
+</div></body></html>`;
+    const w=window.open('','_blank','width=800,height=1100');
+    w.document.write(html);w.document.close();
+  });
+}
+
 function closeM(id){document.getElementById(id).classList.remove('open');}
-function mL(m){return{'2026-01':'ม.ค. 69','2026-02':'ก.พ. 69','2026-03':'มี.ค. 69'}[m]||m;}
+function mL(m){return monthLabel(m);}
 function fmtD(d){if(!d)return'';return new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});}
 let tt;function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;clearTimeout(tt);tt=setTimeout(()=>t.className='toast',2500);}
 window.onclick=e=>{if(e.target.classList.contains('moverlay'))e.target.classList.remove('open');};
