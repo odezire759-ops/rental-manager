@@ -397,7 +397,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 <div id="sec-monthly" class="sec">
   <div id="floor-container"><div class="loading">กำลังโหลด...</div></div>
   <div class="card" style="margin-top:14px;">
-    <div class="chdr"><span>📊 ตารางรายละเอียด</span><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div>
+    <div class="chdr"><span>📊 ตารางรายละเอียด</span><div style="display:flex;gap:4px;"><button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="bulkMonthlyInvoice('invoice')">📋 ใบแจ้งหนี้ทั้งหมด</button><button class="tbtn" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;" onclick="bulkMonthlyInvoice('both')">📋+🧾 ใบแจ้งหนี้+ใบเสร็จ</button><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div></div>
     <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th></tr></thead><tbody id="mtbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
   </div>
 </div>
@@ -1648,7 +1648,7 @@ function renderMTable(d){
     <td class="mono">฿${Math.round((r.parking_car||0)+(r.parking_moto||0)+(r.fridge_fee||0)+(r.other||0)).toLocaleString()}</td>
     <td class="mono" style="font-weight:800;">฿${Math.round(r.total||0).toLocaleString()}</td>
     <td><span class="pill ${r.status==='paid'?'ppaid':'ppend'}">${r.status==='paid'?'ชำระแล้ว':'ค้างชำระ'}</span></td>
-    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button></td></tr>`;
+    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button>${r.tenant_name&&r.rent>0?`<button class="ract" style="padding:4px 8px;margin-left:2px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:10px;" onclick="genMonthlyInvoice('${r.room}','both')">📄</button>`:''}</td></tr>`;
   }).join('');
 }
 function initDrag(g){
@@ -2448,6 +2448,575 @@ function exportXL(){
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=Array(19).fill({wch:14});
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,curMonth);
   XLSX.writeFile(wb,`JResidence_${curMonth}.xlsx`);toast('Export สำเร็จ ✓','ok');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ใบแจ้งหนี้ / ใบเสร็จ รายเดือน — Excel Generator
+// ══════════════════════════════════════════════════════════════
+const TH_MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function thMonthYear(m){const[y,mm]=m.split('-');return TH_MONTHS[parseInt(mm)-1]+' '+(parseInt(y)+543);}
+function thDateStr(d){if(!d)return'';const dt=new Date(d);return dt.getDate()+' '+TH_MONTHS[dt.getMonth()]+' '+(dt.getFullYear()+543);}
+function bahtText(n){
+  if(!n||n===0)return'ศูนย์บาทถ้วน';
+  const t=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+  const p=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  let s=Math.abs(n),baht=Math.floor(s),satang=Math.round((s-baht)*100),result='';
+  if(baht===0)result='ศูนย์';
+  else{
+    const bs=baht.toString();const len=bs.length;
+    for(let i=0;i<len;i++){
+      const d=parseInt(bs[i]),pos=len-i-1;
+      if(d===0)continue;
+      if(pos===1&&d===2)result+='ยี่';
+      else if(pos===1&&d===1)result+='';
+      else if(pos===0&&d===1&&len>1)result+='เอ็ด';
+      else result+=t[d];
+      result+=p[pos%7];
+      if(pos===6&&i<len-7)result+='';
+    }
+  }
+  result+='บาท';
+  if(satang===0)result+='ถ้วน';
+  else{
+    const ss=satang.toString().padStart(2,'0');
+    const d1=parseInt(ss[0]),d2=parseInt(ss[1]);
+    if(d1>0){if(d1===2)result+='ยี่สิบ';else if(d1===1)result+='สิบ';else result+=t[d1]+'สิบ';}
+    if(d2>0){if(d2===1&&d1>0)result+='เอ็ด';else result+=t[d2];}
+    result+='สตางค์';
+  }
+  return(n<0?'ลบ':'')+result;
+}
+function rup2(v){return Math.ceil(v*100)/100;}
+function rdn2(v){return Math.floor(v*100)/100;}
+
+// Generate invoice number YYMM format
+function invYYMM(month){
+  const[y,m]=month.split('-');
+  return String((parseInt(y)+543)%100).padStart(2,'0')+m;
+}
+
+// Get billing customer info
+async function getCustInfo(name){
+  if(!name)return null;
+  const{data}=await sb.from('billing_customers').select('*').ilike('name','%'+name.trim().substring(0,20)+'%').limit(1);
+  return data&&data[0]?data[0]:null;
+}
+
+// Build one invoice/receipt section (33 rows)
+function buildInvSection(d, isReceipt, isCopy){
+  const font={name:'Leelawadee',sz:14};
+  const fontB={...font,bold:true};
+  const font12B={name:'Leelawadee',sz:12,bold:true};
+  const ac={horizontal:'center',vertical:'center',wrapText:true};
+  const al={horizontal:'left',vertical:'center',wrapText:true};
+  const thinBorder={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+  const s=(v,f=font,a=ac,b=null)=>({v:v||'',s:{font:f,alignment:a,border:b||undefined}});
+  const sb=(v,f=font,a=ac)=>({v:v||'',s:{font:f,alignment:a,border:thinBorder}});
+  const sn=(v,f=font,a=ac)=>({v:typeof v==='number'?v:(v||''),s:{font:f,alignment:a,border:thinBorder,numFmt:'#,##0.00'}});
+
+  const title=isCopy?(isReceipt?'สำเนาใบเสร็จรับเงิน / ใบกำกับภาษี':'สำเนาใบวางบิล / ใบแจ้งหนี้'):(isReceipt?'ใบเสร็จรับเงิน / ใบกำกับภาษี':'ใบวางบิล / ใบแจ้งหนี้');
+  const titleEN=isReceipt?'RECEIPT/TAX INVOICE':'BILLING NOTE / INVOICE';
+  const thMY=thMonthYear(d.month);
+
+  // Build line items
+  const items=[];
+  let itemNo=1;
+  // 1) ค่าเช่า (Non-VAT)
+  if(d.rent>0) items.push({no:itemNo++,desc:'ค่าเช่าห้องพัก เดือน '+thMY,mOld:'-',mNew:'-',qty:1,price:d.rent,isRent:true});
+  // 2) ค่าส่วนกลาง
+  if(d.common_fee>0) items.push({no:itemNo++,desc:'ค่าส่วนกลาง',mOld:'-',mNew:'-',qty:1,price:d.common_fee,isRent:false});
+  // 3) ค่าไฟ
+  items.push({no:itemNo++,desc:'ค่าไฟ',mOld:d.elec_old||0,mNew:d.elec_new||0,qty:d.elec_units||0,price:d.elec_rate||4.24,isRent:false});
+  // 4) ค่าน้ำ
+  items.push({no:itemNo++,desc:'ค่าน้ำ',mOld:d.water_old||0,mNew:d.water_new||0,qty:d.water_units||0,price:d.water_rate||14.42,isRent:false});
+  // 5) ค่าเช่าตู้เย็น
+  if(d.fridge_fee>0) items.push({no:itemNo++,desc:'ค่าเช่าตู้เย็น',mOld:'-',mNew:'-',qty:1,price:d.fridge_fee,isRent:false});
+  // 6) ค่าจอดรถ
+  if(d.parking_fee>0) items.push({no:itemNo++,desc:'ค่าจอดรถ',mOld:'-',mNew:'-',qty:1,price:d.parking_fee,isRent:false});
+  // 7) ค่า TV
+  if(d.tv_fee>0) items.push({no:itemNo++,desc:'ค่าทีวี',mOld:'-',mNew:'-',qty:1,price:d.tv_fee,isRent:false});
+  // 8) อื่นๆ
+  if(d.other_fee>0) items.push({no:itemNo++,desc:d.other_desc||'ค่าบริการอื่นๆ',mOld:'-',mNew:'-',qty:1,price:d.other_fee,isRent:false});
+
+  // Calculate totals
+  let vatAmtSum=0,vatTaxSum=0,nonVatSum=0;
+  items.forEach(it=>{
+    const raw=it.qty*it.price;
+    if(it.isRent){nonVatSum+=raw;it.amount='-';it.vat='-';it.nonvat=raw;}
+    else{const amt=rup2(raw*100/107),tax=rdn2(raw*7/107);vatAmtSum+=amt;vatTaxSum+=tax;it.amount=amt;it.vat=tax;it.nonvat='';}
+  });
+  const grandTotal=rup2(vatAmtSum+vatTaxSum+nonVatSum);
+
+  // Build rows array
+  const rows=[];
+  // R1 (empty/spacer)
+  rows.push([]);
+  // R2: Title
+  rows.push([null,s(title,fontB,ac)]);
+  // R3: Title EN
+  rows.push([null,s(titleEN,fontB,ac)]);
+  // R4: Company name
+  rows.push([null,s('ห้างหุ้นส่วนสามัญ เจ. เรสซิเดนซ์ / J.Residence',fontB,al)]);
+  // R5: Address TH
+  rows.push([null,s('สำนักงานใหญ่ : 19 /9 หมู่ที่ 6 ถนน ศรีนครินทร์ ตำบล บางเมืองใหม่ อำเภอ เมือง จังหวัด สมุทรปราการ 10270',font,al)]);
+  // R6: Address EN
+  rows.push([null,s('Head Office  : 19/9 Moo 6 Srinakarin Road  Bangmuaeng mai Mueang Samutprakarn 10270',font,al)]);
+  // R7: Phone
+  rows.push([null,s('โทร / Tel.080-1766571 , 02-3856919',font,al)]);
+  // R8: Tax ID
+  rows.push([null,s('เลขประจำตัวผู้เสียภาษี/Tax ID : 0992002541070',font,al)]);
+  // R9: Customer name + Date
+  const r9=new Array(22).fill(null);
+  r9[1]=s('ชื่อผู้รับบริการ/Customer : ',font,al);
+  r9[7]=s(d.customer_name||d.tenant_name||'',font,al);
+  r9[20]=s('วันที่/Date :',font,al);
+  r9[21]=s(thDateStr(isReceipt?d.receipt_date:d.invoice_date),fontB,ac);
+  rows.push(r9);
+  // R10: Address line1
+  const r10=new Array(22).fill(null);
+  r10[1]=s('ที่อยู่/Address :',font,al);
+  r10[5]=s(d.customer_address||'',font,al);
+  rows.push(r10);
+  // R11: spacer
+  rows.push([]);
+  // R12: Address line2
+  rows.push([null,null,null,null,null,null]);
+  // R13: Room
+  const r13=new Array(22).fill(null);
+  r13[1]=s('ห้องพักเลขที่',font,al);
+  r13[5]=s(d.room,font,ac);
+  rows.push(r13);
+  // R14: Tax ID + Invoice/Receipt No
+  const r14=new Array(22).fill(null);
+  r14[1]=s('เลขประจำตัวผู้เสียภาษี/Tax ID :',font,al);
+  r14[8]=s(d.customer_tax_id||'',font,ac);
+  r14[13]=s('□ สำนักงานใหญ่',font,al);
+  r14[16]=s('□ สาขาที่ '+(d.customer_branch||''),font,al);
+  r14[20]=s('เลขที่/No. :',font,al);
+  r14[21]=s(isReceipt?(d.receipt_no||''):(d.invoice_no||''),fontB,ac);
+  rows.push(r14);
+  // R15: spacer
+  rows.push([]);
+  // R16: Column headers
+  const r16=new Array(22).fill(null);
+  r16[1]=sb('ลำดับที่\nItems',font12B);
+  r16[4]=sb('รายละเอียด\nDescription',font12B);
+  r16[13]=sb('มิเตอร์\nเก่า',font12B);
+  r16[15]=sb('มิเตอร์\nใหม่',font12B);
+  r16[16]=sb('จำนวน\n Unit',font12B);
+  r16[17]=sb('ราคาต่อหน่วย\nPrice Per Unit',font12B);
+  r16[19]=sb('จำนวนเงิน\nAmount',font12B);
+  r16[20]=sb('ภาษีมูลค่าเพิ่ม VAT',font12B);
+  r16[21]=sb('จำนวนเงินไม่มีภาษีมูลค่าเพิ่ม\nNon VAT Amount',font12B);
+  rows.push(r16);
+
+  // R17-R22: Line items (6 rows, fill empty if less)
+  for(let i=0;i<6;i++){
+    const r=new Array(22).fill(null);
+    if(i<items.length){
+      const it=items[i];
+      r[1]=sb(it.no,font);
+      r[4]=sb(it.desc,font,{horizontal:'left',vertical:'center'});
+      r[13]=sb(it.mOld==='-'?'-':it.mOld,font);
+      r[15]=sb(it.mNew==='-'?'-':it.mNew,font);
+      r[16]=sb(it.qty,font);
+      r[17]=sn(it.price);
+      r[19]=it.amount==='-'?sb('-',font):sn(it.amount);
+      r[20]=it.vat==='-'?sb('-',font):sn(it.vat);
+      r[21]=it.nonvat===''?sb('',font):sn(it.nonvat);
+    } else {
+      [1,4,13,15,16,17,19,20,21].forEach(c=>{r[c]=sb('',font);});
+    }
+    rows.push(r);
+  }
+  // R23: Total VAT Amount
+  const r23=new Array(22).fill(null);
+  r23[15]=s('รวมจำนวนเงินที่มีภาษีมูลค่าเพิ่ม/Total VAT Amount',font,ac,thinBorder);
+  r23[21]=sn(rup2(vatAmtSum),font,ac);
+  rows.push(r23);
+  // R24: VAT
+  const r24=new Array(22).fill(null);
+  r24[15]=s('รวมภาษีมูลค่าเพิ่ม /VAT',font,ac,thinBorder);
+  r24[21]=sn(rup2(vatTaxSum),font,ac);
+  rows.push(r24);
+  // R25: Non VAT
+  const r25=new Array(22).fill(null);
+  r25[15]=s('จำนวนเงินไม่มีภาษีมูลค่าเพิ่ม\n Non VAT Amount',font,ac,thinBorder);
+  r25[19]=sn(nonVatSum,font,ac);
+  rows.push(r25);
+  // R26: spacer
+  rows.push([]);
+  // R27: Grand total + BAHTTEXT
+  const r27=new Array(22).fill(null);
+  r27[1]=s('ตัวอักษร ',font12B,ac);
+  r27[4]=s(bahtText(grandTotal),font,ac);
+  r27[15]=s('จำนวนเงินรวมทั้งสิ้น\nGrand Total',font,ac,thinBorder);
+  r27[19]=sn(grandTotal,fontB,ac);
+  rows.push(r27);
+  // R28: spacer
+  rows.push([]);
+  // R29: Note
+  const dueDate='5 '+thMonthYear(d.month);
+  const r29=new Array(22).fill(null);
+  r29[3]=s('หมายเหตุ กำหนดชำระเงินภายใน วันที่ '+dueDate,fontB,al);
+  rows.push(r29);
+  // R30: Payment info
+  if(isReceipt){
+    const r30=new Array(22).fill(null);
+    r30[1]=s('□ เงินสด',font,al);
+    r30[4]=s('จำนวนเงิน',font,al);
+    r30[8]=s('บาท',font,al);
+    r30[12]=s('□ เงินโอน วันที่ ',font,al);
+    r30[16]=s('จำนวนเงิน',font,al);
+    r30[18]=s('บาท',font,al);
+    rows.push(r30);
+    rows.push([]);
+    const r32=new Array(22).fill(null);
+    r32[3]=s('อ้างอิงใบแจ้งหนี้เลขที่ / Ref. Invoice : ',font,al);
+    rows.push(r32);
+    rows.push([]);
+    const r34=new Array(22).fill(null);
+    r34[3]=s(d.invoice_no||'',fontB,al);
+    rows.push(r34);
+    const r35=new Array(22).fill(null);
+    r35[18]=s('ผู้รับเงิน',font,ac);
+    rows.push(r35);
+  } else {
+    const r30=new Array(22).fill(null);
+    r30[3]=s('วิธีการชำระเงิน\nเงินสด หรือ โอน ผ่านบัญชีธนาคาร กรุงเทพฯ สาขา บางจาก \nชื่อบัญชี ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์ \nเลขที่บัญชี 179-4-74602-2',fontB,{horizontal:'center',vertical:'center',wrapText:true});
+    rows.push(r30);
+    rows.push([]);rows.push([]);
+    const r33=new Array(22).fill(null);
+    r33[17]=s('     ผู้รับวางบิล',font,ac);
+    rows.push(r33);
+  }
+  return rows;
+}
+
+// Core: generate Excel workbook for one room
+function buildMonthlyInvoiceWB(d, type){
+  const wb=XLSX.utils.book_new();
+  const colW=[4,1.7,2.7,6.1,8.1,2.9,9.7,5.3,8.4,1.6,2.9,3.4,3.9,6.1,3.1,9.3,12.4,7,8.3,12.9,15.3,22.4];
+  
+  if(type==='invoice'||type==='both'){
+    const orig=buildInvSection(d,false,false);
+    const copy=buildInvSection(d,false,true);
+    const all=[...orig,[],[],...copy];
+    const ws=XLSX.utils.aoa_to_sheet(all);
+    ws['!cols']=colW.map(w=>({wch:w}));
+    // Row heights
+    const rh={};
+    for(let i=0;i<all.length;i++){rh[i]={hpt:i===0?23:18.75};}
+    ws['!rows']=Object.values(rh);
+    // Key merges for original (offset 0)
+    const mg=[];
+    [0].forEach(off=>{
+      mg.push({s:{r:off+1,c:1},e:{r:off+1,c:21}});// title
+      mg.push({s:{r:off+2,c:1},e:{r:off+2,c:21}});// title EN
+      mg.push({s:{r:off+3,c:1},e:{r:off+3,c:21}});// company
+      mg.push({s:{r:off+4,c:1},e:{r:off+4,c:21}});// addr
+      mg.push({s:{r:off+5,c:1},e:{r:off+5,c:21}});// addr en
+      mg.push({s:{r:off+6,c:1},e:{r:off+6,c:21}});// tel
+      mg.push({s:{r:off+7,c:1},e:{r:off+7,c:21}});// tax
+      mg.push({s:{r:off+8,c:7},e:{r:off+8,c:17}});// customer name
+      mg.push({s:{r:off+9,c:5},e:{r:off+9,c:17}});// address
+      mg.push({s:{r:off+12,c:5},e:{r:off+12,c:7}});// room
+      mg.push({s:{r:off+15,c:1},e:{r:off+15,c:3}});// items hdr
+      mg.push({s:{r:off+15,c:4},e:{r:off+15,c:12}});// desc hdr
+      mg.push({s:{r:off+15,c:13},e:{r:off+15,c:14}});// meter old
+      mg.push({s:{r:off+15,c:17},e:{r:off+15,c:18}});// price
+      // item rows merges
+      for(let i=0;i<6;i++){
+        mg.push({s:{r:off+16+i,c:1},e:{r:off+16+i,c:3}});// no
+        mg.push({s:{r:off+16+i,c:4},e:{r:off+16+i,c:12}});// desc
+        mg.push({s:{r:off+16+i,c:13},e:{r:off+16+i,c:14}});// meter old
+        mg.push({s:{r:off+16+i,c:17},e:{r:off+16+i,c:18}});// price
+      }
+      // total rows
+      mg.push({s:{r:off+22,c:15},e:{r:off+22,c:20}});// VAT Amount label
+      mg.push({s:{r:off+23,c:15},e:{r:off+23,c:20}});// VAT label
+      mg.push({s:{r:off+24,c:15},e:{r:off+24,c:18}});// Non-VAT label
+      mg.push({s:{r:off+26,c:1},e:{r:off+26,c:3}});// ตัวอักษร
+      mg.push({s:{r:off+26,c:4},e:{r:off+26,c:14}});// bahttext
+      mg.push({s:{r:off+26,c:15},e:{r:off+26,c:18}});// grand total label
+    });
+    // Copy section merges (offset = orig.length + 2)
+    const off2=orig.length+2;
+    [off2].forEach(off=>{
+      mg.push({s:{r:off+1,c:1},e:{r:off+1,c:21}});
+      mg.push({s:{r:off+2,c:1},e:{r:off+2,c:21}});
+      mg.push({s:{r:off+3,c:1},e:{r:off+3,c:21}});
+      mg.push({s:{r:off+4,c:1},e:{r:off+4,c:21}});
+      mg.push({s:{r:off+5,c:1},e:{r:off+5,c:21}});
+      mg.push({s:{r:off+6,c:1},e:{r:off+6,c:21}});
+      mg.push({s:{r:off+7,c:1},e:{r:off+7,c:21}});
+      mg.push({s:{r:off+8,c:7},e:{r:off+8,c:17}});
+      mg.push({s:{r:off+9,c:5},e:{r:off+9,c:17}});
+      mg.push({s:{r:off+12,c:5},e:{r:off+12,c:7}});
+      mg.push({s:{r:off+15,c:1},e:{r:off+15,c:3}});
+      mg.push({s:{r:off+15,c:4},e:{r:off+15,c:12}});
+      mg.push({s:{r:off+15,c:13},e:{r:off+15,c:14}});
+      mg.push({s:{r:off+15,c:17},e:{r:off+15,c:18}});
+      for(let i=0;i<6;i++){
+        mg.push({s:{r:off+16+i,c:1},e:{r:off+16+i,c:3}});
+        mg.push({s:{r:off+16+i,c:4},e:{r:off+16+i,c:12}});
+        mg.push({s:{r:off+16+i,c:13},e:{r:off+16+i,c:14}});
+        mg.push({s:{r:off+16+i,c:17},e:{r:off+16+i,c:18}});
+      }
+      mg.push({s:{r:off+22,c:15},e:{r:off+22,c:20}});
+      mg.push({s:{r:off+23,c:15},e:{r:off+23,c:20}});
+      mg.push({s:{r:off+24,c:15},e:{r:off+24,c:18}});
+      mg.push({s:{r:off+26,c:1},e:{r:off+26,c:3}});
+      mg.push({s:{r:off+26,c:4},e:{r:off+26,c:14}});
+      mg.push({s:{r:off+26,c:15},e:{r:off+26,c:18}});
+    });
+    ws['!merges']=mg;
+    XLSX.utils.book_append_sheet(wb,ws,'ใบแจ้งหนี้');
+  }
+  
+  if(type==='receipt'||type==='both'){
+    const orig=buildInvSection(d,true,false);
+    const copy=buildInvSection(d,true,true);
+    const all=[...orig,[],[],...copy];
+    const ws=XLSX.utils.aoa_to_sheet(all);
+    ws['!cols']=colW.map(w=>({wch:w}));
+    const rh={};for(let i=0;i<all.length;i++){rh[i]={hpt:18.75};}
+    ws['!rows']=Object.values(rh);
+    // Same merges structure
+    const mg=[];
+    [0,orig.length+2].forEach(off=>{
+      mg.push({s:{r:off+1,c:1},e:{r:off+1,c:21}});
+      mg.push({s:{r:off+2,c:1},e:{r:off+2,c:21}});
+      mg.push({s:{r:off+3,c:1},e:{r:off+3,c:21}});
+      mg.push({s:{r:off+4,c:1},e:{r:off+4,c:21}});
+      mg.push({s:{r:off+5,c:1},e:{r:off+5,c:21}});
+      mg.push({s:{r:off+6,c:1},e:{r:off+6,c:21}});
+      mg.push({s:{r:off+7,c:1},e:{r:off+7,c:21}});
+      mg.push({s:{r:off+8,c:7},e:{r:off+8,c:17}});
+      mg.push({s:{r:off+9,c:5},e:{r:off+9,c:17}});
+      mg.push({s:{r:off+12,c:5},e:{r:off+12,c:7}});
+      mg.push({s:{r:off+15,c:1},e:{r:off+15,c:3}});
+      mg.push({s:{r:off+15,c:4},e:{r:off+15,c:12}});
+      mg.push({s:{r:off+15,c:13},e:{r:off+15,c:14}});
+      mg.push({s:{r:off+15,c:17},e:{r:off+15,c:18}});
+      for(let i=0;i<6;i++){
+        mg.push({s:{r:off+16+i,c:1},e:{r:off+16+i,c:3}});
+        mg.push({s:{r:off+16+i,c:4},e:{r:off+16+i,c:12}});
+        mg.push({s:{r:off+16+i,c:13},e:{r:off+16+i,c:14}});
+        mg.push({s:{r:off+16+i,c:17},e:{r:off+16+i,c:18}});
+      }
+      mg.push({s:{r:off+22,c:15},e:{r:off+22,c:20}});
+      mg.push({s:{r:off+23,c:15},e:{r:off+23,c:20}});
+      mg.push({s:{r:off+24,c:15},e:{r:off+24,c:18}});
+      mg.push({s:{r:off+26,c:1},e:{r:off+26,c:3}});
+      mg.push({s:{r:off+26,c:4},e:{r:off+26,c:14}});
+      mg.push({s:{r:off+26,c:15},e:{r:off+26,c:18}});
+    });
+    ws['!merges']=mg;
+    XLSX.utils.book_append_sheet(wb,ws,'ใบเสร็จรับเงิน');
+  }
+  return wb;
+}
+
+// Prepare data object from monthly_charges row
+async function prepInvoiceData(mc, month, invNo, rcNo){
+  const cust=await getCustInfo(mc.tenant_name);
+  const today=new Date().toISOString().split('T')[0];
+  const er=mc.elec_rate_type||'apt';
+  const wr=mc.water_rate_type||'apt';
+  const elecRate=RATES.elec[er]?RATES.elec[er].rate:4.24;
+  const waterRate=RATES.water[wr]?RATES.water[wr].rate:14.42;
+  // common_fee: if there's 'other' that might be ค่าส่วนกลาง, or check fridge
+  const commonFee=0;// Not explicit in monthly_charges — user can adjust later
+  return {
+    month,room:mc.room,
+    tenant_name:mc.tenant_name,
+    customer_name:cust?cust.name:mc.tenant_name,
+    customer_address:cust?cust.address:'',
+    customer_tax_id:cust?cust.tax_id:'',
+    customer_branch:cust?cust.branch:'',
+    invoice_no:invNo,receipt_no:rcNo,
+    invoice_date:today,receipt_date:today,
+    rent:Number(mc.rent)||0,
+    common_fee:commonFee,
+    elec_old:Number(mc.elec_old)||0,elec_new:Number(mc.elec_new)||0,
+    elec_units:Number(mc.elec_units)||(Number(mc.elec_new||0)-Number(mc.elec_old||0)),
+    elec_rate:elecRate,
+    water_old:Number(mc.water_old)||0,water_new:Number(mc.water_new)||0,
+    water_units:Number(mc.water_units)||(Number(mc.water_new||0)-Number(mc.water_old||0)),
+    water_rate:waterRate,
+    fridge_fee:Number(mc.fridge_fee)||0,
+    parking_fee:(Number(mc.parking_car)||0)+(Number(mc.parking_moto)||0),
+    tv_fee:Number(mc.tv_fee)||0,
+    other_fee:Number(mc.other)||0,
+    other_desc:mc.note||'ค่าบริการอื่นๆ',
+    grand_total:Number(mc.total)||0
+  };
+}
+
+// Single room invoice
+async function genMonthlyInvoice(room, type){
+  toast('กำลังสร้างใบแจ้งหนี้ ห้อง '+room+'...','ok');
+  const mc=mData.find(r=>r.room===room);
+  if(!mc||!mc.tenant_name||mc.rent<=0){toast('ห้อง '+room+' ไม่มีผู้เช่า','err');return;}
+  
+  const yymm=invYYMM(curMonth);
+  // Get next sequence from DB
+  const{data:invData}=await sb.rpc('gen_monthly_invoice_no',{p_month:curMonth});
+  const{data:rcData}=await sb.rpc('gen_monthly_receipt_no',{p_month:curMonth});
+  // Fallback if RPC fails
+  const invNo=invData||('IVM'+yymm+'/'+String(Math.floor(Math.random()*900)+100));
+  const rcNo=rcData||('RM'+yymm+'/'+String(Math.floor(Math.random()*900)+100));
+  
+  const d=await prepInvoiceData(mc,curMonth,invNo,rcNo);
+  
+  // Save to monthly_invoices
+  const saveObj={
+    month:curMonth,room,building:'เจเรสซิเดนซ์',
+    invoice_no:type==='receipt'?null:invNo,
+    receipt_no:type==='invoice'?null:rcNo,
+    invoice_date:d.invoice_date,receipt_date:d.receipt_date,
+    customer_name:d.customer_name,customer_address:d.customer_address,
+    customer_tax_id:d.customer_tax_id,customer_branch:d.customer_branch,
+    rent:d.rent,common_fee:d.common_fee,
+    elec_old:d.elec_old,elec_new:d.elec_new,elec_units:d.elec_units,elec_rate:d.elec_rate,elec_total:d.elec_units*d.elec_rate,
+    water_old:d.water_old,water_new:d.water_new,water_units:d.water_units,water_rate:d.water_rate,water_total:d.water_units*d.water_rate,
+    fridge_fee:d.fridge_fee,parking_fee:d.parking_fee,tv_fee:d.tv_fee,other_fee:d.other_fee,
+    grand_total:d.grand_total,status:'issued'
+  };
+  await sb.from('monthly_invoices').upsert(saveObj,{onConflict:'month,room,building'});
+  
+  const wb=buildMonthlyInvoiceWB(d,type);
+  const fn=type==='both'?`${invNo.replace('/','_')}_ห้อง${room}.xlsx`:
+           type==='invoice'?`ใบแจ้งหนี้_${invNo.replace('/','_')}_ห้อง${room}.xlsx`:
+           `ใบเสร็จ_${rcNo.replace('/','_')}_ห้อง${room}.xlsx`;
+  XLSX.writeFile(wb,fn);
+  toast('ออก'+(type==='receipt'?'ใบเสร็จ':'ใบแจ้งหนี้')+' ห้อง '+room+' สำเร็จ ✓','ok');
+}
+
+// Bulk: all occupied rooms
+async function bulkMonthlyInvoice(type){
+  const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()&&Number(r.rent)>0);
+  if(!occupied.length){toast('ไม่มีห้องที่มีผู้เช่า','err');return;}
+  if(!confirm(`ออกใบแจ้งหนี้ทั้งหมด ${occupied.length} ห้อง เดือน ${curMonth}?`))return;
+  
+  toast(`กำลังสร้าง ${occupied.length} ใบ...`,'ok');
+  const wb=XLSX.utils.book_new();
+  const colW=[4,1.7,2.7,6.1,8.1,2.9,9.7,5.3,8.4,1.6,2.9,3.4,3.9,6.1,3.1,9.3,12.4,7,8.3,12.9,15.3,22.4];
+  let invSeq=0,rcSeq=0;
+  const yymm=invYYMM(curMonth);
+  
+  // Get current max sequence from DB
+  const{data:existingInv}=await sb.from('monthly_invoices').select('invoice_no,receipt_no').like('invoice_no','IVM'+yymm+'/%');
+  if(existingInv){
+    existingInv.forEach(r=>{
+      if(r.invoice_no){const n=parseInt(r.invoice_no.split('/')[1])||0;if(n>invSeq)invSeq=n;}
+      if(r.receipt_no){const n=parseInt(r.receipt_no.split('/')[1])||0;if(n>rcSeq)rcSeq=n;}
+    });
+  }
+  
+  for(const mc of occupied){
+    invSeq++;rcSeq++;
+    const invNo='IVM'+yymm+'/'+String(invSeq).padStart(3,'0');
+    const rcNo='RM'+yymm+'/'+String(rcSeq).padStart(3,'0');
+    const d=await prepInvoiceData(mc,curMonth,invNo,rcNo);
+    
+    // Save to DB
+    await sb.from('monthly_invoices').upsert({
+      month:curMonth,room:mc.room,building:'เจเรสซิเดนซ์',
+      invoice_no:invNo,receipt_no:rcNo,
+      invoice_date:d.invoice_date,receipt_date:d.receipt_date,
+      customer_name:d.customer_name,customer_address:d.customer_address,
+      customer_tax_id:d.customer_tax_id,customer_branch:d.customer_branch,
+      rent:d.rent,common_fee:d.common_fee,
+      elec_old:d.elec_old,elec_new:d.elec_new,elec_units:d.elec_units,elec_rate:d.elec_rate,elec_total:d.elec_units*d.elec_rate,
+      water_old:d.water_old,water_new:d.water_new,water_units:d.water_units,water_rate:d.water_rate,water_total:d.water_units*d.water_rate,
+      fridge_fee:d.fridge_fee,parking_fee:d.parking_fee,tv_fee:d.tv_fee,other_fee:d.other_fee,
+      grand_total:d.grand_total,status:'issued'
+    },{onConflict:'month,room,building'});
+    
+    // Build sheets for this room (invoice)
+    if(type==='invoice'||type==='both'){
+      const orig=buildInvSection(d,false,false);
+      const copy=buildInvSection(d,false,true);
+      const all=[...orig,[],[],...copy];
+      const ws=XLSX.utils.aoa_to_sheet(all);
+      ws['!cols']=colW.map(w=>({wch:w}));
+      const mg=[];
+      [0,orig.length+2].forEach(off=>{
+        mg.push({s:{r:off+1,c:1},e:{r:off+1,c:21}});
+        mg.push({s:{r:off+2,c:1},e:{r:off+2,c:21}});
+        mg.push({s:{r:off+3,c:1},e:{r:off+3,c:21}});
+        mg.push({s:{r:off+4,c:1},e:{r:off+4,c:21}});
+        mg.push({s:{r:off+5,c:1},e:{r:off+5,c:21}});
+        mg.push({s:{r:off+6,c:1},e:{r:off+6,c:21}});
+        mg.push({s:{r:off+7,c:1},e:{r:off+7,c:21}});
+        mg.push({s:{r:off+8,c:7},e:{r:off+8,c:17}});
+        mg.push({s:{r:off+9,c:5},e:{r:off+9,c:17}});
+        mg.push({s:{r:off+12,c:5},e:{r:off+12,c:7}});
+        mg.push({s:{r:off+15,c:1},e:{r:off+15,c:3}});
+        mg.push({s:{r:off+15,c:4},e:{r:off+15,c:12}});
+        mg.push({s:{r:off+15,c:13},e:{r:off+15,c:14}});
+        mg.push({s:{r:off+15,c:17},e:{r:off+15,c:18}});
+        for(let i=0;i<6;i++){
+          mg.push({s:{r:off+16+i,c:1},e:{r:off+16+i,c:3}});
+          mg.push({s:{r:off+16+i,c:4},e:{r:off+16+i,c:12}});
+          mg.push({s:{r:off+16+i,c:13},e:{r:off+16+i,c:14}});
+          mg.push({s:{r:off+16+i,c:17},e:{r:off+16+i,c:18}});
+        }
+        mg.push({s:{r:off+22,c:15},e:{r:off+22,c:20}});
+        mg.push({s:{r:off+23,c:15},e:{r:off+23,c:20}});
+        mg.push({s:{r:off+24,c:15},e:{r:off+24,c:18}});
+        mg.push({s:{r:off+26,c:1},e:{r:off+26,c:3}});
+        mg.push({s:{r:off+26,c:4},e:{r:off+26,c:14}});
+        mg.push({s:{r:off+26,c:15},e:{r:off+26,c:18}});
+      });
+      ws['!merges']=mg;
+      XLSX.utils.book_append_sheet(wb,ws,'INV_'+mc.room);
+    }
+    if(type==='receipt'||type==='both'){
+      const orig=buildInvSection(d,true,false);
+      const copy=buildInvSection(d,true,true);
+      const all=[...orig,[],[],...copy];
+      const ws=XLSX.utils.aoa_to_sheet(all);
+      ws['!cols']=colW.map(w=>({wch:w}));
+      const mg=[];
+      [0,orig.length+2].forEach(off=>{
+        mg.push({s:{r:off+1,c:1},e:{r:off+1,c:21}});
+        mg.push({s:{r:off+2,c:1},e:{r:off+2,c:21}});
+        mg.push({s:{r:off+3,c:1},e:{r:off+3,c:21}});
+        mg.push({s:{r:off+4,c:1},e:{r:off+4,c:21}});
+        mg.push({s:{r:off+5,c:1},e:{r:off+5,c:21}});
+        mg.push({s:{r:off+6,c:1},e:{r:off+6,c:21}});
+        mg.push({s:{r:off+7,c:1},e:{r:off+7,c:21}});
+        mg.push({s:{r:off+8,c:7},e:{r:off+8,c:17}});
+        mg.push({s:{r:off+9,c:5},e:{r:off+9,c:17}});
+        mg.push({s:{r:off+12,c:5},e:{r:off+12,c:7}});
+        mg.push({s:{r:off+15,c:1},e:{r:off+15,c:3}});
+        mg.push({s:{r:off+15,c:4},e:{r:off+15,c:12}});
+        mg.push({s:{r:off+15,c:13},e:{r:off+15,c:14}});
+        mg.push({s:{r:off+15,c:17},e:{r:off+15,c:18}});
+        for(let i=0;i<6;i++){
+          mg.push({s:{r:off+16+i,c:1},e:{r:off+16+i,c:3}});
+          mg.push({s:{r:off+16+i,c:4},e:{r:off+16+i,c:12}});
+          mg.push({s:{r:off+16+i,c:13},e:{r:off+16+i,c:14}});
+          mg.push({s:{r:off+16+i,c:17},e:{r:off+16+i,c:18}});
+        }
+        mg.push({s:{r:off+22,c:15},e:{r:off+22,c:20}});
+        mg.push({s:{r:off+23,c:15},e:{r:off+23,c:20}});
+        mg.push({s:{r:off+24,c:15},e:{r:off+24,c:18}});
+        mg.push({s:{r:off+26,c:1},e:{r:off+26,c:3}});
+        mg.push({s:{r:off+26,c:4},e:{r:off+26,c:14}});
+        mg.push({s:{r:off+26,c:15},e:{r:off+26,c:18}});
+      });
+      ws['!merges']=mg;
+      XLSX.utils.book_append_sheet(wb,ws,'RC_'+mc.room);
+    }
+  }
+  
+  const fn=`JResidence_ใบแจ้งหนี้_${curMonth}_${occupied.length}ห้อง.xlsx`;
+  XLSX.writeFile(wb,fn);
+  toast(`ออกใบแจ้งหนี้ ${occupied.length} ห้อง สำเร็จ ✓`,'ok');
 }
 
 // ══════════════════════════════════
