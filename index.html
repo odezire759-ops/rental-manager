@@ -3076,7 +3076,7 @@ async function loadReport(){
   try{
   const{data:mc,error:e1}=await sb.from('monthly_charges').select('*').eq('building','เจเรสซิเดนซ์').gte('month',yr+'-01').lte('month',yr+'-12');
   if(e1)console.error('mc error',e1);
-  const{data:di,error:e2}=await sb.from('daily_invoices').select('invoice_no,grand_total,invoice_date,payment_status').gte('invoice_date',yr+'-01-01').lte('invoice_date',yr+'-12-31').eq('building','เจเรสซิเดนซ์');
+  const{data:di,error:e2}=await sb.from('daily_invoices').select('invoice_no,receipt_no,customer_name,description,grand_total,before_vat,vat_amount,payment_method,payment_status,invoice_date').gte('invoice_date',yr+'-01-01').lte('invoice_date',yr+'-12-31').eq('building','เจเรสซิเดนซ์').order('invoice_no');
   if(e2)console.error('di error',e2);
   const{data:ota,error:e3}=await sb.from('ota_bookings').select('source,total_amount,commission,check_in,status').gte('check_in',yr+'-01-01').lte('check_in',yr+'-12-31').neq('status','CANCELLED');
   if(e3)console.error('ota error',e3);
@@ -3097,14 +3097,22 @@ async function loadReport(){
     const occupiedCount=mmc.length;
     const dailyTotal=mdi.reduce((a,r)=>a+Number(r.grand_total||0),0);
     const dailyCount=mdi.length;
+    const dailyCash=mdi.filter(r=>r.payment_method==='เงินสด');
+    const dailyTransfer=mdi.filter(r=>r.payment_method==='เงินโอน');
+    const dailyUnpaid=mdi.filter(r=>r.payment_status==='unpaid');
+    const dailyPaid=mdi.filter(r=>r.payment_status==='paid');
     const otaTotal=mota.reduce((a,r)=>a+Number(r.total_amount||0),0);
     const otaCommission=mota.reduce((a,r)=>a+Number(r.commission||0),0);
     const otaCount=mota.length;
     months.push({month:mKey,mm,label:TH_MONTHS[m-1]+' '+(parseInt(yr)+543),short:TH_MONTHS[m-1].substring(0,3)+'.',
       rentSum,elecSum,waterSum,otherSum,monthlyTotal,paidCount,occupiedCount,
       dailyTotal,dailyCount,otaTotal,otaCommission,otaCount,
+      dailyCashAmt:dailyCash.reduce((a,r)=>a+Number(r.grand_total||0),0),dailyCashCt:dailyCash.length,
+      dailyTransferAmt:dailyTransfer.reduce((a,r)=>a+Number(r.grand_total||0),0),dailyTransferCt:dailyTransfer.length,
+      dailyUnpaidAmt:dailyUnpaid.reduce((a,r)=>a+Number(r.grand_total||0),0),dailyUnpaidCt:dailyUnpaid.length,
+      dailyPaidCt:dailyPaid.length,
       grandTotal:monthlyTotal+dailyTotal+otaTotal,
-      rooms:mmc});
+      rooms:mmc,invoices:mdi});
   }
   rptData={yr,months,mc:mc||[],di:di||[],ota:ota||[]};
   renderReport(months,yr);
@@ -3265,6 +3273,158 @@ function renderReport(months,yr){
     </div>
   </div>
 
+  <!-- Daily Walk-in Section -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px;">
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;color:#0d47a1;">📅 รายงานรายวัน (Walk-in / ใบเสร็จรายวัน)</div>
+    
+    <!-- Daily KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;">
+      <div style="background:#e3f2fd;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#1565c0;font-weight:700;">📄 จำนวนใบเสร็จ</div>
+        <div style="font-size:22px;font-weight:900;color:#0d47a1;font-family:'JetBrains Mono',monospace;">${months.reduce((a,m)=>a+m.dailyCount,0)}</div>
+        <div style="font-size:10px;color:#1976d2;">ใบ</div>
+      </div>
+      <div style="background:#e8f5e9;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#2e7d32;font-weight:700;">💵 เงินสด</div>
+        <div style="font-size:18px;font-weight:900;color:#1b5e20;font-family:'JetBrains Mono',monospace;">${fmt(months.reduce((a,m)=>a+m.dailyCashAmt,0))}</div>
+        <div style="font-size:10px;color:#388e3c;">${months.reduce((a,m)=>a+m.dailyCashCt,0)} ใบ</div>
+      </div>
+      <div style="background:#e8eaf6;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#283593;font-weight:700;">🏦 เงินโอน</div>
+        <div style="font-size:18px;font-weight:900;color:#1a237e;font-family:'JetBrains Mono',monospace;">${fmt(months.reduce((a,m)=>a+m.dailyTransferAmt,0))}</div>
+        <div style="font-size:10px;color:#3949ab;">${months.reduce((a,m)=>a+m.dailyTransferCt,0)} ใบ</div>
+      </div>
+      <div style="background:#fff3e0;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#e65100;font-weight:700;">⏳ ค้างชำระ</div>
+        <div style="font-size:18px;font-weight:900;color:#bf360c;font-family:'JetBrains Mono',monospace;">${fmt(months.reduce((a,m)=>a+m.dailyUnpaidAmt,0))}</div>
+        <div style="font-size:10px;color:#e65100;">${months.reduce((a,m)=>a+m.dailyUnpaidCt,0)} ใบ</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#0d47a1;font-weight:700;">💰 รวมรายวัน</div>
+        <div style="font-size:22px;font-weight:900;color:#0d47a1;font-family:'JetBrains Mono',monospace;">${fmt(totDaily)}</div>
+      </div>
+    </div>
+    
+    <!-- Daily bar chart: cash vs transfer -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">💵 รายรับรายวัน/เดือน (เงินสด vs โอน)</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:180px;">
+          ${(()=>{
+            const maxD=Math.max(...months.map(m=>m.dailyTotal),1);
+            return months.map(m=>{
+              const h=maxD>0?Math.max(Math.round(m.dailyTotal/maxD*160),m.dailyTotal>0?4:0):0;
+              const cashPct=m.dailyTotal>0?(m.dailyCashAmt/m.dailyTotal*100):0;
+              const transPct=m.dailyTotal>0?(m.dailyTransferAmt/m.dailyTotal*100):0;
+              const unpaidPct=m.dailyTotal>0?(m.dailyUnpaidAmt/m.dailyTotal*100):0;
+              return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;" onclick="drillMonth(\''+m.month+'\',\'daily\')" title="'+m.label+': '+fmt(m.dailyTotal)+'">'+
+                '<div style="font-size:8px;font-weight:700;color:var(--text2);margin-bottom:2px;white-space:nowrap;">'+(m.dailyTotal>0?(m.dailyTotal/1e3).toFixed(0)+'K':'')+'</div>'+
+                '<div style="width:100%;height:'+h+'px;border-radius:4px 4px 0 0;overflow:hidden;display:flex;flex-direction:column;">'+
+                  '<div style="flex:'+cashPct+';background:linear-gradient(180deg,#43a047,#66bb6a);min-height:'+(cashPct>0?1:0)+'px;"></div>'+
+                  '<div style="flex:'+transPct+';background:linear-gradient(180deg,#1565c0,#42a5f5);min-height:'+(transPct>0?1:0)+'px;"></div>'+
+                  '<div style="flex:'+unpaidPct+';background:linear-gradient(180deg,#e65100,#ff9800);min-height:'+(unpaidPct>0?1:0)+'px;"></div>'+
+                '</div>'+
+                '<div style="font-size:9px;color:var(--text3);font-weight:600;margin-top:4px;">'+m.short+'</div>'+
+              '</div>';
+            }).join('');
+          })()}
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:10px;">
+          <span>🟢 เงินสด</span><span>🔵 เงินโอน</span><span>🟠 ค้างชำระ</span>
+        </div>
+      </div>
+      
+      <!-- Daily invoices per month -->
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📊 จำนวนใบเสร็จ/เดือน</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:180px;">
+          ${(()=>{
+            const maxCt=Math.max(...months.map(m=>m.dailyCount),1);
+            return months.map(m=>{
+              const h=maxCt>0?Math.max(Math.round(m.dailyCount/maxCt*160),m.dailyCount>0?6:0):0;
+              return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;cursor:pointer;" onclick="drillMonth(\''+m.month+'\',\'daily\')">'+
+                '<div style="font-size:10px;font-weight:800;color:'+(m.dailyCount>0?'#1565c0':'var(--text3)')+';">'+(m.dailyCount||'')+'</div>'+
+                '<div style="width:100%;height:'+h+'px;background:linear-gradient(180deg,#1976d2,#64b5f6);border-radius:4px 4px 0 0;"></div>'+
+                '<div style="font-size:9px;color:var(--text3);font-weight:600;margin-top:4px;">'+m.short+'</div>'+
+              '</div>';
+            }).join('');
+          })()}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Daily table by month -->
+    <div style="margin-top:16px;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#e3f2fd;">
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:left;font-weight:700;">เดือน</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:center;">ใบเสร็จ</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:right;">💵 เงินสด</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:center;font-size:10px;">(ใบ)</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:right;">🏦 เงินโอน</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:center;font-size:10px;">(ใบ)</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:right;">⏳ ค้างชำระ</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:center;font-size:10px;">(ใบ)</th>
+          <th style="padding:8px;border:1px solid #bbdefb;text-align:right;font-weight:800;background:#bbdefb;">รวม</th>
+        </tr></thead>
+        <tbody>
+        ${months.filter(m=>m.dailyCount>0).map((m,i)=>`<tr style="cursor:pointer;${i%2?'background:#f8fbff;':''}" onclick="drillMonth('${m.month}','daily')">
+          <td style="padding:7px 8px;border:1px solid #e0e0e0;font-weight:600;">${m.label} <span style="font-size:9px;color:var(--blue);">🔍</span></td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:center;font-weight:700;">${m.dailyCount}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;color:#2e7d32;">${Math.round(m.dailyCashAmt).toLocaleString()}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:center;font-size:10px;color:var(--text3);">${m.dailyCashCt}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;color:#1565c0;">${Math.round(m.dailyTransferAmt).toLocaleString()}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:center;font-size:10px;color:var(--text3);">${m.dailyTransferCt}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:right;font-family:'JetBrains Mono',monospace;color:#e65100;">${Math.round(m.dailyUnpaidAmt).toLocaleString()}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:center;font-size:10px;color:var(--text3);">${m.dailyUnpaidCt}</td>
+          <td style="padding:7px;border:1px solid #e0e0e0;text-align:right;font-weight:800;font-family:'JetBrains Mono',monospace;background:#f3f8fd;">${Math.round(m.dailyTotal).toLocaleString()}</td>
+        </tr>`).join('')}
+        </tbody>
+        <tfoot><tr style="background:#0d47a1;color:#fff;font-weight:700;">
+          <td style="padding:8px;">รวมทั้งปี</td>
+          <td style="padding:8px;text-align:center;">${months.reduce((a,m)=>a+m.dailyCount,0)}</td>
+          <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(months.reduce((a,m)=>a+m.dailyCashAmt,0)).toLocaleString()}</td>
+          <td style="padding:8px;text-align:center;">${months.reduce((a,m)=>a+m.dailyCashCt,0)}</td>
+          <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(months.reduce((a,m)=>a+m.dailyTransferAmt,0)).toLocaleString()}</td>
+          <td style="padding:8px;text-align:center;">${months.reduce((a,m)=>a+m.dailyTransferCt,0)}</td>
+          <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(months.reduce((a,m)=>a+m.dailyUnpaidAmt,0)).toLocaleString()}</td>
+          <td style="padding:8px;text-align:center;">${months.reduce((a,m)=>a+m.dailyUnpaidCt,0)}</td>
+          <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:14px;">${Math.round(totDaily).toLocaleString()}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    
+    <!-- Top Customers -->
+    ${(()=>{
+      const allDi=rptData.di||[];
+      const custMap={};
+      allDi.forEach(r=>{
+        const name=r.customer_name||'ไม่ระบุ';
+        if(!custMap[name])custMap[name]={name,count:0,total:0};
+        custMap[name].count++;
+        custMap[name].total+=Number(r.grand_total||0);
+      });
+      const topCust=Object.values(custMap).sort((a,b)=>b.total-a.total).slice(0,10);
+      if(!topCust.length)return '';
+      const maxCustVal=topCust[0]?.total||1;
+      return '<div style="margin-top:16px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;">🏆 Top 10 ลูกค้ารายวัน (ยอดรวมสูงสุด)</div>'+
+        topCust.map((c,i)=>{
+          const pct=maxCustVal>0?(c.total/maxCustVal*100):0;
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+            '<div style="width:20px;font-size:11px;font-weight:800;color:'+(i<3?'#e65100':'var(--text3)')+';">'+(i+1)+'</div>'+
+            '<div style="flex:1;min-width:0;">'+
+              '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">'+
+                '<span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+c.name+'</span>'+
+                '<span style="font-weight:800;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;margin-left:8px;">'+fmt(c.total)+' <span style="font-size:9px;color:var(--text3);">('+c.count+' ใบ)</span></span>'+
+              '</div>'+
+              '<div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">'+
+                '<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#1976d2,#42a5f5);border-radius:3px;"></div>'+
+              '</div>'+
+            '</div></div>';
+        }).join('')+'</div>';
+    })()}
+  </div>
+
   <!-- Detail Table -->
   <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
     <div style="padding:14px 18px;font-size:14px;font-weight:700;border-bottom:1px solid var(--border);">📋 ตารางสรุปรายเดือน (บาท)</div>
@@ -3345,15 +3505,15 @@ function renderReport(months,yr){
 }
 
 // Drill-down: click month → show room details
-function drillMonth(mKey){
+function drillMonth(mKey,tab){
   if(!rptData)return;
   const m=rptData.months.find(x=>x.month===mKey);
   if(!m)return;
+  tab=tab||'monthly';
   const modal=document.getElementById('rpt-drill-modal');
   document.getElementById('rpt-drill-title').textContent='📋 รายละเอียด '+m.label;
   const rooms=m.rooms||[];
-  const di=(rptData.di||[]).filter(r=>r.invoice_date&&r.invoice_date.startsWith(mKey));
-  const ota=(rptData.ota||[]).filter(r=>r.check_in&&r.check_in.startsWith(mKey));
+  const invoices=m.invoices||[];
   const fmt=v=>'฿'+Math.round(v).toLocaleString();
 
   let html=`
@@ -3366,9 +3526,16 @@ function drillMonth(mKey){
     <div style="text-align:center;background:linear-gradient(135deg,#fff8e1,#ffe082);border-radius:8px;padding:8px;"><div style="font-size:10px;color:#e65100;">💰 รวมทั้งหมด</div><div style="font-size:18px;font-weight:900;color:#bf360c;">${fmt(m.grandTotal)}</div></div>
   </div>
 
-  <!-- Room Detail Table -->
-  <div style="padding:14px;">
-    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🏠 รายรับรายเดือน — แยกตามห้อง (${rooms.length} ห้อง)</div>
+  <!-- Tabs -->
+  <div style="display:flex;border-bottom:2px solid var(--border);background:#fff;">
+    <button onclick="switchDrillTab('${mKey}','monthly')" style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:'Sarabun',sans-serif;background:${tab==='monthly'?'#e8f5e9':'#fff'};color:${tab==='monthly'?'#2e7d32':'var(--text3)'};border-bottom:${tab==='monthly'?'3px solid #43a047':'3px solid transparent'};">🏠 รายเดือน (${rooms.length} ห้อง)</button>
+    <button onclick="switchDrillTab('${mKey}','daily')" style="flex:1;padding:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:'Sarabun',sans-serif;background:${tab==='daily'?'#e3f2fd':'#fff'};color:${tab==='daily'?'#1565c0':'var(--text3)'};border-bottom:${tab==='daily'?'3px solid #1976d2':'3px solid transparent'};">📅 รายวัน (${invoices.length} ใบ)</button>
+  </div>`;
+
+  if(tab==='monthly'){
+    // Room Detail Table
+    html+=`<div style="padding:14px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🏠 รายรับรายเดือน — แยกตามห้อง</div>
     ${rooms.length?`<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
       <thead><tr style="background:#f5f5f5;">
         <th style="padding:8px;border:1px solid #e0e0e0;text-align:center;width:50px;">ห้อง</th>
@@ -3402,19 +3569,78 @@ function drillMonth(mKey){
       <tr style="background:#263238;color:#fff;font-weight:700;">
         <td colspan="2" style="padding:8px;">รวม ${rooms.length} ห้อง</td>
         <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.rentSum).toLocaleString()}</td>
-        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.elecSum).toLocaleString()}</td>
-        <td></td>
-        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.waterSum).toLocaleString()}</td>
-        <td></td>
+        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.elecSum).toLocaleString()}</td><td></td>
+        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.waterSum).toLocaleString()}</td><td></td>
         <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(m.otherSum).toLocaleString()}</td>
         <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;">${Math.round(m.monthlyTotal).toLocaleString()}</td>
         <td style="padding:8px;text-align:center;">${m.paidCount}/${rooms.length}</td>
-      </tr>
-      </tbody></table></div>`:'<div style="color:var(--text3);padding:10px;">ไม่มีข้อมูลรายเดือน</div>'}
-  </div>`;
+      </tr></tbody></table></div>`:'<div style="color:var(--text3);padding:20px;text-align:center;">ไม่มีข้อมูลรายเดือน</div>'}
+    </div>`;
+  } else {
+    // Daily invoices table
+    html+=`<div style="padding:14px;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+      <div style="background:#e8f5e9;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:#2e7d32;">💵 เงินสด</div>
+        <div style="font-size:16px;font-weight:800;color:#1b5e20;font-family:'JetBrains Mono',monospace;">${fmt(m.dailyCashAmt)}</div>
+        <div style="font-size:10px;color:#388e3c;">${m.dailyCashCt} ใบ</div>
+      </div>
+      <div style="background:#e8eaf6;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:#283593;">🏦 เงินโอน</div>
+        <div style="font-size:16px;font-weight:800;color:#1a237e;font-family:'JetBrains Mono',monospace;">${fmt(m.dailyTransferAmt)}</div>
+        <div style="font-size:10px;color:#3949ab;">${m.dailyTransferCt} ใบ</div>
+      </div>
+      <div style="background:#fff3e0;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:#e65100;">⏳ ค้างชำระ</div>
+        <div style="font-size:16px;font-weight:800;color:#bf360c;font-family:'JetBrains Mono',monospace;">${fmt(m.dailyUnpaidAmt)}</div>
+        <div style="font-size:10px;color:#e65100;">${m.dailyUnpaidCt} ใบ</div>
+      </div>
+      <div style="background:#e3f2fd;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:#0d47a1;">💰 รวม</div>
+        <div style="font-size:18px;font-weight:900;color:#0d47a1;font-family:'JetBrains Mono',monospace;">${fmt(m.dailyTotal)}</div>
+      </div>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📅 ใบเสร็จรายวัน — ${invoices.length} รายการ</div>
+    ${invoices.length?`<div style="overflow-x:auto;max-height:50vh;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead style="position:sticky;top:0;z-index:1;"><tr style="background:#e3f2fd;">
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:left;font-size:10px;">เลขที่</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:left;">ลูกค้า</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:left;font-size:10px;">รายละเอียด</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:right;">ยอดรวม</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:right;font-size:10px;">ก่อน VAT</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:right;font-size:10px;">VAT</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:center;">ชำระ</th>
+        <th style="padding:7px 6px;border:1px solid #bbdefb;text-align:center;">สถานะ</th>
+      </tr></thead>
+      <tbody>${invoices.map((r,i)=>{
+        const payIcon=r.payment_method==='เงินสด'?'💵':'🏦';
+        const isPaid=r.payment_status==='paid';
+        return `<tr style="${i%2?'background:#f8fbff;':''}${!isPaid?'background:#fff8e1;':''}">
+          <td style="padding:5px 6px;border:1px solid #eee;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap;">${r.invoice_no||''}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.customer_name||'—'}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;font-size:10px;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.description||'').replace(/"/g,'&quot;')}">${r.description||''}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;text-align:right;font-weight:700;font-family:'JetBrains Mono',monospace;">${Math.round(Number(r.grand_total||0)).toLocaleString()}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);">${Math.round(Number(r.before_vat||0)).toLocaleString()}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);">${Math.round(Number(r.vat_amount||0)).toLocaleString()}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;text-align:center;font-size:10px;">${payIcon} ${r.payment_method||''}</td>
+          <td style="padding:5px 6px;border:1px solid #eee;text-align:center;"><span style="padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;${isPaid?'background:#e8f5e9;color:#2e7d32;':'background:#fff3e0;color:#e65100;'}">${isPaid?'✓ ชำระ':'⏳ ค้าง'}</span></td>
+        </tr>`;
+      }).join('')}
+      <tr style="background:#0d47a1;color:#fff;font-weight:700;">
+        <td colspan="3" style="padding:8px;">รวม ${invoices.length} ใบ</td>
+        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;">${Math.round(m.dailyTotal).toLocaleString()}</td>
+        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(invoices.reduce((a,r)=>a+Number(r.before_vat||0),0)).toLocaleString()}</td>
+        <td style="padding:8px;text-align:right;font-family:'JetBrains Mono',monospace;">${Math.round(invoices.reduce((a,r)=>a+Number(r.vat_amount||0),0)).toLocaleString()}</td>
+        <td colspan="2" style="padding:8px;text-align:center;">${m.dailyPaidCt} ชำระ / ${m.dailyUnpaidCt} ค้าง</td>
+      </tr></tbody></table></div>`:'<div style="color:var(--text3);padding:20px;text-align:center;">ไม่มีใบเสร็จรายวันในเดือนนี้</div>'}
+    </div>`;
+  }
+
   document.getElementById('rpt-drill-body').innerHTML=html;
   modal.classList.add('open');
 }
+
+function switchDrillTab(mKey,tab){drillMonth(mKey,tab);}
 
 // Export PDF
 async function exportReportPDF(){
