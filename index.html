@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -414,7 +415,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('vat',this)">🧾 ภาษีซื้อ-ขาย</button>
     <button class="nbtn" onclick="showSec('invoice',this)">📄 ใบเสร็จ</button>
     <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
-
+    <button class="nbtn" onclick="showSec('utility',this)">⚡ สาธารณูปโภค</button>
   </div>
   <div class="hright"><span id="hdate"></span><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><div class="hbadge">● LIVE</div></div>
 </div>
@@ -1293,6 +1294,90 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 <div id="sec-report" class="sec">
   <div id="rpt-content"><div class="loading">กำลังโหลด...</div></div>
 </div>
+
+<!-- ═══ UTILITY SECTION ═══ -->
+<div id="sec-utility" class="sec">
+
+<!-- KPI row -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);">
+    <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">⚡ ค่าไฟ ก.พ. 2569</div>
+    <div style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">40,521</div>
+    <div style="font-size:11px;color:var(--text3);"><span style="color:var(--success);">▼ 7.8%</span> จาก ม.ค. (43,958 บาท)</div>
+  </div>
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);">
+    <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">💧 ค่าน้ำ ก.พ. 2569</div>
+    <div style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">6,462</div>
+    <div style="font-size:11px;color:var(--text3);"><span style="color:var(--warn);">▲ 7.8%</span> จาก ม.ค. (5,993 บาท)</div>
+  </div>
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);">
+    <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">รวมเดือนล่าสุด</div>
+    <div style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">46,983</div>
+    <div style="font-size:11px;color:var(--text3);">ไฟ + น้ำ ก.พ. 2569</div>
+  </div>
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);">
+    <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">⚡ สูงสุด 12 เดือน</div>
+    <div style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">75,305</div>
+    <div style="font-size:11px;color:var(--text3);">ก.ค. 2568 — ฤดูร้อน</div>
+  </div>
+</div>
+
+<!-- Alert row -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--warn);">
+    <div style="font-size:12px;font-weight:700;margin-bottom:3px;">⚠️ ค่าไฟสูงผิดปกติ — ก.ค. 2568</div>
+    <div style="font-size:12px;color:var(--text2);">ยอด 75,305 บาท สูงกว่าค่าเฉลี่ย 56,340 บาท ถึง <b>+33.6%</b> เดือนร้อน AC ทำงานมากขึ้น</div>
+  </div>
+  <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);">
+    <div style="font-size:12px;font-weight:700;margin-bottom:3px;">📉 ค่าไฟลดต่อเนื่องต้นปี 2569</div>
+    <div style="font-size:12px;color:var(--text2);">ม.ค.–ก.พ. 2569 เฉลี่ย 42,240 บาท — ต่ำสุดในรอบปี อากาศเย็นลดการใช้ AC</div>
+  </div>
+</div>
+
+<!-- Main combo chart -->
+<div class="card" style="margin-bottom:14px;">
+  <div class="chdr">
+    <span>📊 ค่าไฟ + ค่าน้ำ รายเดือน (บาท)</span>
+    <div style="margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--text2);">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gold);"></span>MEA ค่าไฟ</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--blue);"></span>MWA ค่าน้ำ</span>
+    </div>
+  </div>
+  <div style="padding:14px;"><div style="position:relative;height:240px;"><canvas id="ut-combo-chart"></canvas></div></div>
+</div>
+
+<!-- Two sub charts -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+  <div class="card">
+    <div class="chdr"><span>⚡ MEA 012076042 รายปี (เปรียบเทียบ)</span></div>
+    <div style="padding:14px;"><div style="position:relative;height:200px;"><canvas id="ut-year-chart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="chdr"><span>💧 MWA 74475021 รายเดือน</span></div>
+    <div style="padding:14px;"><div style="position:relative;height:200px;"><canvas id="ut-mwa-chart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- Data tabs -->
+<div class="card">
+  <div class="chdr">
+    <span>📋 ตารางข้อมูล</span>
+    <div style="margin-left:auto;display:flex;gap:4px;">
+      <button class="sb active" id="ut-tab-all" onclick="utTab('all',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--gold);color:#1a1a2e;">ทั้งหมด</button>
+      <button class="sb" id="ut-tab-mea" onclick="utTab('mea',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">⚡ MEA</button>
+      <button class="sb" id="ut-tab-mwa" onclick="utTab('mwa',this)" style="padding:5px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);">💧 MWA</button>
+    </div>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="dtbl">
+      <thead><tr><th>เดือน</th><th>ประเภท</th><th>ยอดชำระ (บาท)</th><th>วันชำระ</th><th>เทียบเดือนก่อน</th></tr></thead>
+      <tbody id="ut-table-body"></tbody>
+    </table>
+  </div>
+  <div style="padding:6px 14px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);text-align:center;">ข้อมูลจาก K PLUS bill payment email · MEA 012076042 · MWA 74475021</div>
+</div>
+
+</div><!-- /sec-utility -->
 
 <!-- REPORT DRILL-DOWN MODAL -->
 <div class="moverlay" id="rpt-drill-modal">
@@ -7221,6 +7306,197 @@ function _psSaveAll(){
   document.getElementById('_payModal').remove();
   toast('บันทึกแล้ว ✅ รายเดือน '+monthly.length+' บัญชี · รายวัน '+daily.length+' บัญชี', 'ok');
 }
+
+// ══════════════════════════════════════════
+// UTILITY DASHBOARD — MEA + MWA
+// ══════════════════════════════════════════
+var _utCharts = {};
+
+var _UT_MEA = [
+  { month:'มิ.ย. 2567', date:'17/06/2024', amount:59559.77 },
+  { month:'ก.ค. 2567',  date:'13/07/2024', amount:63338.90 },
+  { month:'ส.ค. 2567',  date:'09/08/2024', amount:48993.78 },
+  { month:'ก.ย. 2567',  date:'12/09/2024', amount:56229.69 },
+  { month:'ต.ค. 2567',  date:'02/10/2024', amount:53577.05 },
+  { month:'พ.ย. 2567',  date:'—',          amount:null },
+  { month:'ธ.ค. 2567',  date:'02/12/2024', amount:56440.56 },
+  { month:'ม.ค. 2568',  date:'12/01/2025', amount:44574.64 },
+  { month:'ก.พ. 2568',  date:'07/02/2025', amount:39230.96 },
+  { month:'มี.ค. 2568', date:'13/03/2025', amount:51746.42 },
+  { month:'เม.ย. 2568', date:'15/04/2025', amount:68931.45 },
+  { month:'พ.ค. 2568',  date:'12/05/2025', amount:72644.43 },
+  { month:'มิ.ย. 2568', date:'13/06/2025', amount:71799.08 },
+  { month:'ก.ค. 2568',  date:'14/07/2025', amount:75304.81 },
+  { month:'ส.ค. 2568',  date:'12/08/2025', amount:59396.75 },
+  { month:'ก.ย. 2568',  date:'15/09/2025', amount:58866.97 },
+  { month:'ต.ค. 2568',  date:'—',          amount:null },
+  { month:'พ.ย. 2568',  date:'—',          amount:null },
+  { month:'ธ.ค. 2568',  date:'—',          amount:null },
+  { month:'ม.ค. 2569',  date:'15/01/2026', amount:43958.45 },
+  { month:'ก.พ. 2569',  date:'12/02/2026', amount:40520.97 },
+];
+
+var _UT_MWA = [
+  { month:'พ.ย. 2568', date:'22/11/2025', amount:4867.54 },
+  { month:'ธ.ค. 2568', date:'17/12/2025', amount:4133.30 },
+  { month:'ม.ค. 2569', date:'15/01/2026', amount:5993.18 },
+  { month:'ก.พ. 2569', date:'19/02/2026', amount:6461.84 },
+];
+
+var _utCurrentFilter = 'all';
+
+function _utFmt(n) {
+  if (n === null) return '—';
+  return n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function _utTrend(curr, prev) {
+  if (!curr || !prev) return '<span style="color:var(--text3)">—</span>';
+  var pct = ((curr-prev)/prev*100).toFixed(1);
+  if (pct > 0) return '<span style="color:var(--warn);font-weight:700;">▲ '+pct+'%</span>';
+  return '<span style="color:var(--success);font-weight:700;">▼ '+Math.abs(pct)+'%</span>';
+}
+
+function utTab(type, btn) {
+  _utCurrentFilter = type;
+  document.querySelectorAll('#ut-tab-all,#ut-tab-mea,#ut-tab-mwa').forEach(function(b){
+    b.style.background = 'var(--white)'; b.style.color = 'var(--text2)';
+  });
+  btn.style.background = 'var(--gold)'; btn.style.color = '#1a1a2e';
+  _utRenderTable(type);
+}
+
+function _utRenderTable(filter) {
+  var rows = [];
+  if (filter !== 'mwa') {
+    _UT_MEA.forEach(function(d,i){
+      var prev = i>0 ? _UT_MEA[i-1].amount : null;
+      rows.push({month:d.month,type:'MEA',cls:'gold2',icon:'⚡',amount:d.amount,date:d.date,trend:_utTrend(d.amount,prev),sort:i});
+    });
+  }
+  if (filter !== 'mea') {
+    _UT_MWA.forEach(function(d,i){
+      var prev = i>0 ? _UT_MWA[i-1].amount : null;
+      rows.push({month:d.month,type:'MWA',cls:'blue',icon:'💧',amount:d.amount,date:d.date,trend:_utTrend(d.amount,prev),sort:100+i});
+    });
+  }
+  if (filter === 'all') {
+    var order = ['มิ.ย. 2567','ก.ค. 2567','ส.ค. 2567','ก.ย. 2567','ต.ค. 2567','พ.ย. 2567','ธ.ค. 2567',
+                 'ม.ค. 2568','ก.พ. 2568','มี.ค. 2568','เม.ย. 2568','พ.ค. 2568','มิ.ย. 2568','ก.ค. 2568','ส.ค. 2568','ก.ย. 2568','ต.ค. 2568','พ.ย. 2568','ธ.ค. 2568',
+                 'ม.ค. 2569','ก.พ. 2569'];
+    rows.sort(function(a,b){ return order.indexOf(a.month)-order.indexOf(b.month); });
+  }
+  var tb = document.getElementById('ut-table-body');
+  if (!tb) return;
+  tb.innerHTML = rows.map(function(r){
+    var amtCell = r.amount===null
+      ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--dbg);color:var(--danger);font-weight:700;">ไม่มีข้อมูล</span>'
+      : '<span style="font-family:\'JetBrains Mono\',monospace;color:var(--'+r.cls+');">'+_utFmt(r.amount)+'</span>';
+    var typeBadge = r.type==='MEA'
+      ? '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);">⚡ MEA</span>'
+      : '<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;">💧 MWA</span>';
+    return '<tr><td style="font-weight:600;">'+r.month+'</td><td>'+typeBadge+'</td><td>'+amtCell+'</td><td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3);">'+r.date+'</td><td>'+r.trend+'</td></tr>';
+  }).join('');
+}
+
+function _utInitCharts() {
+  if (!window.Chart) return;
+  // Destroy old if any
+  Object.values(_utCharts).forEach(function(c){ try{c.destroy();}catch(e){} });
+  _utCharts = {};
+
+  var gridColor = '#e2e4e8';
+  var tooltipBase = {
+    backgroundColor:'#fff', borderColor:'#e2e4e8', borderWidth:1,
+    titleColor:'#1a1d21', bodyColor:'#5e6268', padding:10,
+    callbacks:{ label: function(ctx){ return ' '+_utFmt(ctx.parsed.y)+' บาท'; } }
+  };
+
+  // ── COMBO chart (recent months) ──
+  var comboStart = 6; // from ธ.ค.67
+  var comboLabels = _UT_MEA.slice(comboStart).map(function(d){ return d.month; });
+  var comboMEA = _UT_MEA.slice(comboStart).map(function(d){ return d.amount; });
+  var comboMWA = comboLabels.map(function(m){
+    var f = _UT_MWA.find(function(d){ return d.month===m; });
+    return f ? f.amount : null;
+  });
+  var c1 = document.getElementById('ut-combo-chart');
+  if (c1) {
+    _utCharts.combo = new Chart(c1, {
+      type:'bar',
+      data:{
+        labels:comboLabels,
+        datasets:[
+          { label:'MEA ค่าไฟ', data:comboMEA, backgroundColor:'rgba(212,160,23,0.75)', borderColor:'#d4a017', borderWidth:1, borderRadius:4, yAxisID:'y' },
+          { label:'MWA ค่าน้ำ', data:comboMWA, backgroundColor:'rgba(26,115,232,0.75)', borderColor:'#1a73e8', borderWidth:1, borderRadius:4, yAxisID:'y' }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:tooltipBase },
+        scales:{
+          x:{ grid:{color:gridColor}, ticks:{maxRotation:45,font:{size:10}} },
+          y:{ grid:{color:gridColor}, ticks:{callback:function(v){return (v/1000).toFixed(0)+'K';},font:{size:10}} }
+        }
+      }
+    });
+  }
+
+  // ── YEAR comparison ──
+  var c2 = document.getElementById('ut-year-chart');
+  if (c2) {
+    _utCharts.year = new Chart(c2, {
+      type:'line',
+      data:{
+        labels:['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+        datasets:[
+          { label:'2567', data:[null,null,null,null,null,59559.77,63338.90,48993.78,56229.69,53577.05,null,56440.56], borderColor:'rgba(212,160,23,0.5)', borderDash:[4,4], pointBackgroundColor:'#d4a017', tension:0.3, pointRadius:3, backgroundColor:'transparent' },
+          { label:'2568', data:[44574.64,39230.96,51746.42,68931.45,72644.43,71799.08,75304.81,59396.75,58866.97,null,null,null], borderColor:'#d4a017', pointBackgroundColor:'#d4a017', fill:true, backgroundColor:'rgba(212,160,23,0.07)', tension:0.3, pointRadius:3 },
+          { label:'2569', data:[43958.45,40520.97,null,null,null,null,null,null,null,null,null,null], borderColor:'#1a73e8', pointBackgroundColor:'#1a73e8', tension:0.3, pointRadius:5, backgroundColor:'transparent' }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:true,labels:{boxWidth:10,padding:12,font:{size:10}}}, tooltip:tooltipBase },
+        scales:{
+          x:{ grid:{color:gridColor}, ticks:{font:{size:10}} },
+          y:{ grid:{color:gridColor}, ticks:{callback:function(v){return (v/1000).toFixed(0)+'K';},font:{size:10}} }
+        }
+      }
+    });
+  }
+
+  // ── MWA chart ──
+  var c3 = document.getElementById('ut-mwa-chart');
+  if (c3) {
+    _utCharts.mwa = new Chart(c3, {
+      type:'bar',
+      data:{
+        labels:_UT_MWA.map(function(d){return d.month;}),
+        datasets:[{ label:'MWA', data:_UT_MWA.map(function(d){return d.amount;}), backgroundColor:'rgba(26,115,232,0.75)', borderColor:'#1a73e8', borderWidth:1, borderRadius:4 }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:tooltipBase },
+        scales:{
+          x:{ grid:{color:gridColor}, ticks:{font:{size:10}} },
+          y:{ grid:{color:gridColor}, ticks:{callback:function(v){return (v/1000).toFixed(1)+'K';},font:{size:10}}, suggestedMin:3000 }
+        }
+      }
+    });
+  }
+}
+
+// Hook into showSec
+(function(){
+  var _origShowSec = window.showSec;
+  window.showSec = function(id, btn) {
+    if (_origShowSec) _origShowSec(id, btn);
+    if (id === 'utility') {
+      _utRenderTable('all');
+      setTimeout(_utInitCharts, 50);
+    }
+  };
+})();
 
 console.log('✅ J.Residence Billing v4 loaded');
 </script>
