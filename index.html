@@ -6758,307 +6758,244 @@ function rcBuildParams(){
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
-   J.Residence — PDF ใบแจ้งหนี้ / ใบเสร็จ  v3 (robust)
+   J.Residence — Invoice/Receipt v4 (adapted from invoice-system.html)
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ── helpers ── */
-function _thDate(d){
-  if(!d)return'';
-  const dt=new Date(d+'T00:00:00');
-  return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+(dt.getFullYear()+543);
+var _LOGO = "data:image/png;base64,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";
+var _TM = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+
+function _thM(m){ var p=m.split("-"); return _TM[parseInt(p[1])-1]+" "+(parseInt(p[0])+543); }
+function _fmtN(n){ return Number(n||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _fmtDate(d){ if(!d)return"-"; var t=new Date(d); return t.getDate()+"/"+(t.getMonth()+1)+"/"+(t.getFullYear()+543); }
+function _pad3(n){ return String(n).padStart(3,"0"); }
+function _makeDocNo(isR,m,seq){
+  var p=m.split("-"),thY=String(parseInt(p[0])+543).slice(-2),mm=p[1];
+  return (isR?"RC":"INV")+thY+mm+"/"+_pad3(seq);
 }
-function _thMonthFull(s){
-  const TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-            'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-  const[y,m]=s.split('-'); return TH[parseInt(m)-1]+' '+(parseInt(y)+543);
-}
-function _fmt2(n){return Number(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
-function _baht2(n){
-  if(!n||n===0)return'ศูนย์บาทถ้วน';
-  const t=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
-  const p=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
-  let b=Math.floor(Math.abs(n)),s=Math.round((Math.abs(n)-b)*100),r='';
-  const toW=num=>{
-    if(!num)return'';let res='';const ns=num.toString();
-    for(let i=0;i<ns.length;i++){
-      const d=parseInt(ns[i]),pos=ns.length-i-1;if(!d)continue;
-      if(pos===1&&d===2)res+='ยี่';else if(pos===1&&d===1)res+='';
-      else if(pos===0&&d===1&&num>1)res+='เอ็ด';else res+=t[d];
-      res+=p[pos%7];
-    }return res;
-  };
-  r=(b?toW(b):'ศูนย์')+'บาท';
-  if(!s)r+='ถ้วน';
-  else{const d1=Math.floor(s/10),d2=s%10;
-    if(d1)r+=(d1===2?'ยี่สิบ':d1===1?'สิบ':t[d1]+'สิบ');
-    if(d2)r+=(d2===1&&d1?'เอ็ด':t[d2]);r+='สตางค์';}
-  return(n<0?'ลบ':'')+r;
+function _getSeq(prefix,month){
+  var key="jres_seq_"+prefix+"_"+month.replace("-","");
+  var n=(parseInt(localStorage.getItem(key)||"0"))+1;
+  localStorage.setItem(key,n); return n;
 }
 
-/* ── doc number: localStorage-based (ไม่ต้องพึ่ง Supabase table) ── */
-function _genDocNo(prefix, month){
-  const[y,m]=month.split('-');
-  const yymm=(parseInt(y)+543)+''+m;
-  const key='jres_docseq_'+prefix+'_'+yymm;
-  const seq=(parseInt(localStorage.getItem(key)||'0'))+1;
-  localStorage.setItem(key, seq);
-  return prefix+yymm+'/'+String(seq).padStart(3,'0');
-}
+/* ── Build the full invoice HTML (same layout as invoice-system.html) ── */
+function _buildInvoiceHTML(d, isR, displayName, coName, coAddr, coTax, coBranch){
+  var ac = isR ? "#2E7D32" : "#1565C0";
+  var title = isR ? "ใบเสร็จรับเงิน / RECEIPT" : "ใบแจ้งหนี้ / BILLING NOTE";
+  var seq = _getSeq(isR?"RC":"INV", curMonth);
+  var invNo = _makeDocNo(isR, curMonth, seq);
+  var isCo = !!coName;
+  var thMonth = _thM(curMonth);
+  var today = new Date(); var todayStr = today.getDate()+"/"+(today.getMonth()+1)+"/"+(today.getFullYear()+543);
 
-/* ── build invoice HTML ── */
-function _buildBillingHTML2(cfg){
-  const isR=cfg.type==='receipt';
-  const color=isR?'#2E7D32':'#1a73e8';
-  const title=isR?'ใบเสร็จรับเงิน / TAX INVOICE':'ใบแจ้งหนี้ / BILLING NOTE';
-  let vatBase=0,vatAmt=0,nonVat=0;
-  cfg.items.forEach(it=>{
-    if(it.vat){const base=it.amount*100/107;vatBase+=base;vatAmt+=it.amount-base;}
-    else nonVat+=it.amount;
+  // Build items from mData
+  var items = [];
+  if(Number(d.rent)>0) items.push({desc:"ค่าเช่าห้องพัก เดือน"+thMonth,qty:1,unit:"เดือน",price:Number(d.rent),amt:Number(d.rent)});
+  var wu=(Number(d.water_new)||0)-(Number(d.water_old)||0);
+  var eu=(Number(d.elec_new)||0)-(Number(d.elec_old)||0);
+  if(wu>0||Number(d.water_cost)>0) items.push({desc:"ค่าน้ำประปา ("+(d.water_old||0)+" → "+(d.water_new||0)+" = "+wu+" หน่วย)",qty:wu,unit:"หน่วย",price:Math.round(Number(d.water_cost||0)/Math.max(wu,1)*100)/100,amt:Number(d.water_cost||0)});
+  if(eu>0||Number(d.elec_cost)>0) items.push({desc:"ค่าไฟฟ้า ("+(d.elec_old||0)+" → "+(d.elec_new||0)+" = "+eu+" หน่วย)",qty:eu,unit:"หน่วย",price:Math.round(Number(d.elec_cost||0)/Math.max(eu,1)*100)/100,amt:Number(d.elec_cost||0)});
+  if(Number(d.parking_car)>0) items.push({desc:"ค่าจอดรถยนต์",qty:1,unit:"คัน",price:Number(d.parking_car),amt:Number(d.parking_car)});
+  if(Number(d.parking_moto)>0) items.push({desc:"ค่าจอดมอเตอร์ไซค์",qty:1,unit:"คัน",price:Number(d.parking_moto),amt:Number(d.parking_moto)});
+  if(Number(d.tv_fee)>0) items.push({desc:"ค่าทีวี",qty:1,unit:"เครื่อง",price:Number(d.tv_fee),amt:Number(d.tv_fee)});
+  if(Number(d.fridge_fee)>0) items.push({desc:"ค่าตู้เย็น",qty:1,unit:"เครื่อง",price:Number(d.fridge_fee),amt:Number(d.fridge_fee)});
+  if(Number(d.other)>0) items.push({desc:"ค่าบริการอื่นๆ",qty:1,unit:"รายการ",price:Number(d.other),amt:Number(d.other)});
+
+  var total = Number(d.total||0);
+  var vatAmt = Number(d.water_cost||0) + Number(d.elec_cost||0);
+  var vat = Math.round(vatAmt*7/107*100)/100;
+  var nonVat = total - vatAmt;
+
+  var rows = "";
+  items.forEach(function(it,i){
+    rows += '<tr><td class="c">'+(i+1)+'</td><td>'+it.desc+'</td><td class="c">'+it.qty+'</td><td class="c">'+it.unit+'</td><td class="r">'+_fmtN(it.price)+'</td><td class="r">'+_fmtN(it.amt)+'</td></tr>';
   });
-  const grand=vatBase+vatAmt+nonVat;
-  const rows=[...cfg.items];while(rows.length<6)rows.push(null);
-  const itemsH=rows.map((it,i)=>it?`<tr>
-    <td style="text-align:center;border-bottom:1px solid #edf0f4;">${i+1}</td>
-    <td style="text-align:left;padding-left:10px;border-bottom:1px solid #edf0f4;">${it.desc}</td>
-    <td style="text-align:center;border-bottom:1px solid #edf0f4;">${it.qty}</td>
-    <td style="text-align:center;border-bottom:1px solid #edf0f4;">${it.unit||''}</td>
-    <td style="text-align:right;padding-right:8px;border-bottom:1px solid #edf0f4;">${_fmt2(it.price)}</td>
-    <td style="text-align:right;padding-right:8px;border-bottom:1px solid #edf0f4;">${_fmt2(it.amount)}</td>
-  </tr>`:`<tr>
-    <td style="height:32px;border-bottom:1px solid #edf0f4;"></td>
-    <td style="border-bottom:1px solid #edf0f4;"></td>
-    <td style="border-bottom:1px solid #edf0f4;"></td>
-    <td style="border-bottom:1px solid #edf0f4;"></td>
-    <td style="border-bottom:1px solid #edf0f4;"></td>
-    <td style="border-bottom:1px solid #edf0f4;"></td>
-  </tr>`).join('');
+  for(var i=items.length;i<7;i++) rows += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>';
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;0,800&display=swap" rel="stylesheet">
+  var custHTML = isCo
+    ? '<div class="ig"><div class="ib full"><label>ชื่อผู้รับบริการ / Customer</label><span>'+coName+'</span></div></div>'
+      +'<div class="ig3"><div class="ib"><label>ที่อยู่ / Address</label><span class="sub">'+coAddr+'</span></div><div class="ib or"><label>เลขผู้เสียภาษี / Tax ID</label><span>'+coTax+'</span></div><div class="ib"><label>สำนักงาน / Branch</label><span>'+coBranch+'</span></div></div>'
+      +'<div class="ig"><div class="ib or"><label>ห้องพักเลขที่ / Room</label><span>'+d.room+'</span></div><div class="ib"><label>ผู้เข้าพัก / Occupant</label><span>'+(d.tenant_name||"-")+'</span></div></div>'
+    : '<div class="ig"><div class="ib"><label>ผู้เช่า / Customer</label><span>'+displayName+'</span></div><div class="ib or"><label>ห้อง / Room</label><span>'+d.room+' — เจเรสซิเดนซ์</span></div></div>';
+  custHTML += '<div class="ig"><div class="ib"><label>รอบบิล / Billing Period</label><span>'+thMonth+'</span></div><div class="ib or"><label>วันที่ออกเอกสาร</label><span>'+todayStr+'</span></div></div>';
+
+  return `<!DOCTYPE html>
+<html lang="th"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Sarabun',sans-serif;font-size:13px;background:#fff;color:#222;}
-.page{width:780px;margin:0 auto;padding:32px 36px 28px;}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
-.logo-wrap{display:flex;align-items:center;gap:14px;}
-.logo{width:58px;height:58px;background:linear-gradient(135deg,#d4a017,#f0c040);border-radius:10px;
-  display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#1a1a2e;flex-shrink:0;}
-.co-name{font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:3px;}
-.co-sub{font-size:10.5px;color:#555;line-height:1.6;}
-.title-th{font-size:22px;font-weight:800;color:${color};text-align:right;}
-.doc-no{font-size:13px;font-weight:700;color:#333;text-align:right;margin-top:3px;}
-.divider{height:3px;background:linear-gradient(90deg,${color},${color}55);border-radius:2px;margin:14px 0 12px;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.ic{border:1px solid #dde3ea;border-radius:7px;padding:9px 13px;background:#f8fafc;}
-.ic.accent{border-left:3px solid ${color};}
-.ic-lbl{font-size:10px;color:#888;font-weight:600;margin-bottom:3px;}
-.ic-val{font-size:14px;font-weight:700;color:#1a1a2e;}
-.tbl{width:100%;border-collapse:collapse;}
-.tbl th{background:${color};color:#fff;font-size:11.5px;font-weight:700;padding:8px 6px;text-align:center;}
-.tbl th:nth-child(2){text-align:left;padding-left:10px;}
-.sum-wrap{display:flex;justify-content:flex-end;margin-top:12px;}
-.sum-box{width:315px;border:1px solid #dde3ea;border-radius:8px;overflow:hidden;}
-.sr{display:flex;justify-content:space-between;padding:7px 14px;font-size:12.5px;border-bottom:1px solid #edf0f4;}
-.sr:last-child{border:none;}
-.sr.grand{background:${color};color:#fff;font-weight:800;font-size:14px;padding:10px 14px;}
-.sr .lbl{color:#666;}.sr.grand .lbl,.sr.grand .val{color:#fff;}
-.bt{margin-top:10px;font-size:12px;padding:8px 13px;background:#f8f9fc;border-radius:6px;border:1px dashed #c8d0dc;}
-.pb{margin-top:14px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:12px 16px;font-size:12px;}
-.pb strong{color:#92400e;}
-.pb p{color:#78350f;margin-top:3px;line-height:1.7;}
-.sig{display:flex;justify-content:flex-end;margin-top:20px;}
-.sig-box{text-align:center;width:200px;}
-.sig-line{border-top:1px solid #777;margin:32px 0 5px;}
-.sig-lbl{font-size:12px;color:#555;}
-/* print btn — no-print class hides in print */
-.no-print{text-align:center;padding:12px 0 6px;background:#f0f4f8;}
-.dl-btn{padding:10px 32px;background:${color};color:#fff;border:none;border-radius:8px;
-  font-size:15px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;}
-@media print{.no-print{display:none !important;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sarabun',sans-serif;background:#f5f5f5;color:#333}
+.page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:12mm 15mm;position:relative}
+@media print{body{background:#fff}.page{margin:0;box-shadow:none;padding:8mm 12mm}.no-print{display:none!important}}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;padding-bottom:4mm}
+.logo-row{display:flex;align-items:flex-start;gap:12px}
+.logo-img{width:60px;height:60px;border-radius:6px;flex-shrink:0}
+.logo h1{font-size:20px;font-weight:700}.logo h2{font-size:12px;color:#666;font-weight:400}.logo p{font-size:9.5px;color:#888;margin-top:2px;line-height:1.5}
+.dtype{text-align:right}.dtype h2{font-size:22px;font-weight:700}.dtype .inv{font-size:14px;color:#333;margin-top:4px;font-weight:600}
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:4mm;margin-bottom:5mm}
+.ig3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:4mm;margin-bottom:5mm}
+.ib{background:#f8f9ff;border-radius:6px;padding:8px 12px;border-left:3px solid #1565C0}.ib.or{border-left-color:#FFA726}.ib.full{grid-column:1/-1}
+.ib label{font-size:10px;color:#888;display:block}.ib span{font-size:13px;font-weight:600}.ib .sub{font-size:11px;color:#444;font-weight:400}
+table{width:100%;border-collapse:collapse;margin-bottom:4mm}
+th{color:#fff;padding:6px 8px;font-size:11px;font-weight:600}
+td{padding:5px 8px;font-size:11px;border-bottom:1px solid #e0e0e0}
+tr:nth-child(even) td{background:#f8f9ff}.c{text-align:center}.r{text-align:right}
+.sum{display:flex;justify-content:flex-end;margin-top:2mm}
+.sbox{width:55%;border-radius:8px;overflow:hidden}
+.sr{display:flex;justify-content:space-between;padding:5px 12px;font-size:12px}
+.sr.tot{color:#fff;font-weight:700;font-size:14px;padding:8px 12px}
+.bank{background:#FFF3E0;border-radius:6px;padding:8px 12px;margin-top:4mm;font-size:10px;border-left:3px solid #FFA726}.bank b{color:#E65100}
+.stamp{text-align:center;margin-top:8mm}.stamp .pd{display:inline-block;border:3px solid #2E7D32;color:#2E7D32;padding:6px 24px;border-radius:8px;font-size:20px;font-weight:700;transform:rotate(-5deg)}
+.ft{position:absolute;bottom:12mm;left:15mm;right:15mm;border-top:2px solid #e0e0e0;padding-top:3mm;display:flex;justify-content:space-between;font-size:9px;color:#888}
+.no-print{text-align:center;padding:10px;background:#f0f0f0}
+.no-print button{padding:10px 24px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;margin:0 4px}
 </style></head><body>
 <div class="no-print">
-  <button class="dl-btn" onclick="window.print()">🖨 พิมพ์ / บันทึก PDF</button>
-  &nbsp;
-  <button onclick="window.close()" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">✕ ปิด</button>
+  <button style="background:#1565C0;color:#fff" onclick="window.print()">🖨️ พิมพ์ / PDF</button>
+  <button style="background:#ddd;color:#333" onclick="window.close()">✕ ปิด</button>
 </div>
 <div class="page">
-  <div class="hdr">
-    <div class="logo-wrap">
-      <div class="logo">J</div>
-      <div>
-        <div class="co-name">J.Residence</div>
-        <div class="co-sub">
-          ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์ / # J.Residence<br>
-          19/9 หมู่ที่ 6 ถนน ศรีนครินทร์ ตำบล บางเมืองใหม่<br>
-          อำเภอ เมือง จังหวัด สมุทรปราการ 10270<br>
-          โทร: 080-1766571, 02-3856919 | Tax ID: 0992002541070
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="title-th">${title}</div>
-      <div class="doc-no">เลขที่ ${cfg.docNo}</div>
+<div class="header" style="border-bottom:3px solid ${ac}">
+  <div class="logo-row">
+    <img class="logo-img" src="${_LOGO}" alt="J.Residence">
+    <div class="logo">
+      <h1 style="color:${ac}">J.Residence</h1>
+      <h2>ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์ / # J.Residence</h2>
+      <p>19/9 หมู่ที่ 6 ถนน ศรีนครินทร์ ตำบล บางเมืองใหม่<br>อำเภอ เมือง จังหวัด สมุทรปราการ 10270<br>โทร: 080-1766571, 02-3856919 | Tax ID: 0992002541070</p>
     </div>
   </div>
-  <div class="divider"></div>
-  <div class="info-grid">
-    <div class="ic accent"><div class="ic-lbl">ผู้เช่า / Customer</div><div class="ic-val">${cfg.customer||'—'}</div></div>
-    <div class="ic accent"><div class="ic-lbl">ห้อง / Room</div><div class="ic-val">${cfg.room} — เจเรสซิเดนซ์</div></div>
-    <div class="ic"><div class="ic-lbl">รอบบิล / Billing Period</div><div class="ic-val">${cfg.billingPeriod}</div></div>
-    <div class="ic"><div class="ic-lbl">วันที่ออกเอกสาร</div><div class="ic-val">${cfg.issueDate}</div></div>
-  </div>
-  <table class="tbl">
-    <thead><tr>
-      <th style="width:44px;">ลำดับ</th>
-      <th>รายการ / Description</th>
-      <th style="width:62px;">จำนวน</th>
-      <th style="width:58px;">หน่วย</th>
-      <th style="width:95px;">ราคา/หน่วย</th>
-      <th style="width:105px;">จำนวนเงิน</th>
-    </tr></thead>
-    <tbody>${itemsH}</tbody>
-  </table>
-  <div class="sum-wrap">
-    <div class="sum-box">
-      <div class="sr"><span class="lbl">รวมรายการมี VAT</span><span class="val">${_fmt2(vatBase)}</span></div>
-      <div class="sr"><span class="lbl">ภาษีมูลค่าเพิ่ม VAT 7%</span><span class="val">${_fmt2(vatAmt)}</span></div>
-      <div class="sr"><span class="lbl">รวมรายการไม่มี VAT</span><span class="val">${_fmt2(nonVat)}</span></div>
-      <div class="sr grand"><span class="lbl">ยอดรวมทั้งสิ้น / Grand Total</span><span class="val">฿ ${_fmt2(grand)}</span></div>
-    </div>
-  </div>
-  <div class="bt">( ${_baht2(Math.round(grand*100)/100)} )</div>
-  <div class="pb">
-    <strong>🏦 ช่องทางชำระเงิน:</strong>
-    <p>ธนาคารกรุงเทพ สาขาบางนา<br>
-    ชื่อบัญชี: <strong>ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์</strong><br>
-    เลขที่บัญชี: <strong>179-4-74602-2</strong><br>
-    กรุณาชำระภายในวันที่ 5 ของเดือน</p>
-  </div>
-  <div class="sig">
-    <div class="sig-box">
-      <div class="sig-line"></div>
-      <div class="sig-lbl">${isR?'ผู้รับเงิน':'ผู้ออกใบแจ้งหนี้'}</div>
-      <div class="sig-lbl" style="margin-top:2px;font-size:11px;">J.Residence</div>
-    </div>
+  <div class="dtype">
+    <h2 style="color:${ac}">${title}</h2>
+    <div class="inv">เลขที่: ${invNo}</div>
   </div>
 </div>
-</body></html>`;
+${custHTML}
+<table>
+<thead><tr>
+  <th style="width:6%;background:${ac}">ลำดับ</th>
+  <th style="width:40%;background:${ac}">รายการ / Description</th>
+  <th style="width:10%;background:${ac}">จำนวน</th>
+  <th style="width:10%;background:${ac}">หน่วย</th>
+  <th style="width:16%;background:${ac}">ราคา/หน่วย</th>
+  <th style="width:18%;background:${ac}">จำนวนเงิน</th>
+</tr></thead>
+<tbody>${rows}</tbody></table>
+<div class="sum">
+  <div class="sbox" style="border:2px solid ${ac}">
+    <div class="sr"><span>รวมรายการมี VAT</span><span>${_fmtN(vatAmt-vat)}</span></div>
+    <div class="sr"><span>ภาษีมูลค่าเพิ่ม VAT 7%</span><span>${_fmtN(vat)}</span></div>
+    <div class="sr"><span>รวมรายการไม่มี VAT</span><span>${_fmtN(nonVat)}</span></div>
+    <div class="sr tot" style="background:${ac}"><span>ยอดรวมทั้งสิ้น / Grand Total</span><span>฿ ${_fmtN(total)}</span></div>
+  </div>
+</div>
+${!isR ? '<div class="bank"><b>💰 ช่องทางชำระเงิน:</b><br>ธนาคารกรุงเทพ สาขาบางนา<br>ชื่อบัญชี: <b>ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์</b><br>เลขที่บัญชี: <b>179-4-74602-2</b><br><span style="color:#C62828">กรุณาชำระภายในวันที่ 5 ของเดือน</span></div>' : ''}
+${isR ? '<div class="stamp"><div class="pd">✅ PAID — ชำระแล้ว</div></div>' : ''}
+<div class="ft"><div>J.Residence — ระบบออกบิลอัตโนมัติ</div><div>หน้า 1/1</div></div>
+</div></body></html>`;
 }
 
-/* ── open billing window ── */
-function _openBillingWindow(cfg){
-  const html = _buildBillingHTML2(cfg);
-  let overlay = document.getElementById('_billingOverlay');
-  if(!overlay){
-    overlay = document.createElement('div');
-    overlay.id = '_billingOverlay';
-    overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;';
-    overlay.innerHTML = `<div style="background:#fff;border-radius:12px;width:96vw;max-width:860px;height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:#1a2332;flex-shrink:0;">
-        <span id="_billingTitle" style="color:#fff;font-weight:700;font-size:14px;font-family:'Sarabun',sans-serif;"></span>
-        <div style="display:flex;gap:8px;">
-          <button onclick="document.getElementById('_billingFrame').contentWindow.print()"
-            style="padding:7px 18px;background:linear-gradient(135deg,#d4a017,#f0c040);border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">
-            🖨 พิมพ์ / Save PDF
-          </button>
-          <button onclick="document.getElementById('_billingOverlay').style.display='none'"
-            style="padding:7px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">&#x2715;</button>
-        </div>
-      </div>
-      <iframe id="_billingFrame" style="flex:1;border:none;background:#f5f5f5;"></iframe>
-    </div>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.style.display='none'; });
+function _closeInvOverlay(){ var o=document.getElementById("_invOverlay"); if(o) o.style.display="none"; }
+/* ── Show invoice in overlay ── */
+function _showInvoiceOverlay(html, title){
+  var ov = document.getElementById('_invOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = '_invOverlay';
+    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;flex-direction:column;';
+    ov.innerHTML =
+      '<div style="background:#1a2332;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<span id="_invTitle" style="color:#fff;font-size:14px;font-weight:700;font-family:Sarabun,sans-serif"></span>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="_invPrintBtn" style="padding:7px 20px;background:linear-gradient(135deg,#d4a017,#f0c040);border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🖨 พิมพ์ / Save PDF</button>' +
+          '<button onclick="_closeInvOverlay()" style="padding:7px 14px;background:#c62828;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">✕</button>' +
+        '</div>' +
+      '</div>' +
+      '<iframe id="_invFrame" style="flex:1;border:none;width:100%;background:#f5f5f5;"></iframe>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.style.display='none'; });
   }
-  document.getElementById('_billingTitle').textContent = (cfg.type==='receipt'?'🧾 ใบเสร็จรับเงิน':'📋 ใบแจ้งหนี้')+' — ห้อง '+cfg.room+'  เลขที่: '+cfg.docNo;
-  overlay.style.display = 'flex';
-  document.getElementById('_billingFrame').srcdoc = html;
-  toast((cfg.type==='receipt'?'ใบเสร็จ':'ใบแจ้งหนี้')+' ห้อง '+cfg.room+' พร้อมแล้ว ✅','ok');
+  document.getElementById('_invTitle').textContent = title;
+  ov.style.display = 'flex';
+  var frame = document.getElementById('_invFrame');
+  // Use srcdoc — no popup needed
+  frame.srcdoc = html;
+  // Wire print button to frame's print
+  document.getElementById('_invPrintBtn').onclick = function(){
+    frame.contentWindow && frame.contentWindow.print();
+  };
 }
 
-/* ── build cfg from mData ── */
-function _buildCfg2(room, month, type, customName){
-  const mc=mData.find(r=>r.room===room);
-  if(!mc)return null;
-  const er=mc.elec_rate_type||'apt', wr=mc.water_rate_type||'apt';
-  const elecRate=(RATES.elec[er]||RATES.elec.apt).rate;
-  const waterRate=(RATES.water[wr]||RATES.water.apt).rate;
-  const eu=(Number(mc.elec_new)||0)-(Number(mc.elec_old)||0);
-  const wu=(Number(mc.water_new)||0)-(Number(mc.water_old)||0);
-  const items=[];
-  if(mc.rent>0) items.push({desc:'ค่าเช่าห้องพัก เดือน '+_thMonthFull(month),qty:1,unit:'เดือน',price:mc.rent,amount:mc.rent,vat:false});
-  if(eu>0||mc.elec_cost>0) items.push({desc:'ค่าไฟฟ้า ('+(mc.elec_old||0)+' → '+(mc.elec_new||0)+' = '+eu+' หน่วย)',qty:eu,unit:'หน่วย',price:elecRate,amount:Number(mc.elec_cost||0),vat:true});
-  if(wu>0||mc.water_cost>0) items.push({desc:'ค่าน้ำประปา ('+(mc.water_old||0)+' → '+(mc.water_new||0)+' = '+wu+' หน่วย)',qty:wu,unit:'หน่วย',price:waterRate,amount:Number(mc.water_cost||0),vat:true});
-  const park=(Number(mc.parking_car)||0)+(Number(mc.parking_moto)||0);
-  if(park>0) items.push({desc:'ค่าที่จอดรถ',qty:1,unit:'รายการ',price:park,amount:park,vat:false});
-  if(mc.fridge_fee>0) items.push({desc:'ค่าเช่าตู้เย็น',qty:1,unit:'รายการ',price:mc.fridge_fee,amount:mc.fridge_fee,vat:false});
-  if(mc.other>0) items.push({desc:'ค่าบริการอื่นๆ',qty:1,unit:'รายการ',price:mc.other,amount:mc.other,vat:false});
-  return{type,room,customer:customName||mc.tenant_name||'—',
-    billingPeriod:_thMonthFull(month),issueDate:_thDate(new Date().toISOString().split('T')[0]),items};
+/* ── rcModal handlers ── */
+function _getRcDisplayName(mc){
+  if(typeof rcSelOpt === 'undefined') return mc.tenant_name||'';
+  if(rcSelOpt===2){ var cn=document.getElementById('rcCustom').value.trim(); return cn||mc.tenant_name||''; }
+  if(rcSelOpt===3){ return ''; } // company mode
+  return mc.tenant_name||'';
+}
+function _getRcCo(){
+  if(typeof rcSelOpt !== 'undefined' && rcSelOpt===3){
+    return {
+      name: document.getElementById('rcCoName').value.trim(),
+      addr: document.getElementById('rcCoAddr').value.trim(),
+      tax:  document.getElementById('rcCoTax').value.trim(),
+      branch: document.getElementById('rcCoBranch').value.trim()||'สำนักงานใหญ่'
+    };
+  }
+  return {name:'',addr:'',tax:'',branch:''};
 }
 
-/* ── getRcName ── */
-function _getRcName(mc){
-  if(rcSelOpt===2){const cn=document.getElementById('rcCustom').value.trim();return cn||mc.tenant_name;}
-  if(rcSelOpt===3){return document.getElementById('rcCoName').value.trim()||mc.tenant_name;}
-  return mc.tenant_name;
-}
-
-/* ── rcModal handlers (override เดิม) ── */
 function rcDoInvoice(){
   closeRcModal();
-  const mc=mData.find(r=>r.room===rcCurRoom);
-  if(!mc){toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err');return;}
-  const cfg=_buildCfg2(rcCurRoom,curMonth,'invoice',_getRcName(mc));
-  if(!cfg){toast('ไม่มีข้อมูลห้อง','err');return;}
-  cfg.docNo=_genDocNo('INV',curMonth);
-  _openBillingWindow(cfg);
+  var mc = mData.find(function(r){ return r.room===rcCurRoom; });
+  if(!mc){ toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err'); return; }
+  var co = _getRcCo();
+  var displayName = _getRcDisplayName(mc);
+  var html = _buildInvoiceHTML(mc, false, displayName, co.name, co.addr, co.tax, co.branch);
+  _showInvoiceOverlay(html, '📋 ใบแจ้งหนี้ — ห้อง '+rcCurRoom+' | '+_thM(curMonth));
 }
 
 function rcDoReceipt(){
   closeRcModal();
-  const mc=mData.find(r=>r.room===rcCurRoom);
-  if(!mc){toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err');return;}
-  const cfg=_buildCfg2(rcCurRoom,curMonth,'receipt',_getRcName(mc));
-  if(!cfg){toast('ไม่มีข้อมูลห้อง','err');return;}
-  cfg.docNo=_genDocNo('RC',curMonth);
-  _openBillingWindow(cfg);
+  var mc = mData.find(function(r){ return r.room===rcCurRoom; });
+  if(!mc){ toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err'); return; }
+  var co = _getRcCo();
+  var displayName = _getRcDisplayName(mc);
+  var html = _buildInvoiceHTML(mc, true, displayName, co.name, co.addr, co.tax, co.branch);
+  _showInvoiceOverlay(html, '🧾 ใบเสร็จรับเงิน — ห้อง '+rcCurRoom+' | '+_thM(curMonth));
 }
 
-/* ── override genMonthlyInvoice ── */
+/* ── genMonthlyInvoice (ปุ่ม 📄 ในตาราง) ── */
 function genMonthlyInvoice(room, type){
-  const mc=mData.find(r=>r.room===room);
-  if(!mc||!mc.tenant_name||!mc.rent){toast('ห้อง '+room+' ไม่มีผู้เช่า','err');return;}
+  var mc = mData.find(function(r){ return r.room===room; });
+  if(!mc||!mc.tenant_name||!mc.rent){ toast('ห้อง '+room+' ไม่มีผู้เช่า','err'); return; }
   if(type==='invoice'||type==='both'){
-    const cfg=_buildCfg2(room,curMonth,'invoice',mc.tenant_name);
-    cfg.docNo=_genDocNo('INV',curMonth);
-    _openBillingWindow(cfg);
+    var h = _buildInvoiceHTML(mc, false, mc.tenant_name, '','','','');
+    _showInvoiceOverlay(h, '📋 ใบแจ้งหนี้ — ห้อง '+room);
   }
   if(type==='receipt'||type==='both'){
-    setTimeout(()=>{
-      const cfg=_buildCfg2(room,curMonth,'receipt',mc.tenant_name);
-      cfg.docNo=_genDocNo('RC',curMonth);
-      _openBillingWindow(cfg);
-    },type==='both'?600:0);
+    setTimeout(function(){
+      var h = _buildInvoiceHTML(mc, true, mc.tenant_name, '','','','');
+      _showInvoiceOverlay(h, '🧾 ใบเสร็จ — ห้อง '+room);
+    }, type==='both'?700:0);
   }
 }
 
-/* ── bulk invoice ── */
+/* ── bulk ── */
 function bulkMonthlyInvoice(type){
-  const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()&&Number(r.rent)>0);
-  if(!occupied.length){toast('ไม่มีห้องที่มีผู้เช่า','err');return;}
-  if(!confirm('เปิดใบแจ้งหนี้ '+occupied.length+' ห้อง?\n(จะเปิดหน้าต่างใหม่ทีละห้อง — อนุญาต pop-up ด้วย)'))return;
-  let i=0;
-  const next=()=>{
-    if(i>=occupied.length)return;
-    genMonthlyInvoice(occupied[i].room,type);
+  var occupied = mData.filter(function(r){ return r.tenant_name&&r.tenant_name.trim()&&Number(r.rent)>0; });
+  if(!occupied.length){ toast('ไม่มีห้องที่มีผู้เช่า','err'); return; }
+  if(!confirm('เปิดใบแจ้งหนี้ '+occupied.length+' ห้อง ทีละห้อง?')) return;
+  var i=0;
+  function next(){
+    if(i>=occupied.length) return;
+    genMonthlyInvoice(occupied[i].room, type);
     i++;
-    setTimeout(next,700);
-  };
+    setTimeout(next, 800);
+  }
   next();
 }
 
-console.log('✅ J.Residence Billing v3 loaded');
+console.log('✅ J.Residence Billing v4 loaded');
 </script>
 
 </body>
