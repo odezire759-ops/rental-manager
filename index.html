@@ -1397,15 +1397,14 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         <thead>
           <tr>
             <th style="min-width:90px;">รอบบิล</th>
-            <th style="min-width:100px;">รอบ (จาก PDF)</th>
             <th style="min-width:80px;">วันจดมิเตอร์</th>
-            <th style="min-width:70px;text-align:right;">OFF PEAK<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:70px;text-align:right;">ON PEAK<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:70px;text-align:right;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:90px;text-align:right;">ยอดชำระ (฿)</th>
-            <th style="min-width:75px;">วันชำระ</th>
+            <th style="min-width:70px;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:70px;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:70px;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:90px;">ยอดชำระ (฿)</th>
+            <th style="min-width:70px;">วันชำระ</th>
             <th style="text-align:center;min-width:180px;">เอกสาร PDF</th>
-            <th style="text-align:center;width:40px;">แก้ไข</th>
+            <th style="text-align:center;">แก้ไข</th>
           </tr>
         </thead>
         <tbody id="ut-mea-tbody"></tbody>
@@ -1438,15 +1437,14 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         <thead>
           <tr>
             <th style="min-width:90px;">รอบบิล</th>
-            <th style="min-width:80px;">วันออกใบเสร็จ</th>
             <th style="min-width:80px;">วันจดมิเตอร์</th>
-            <th style="min-width:70px;text-align:right;">หน่วย (ลบ.ม.)</th>
-            <th style="min-width:70px;text-align:right;">มิเตอร์เก่า</th>
-            <th style="min-width:70px;text-align:right;">มิเตอร์ใหม่</th>
-            <th style="min-width:90px;text-align:right;">ยอดชำระ (฿)</th>
-            <th style="min-width:80px;">รอบ (จาก PDF)</th>
+            <th style="min-width:70px;">หน่วยที่ใช้<br><span style="font-size:9px;font-weight:400;">(ลบ.ม.)</span></th>
+            <th style="min-width:70px;">มิเตอร์เก่า</th>
+            <th style="min-width:70px;">มิเตอร์ใหม่</th>
+            <th style="min-width:90px;">ยอดชำระ (฿)</th>
+            <th style="min-width:70px;">วันชำระ</th>
             <th style="text-align:center;min-width:140px;">เอกสาร PDF</th>
-            <th style="text-align:center;width:40px;">แก้ไข</th>
+            <th style="text-align:center;">แก้ไข</th>
           </tr>
         </thead>
         <tbody id="ut-mwa-tbody"></tbody>
@@ -7612,76 +7610,76 @@ var _UT_STORE = 'jres_utility_v2';
 
 // ── Gmail message IDs ──────────────────────────────
 var _UT_MEA_EMAILS = {
-  'ก.พ. 2569': { inv:'19cc16315ca8ed5c', rec:'19c596679b65fcc2', recNo:'O0201214643' },
-  'ม.ค. 2569': { inv:'19c1bc91940a214f', rec:'19bc99ef3adc7731', recNo:'O0101377176' },
-  'ธ.ค. 2568': { inv:'19b7bfeaae054de9', rec:'19b297d0db0fbc45', recNo:'O1201424865' },
-  'พ.ย. 2568': { inv:'19ae36a14b6fd902', rec:'19a5c51f2fe3be8d', recNo:'O1102231763' },
-  'ต.ค. 2568': { inv:'19a439de639e5c3d', rec:'199c627bdf3ddc2d', recNo:'O1003661719' },
-  'ก.ย. 2568': { inv:'199aeef95068cabf', rec:'199566c14ec3e4eb', recNo:'O0904164468' },
-  'ส.ค. 2568': { inv:'19907f83cde70e54', rec:'198a5c19ece5d320', recNo:'O0803967181' },
-  'ก.ค. 2568': { inv:'198732c4941451b1', rec:'1981225e59a59a80', recNo:'O0704138041' },
-  'มิ.ย. 2568': { inv:'197cd7499099391a', rec:'19770c6cca9c3b42', recNo:'O0603786501' },
-  'พ.ค. 2568': { inv:'1972f5f86e6bebb3', rec:'196cc8740bd17e97', recNo:'O0503843298' },
-  'เม.ย. 2568': { inv:'196ad4654e727615', rec:'19640d9720143541', recNo:'O0403957691' },
-  'มี.ค. 2568': { inv:'195fe87fe2c21913', rec:'195a7786df2e8ff2', recNo:'O0304203499' },
-  'ก.พ. 2568': { inv:'1955b1ce831279af', rec:'194e450612da7421', recNo:'O0203257878' },
-  'ม.ค. 2568': { inv:'194d03270251118a', rec:'1945ce4aa1a67dd8', recNo:'O0103788707' },
-  'ธ.ค. 2567': { inv:'194307b659638f05', rec:'1938b466fd69b373', recNo:'O1200174824' },
+  'ก.พ. 2569': { inv:'19cc16315ca8ed5c', rec:'19c596679b65fcc2', recNo:'O0201214643', yr:'2569', mo:'02' },
+  'ม.ค. 2569': { inv:'19c1bc91940a214f', rec:'19bc99ef3adc7731', recNo:'O0101377176', yr:'2569', mo:'01' },
+  'ธ.ค. 2568': { inv:'19b7bfeaae054de9', rec:'19b297d0db0fbc45', recNo:'O1201424865', yr:'2568', mo:'12' },
+  'พ.ย. 2568': { inv:'19ae36a14b6fd902', rec:'19a5c51f2fe3be8d', recNo:'O1102231763', yr:'2568', mo:'11' },
+  'ต.ค. 2568': { inv:'19a439de639e5c3d', rec:'199c627bdf3ddc2d', recNo:'O1003661719', yr:'2568', mo:'10' },
+  'ก.ย. 2568': { inv:'199aeef95068cabf', rec:'199566c14ec3e4eb', recNo:'O0904164468', yr:'2568', mo:'09' },
+  'ส.ค. 2568': { inv:'19907f83cde70e54', rec:'198a5c19ece5d320', recNo:'O0803967181', yr:'2568', mo:'08' },
+  'ก.ค. 2568': { inv:'198732c4941451b1', rec:'1981225e59a59a80', recNo:'O0704138041', yr:'2568', mo:'07' },
+  'มิ.ย. 2568': { inv:'197cd7499099391a', rec:'19770c6cca9c3b42', recNo:'O0603786501', yr:'2568', mo:'06' },
+  'พ.ค. 2568': { inv:'1972f5f86e6bebb3', rec:'196cc8740bd17e97', recNo:'O0503843298', yr:'2568', mo:'05' },
+  'เม.ย. 2568': { inv:'196ad4654e727615', rec:'19640d9720143541', recNo:'O0403957691', yr:'2568', mo:'04' },
+  'มี.ค. 2568': { inv:'195fe87fe2c21913', rec:'195a7786df2e8ff2', recNo:'O0304203499', yr:'2568', mo:'03' },
+  'ก.พ. 2568': { inv:'1955b1ce831279af', rec:'194e450612da7421', recNo:'O0203257878', yr:'2568', mo:'02' },
+  'ม.ค. 2568': { inv:'194d03270251118a', rec:'1945ce4aa1a67dd8', recNo:'O0103788707', yr:'2568', mo:'01' },
+  'ธ.ค. 2567': { inv:'194307b659638f05', rec:'1938b466fd69b373', recNo:'O1200174824', yr:'2567', mo:'12' },
 };
 
 var _UT_MWA_EMAILS = {
-  'มี.ค. 2569': { rec:'19cf04f5cc7812d0' },
-  'ก.พ. 2569':  { rec:'19c7b93175438094' },
-  'ม.ค. 2569':  { rec:'19bc74eb79bf6518' },
-  'ธ.ค. 2568':  { rec:'19b203206885980f' },
-  'พ.ย. 2568':  { rec:'19a9b263e93bd1f5' },
-  'ต.ค. 2568':  { rec:'199e45087fe605cd' },
-  'ก.ย. 2568':  { rec:'1994ae78fecb0788' },
-  'ส.ค. 2568':  { rec:'198a21123b4a2ce0' },
-  'ก.ค. 2568':  { rec:'1980725e98cce298' },
-  'มิ.ย. 2568': { rec:'19767ea72e3ea60a' },
-  'พ.ค. 2568':  { rec:'196c4a5603df46db' },
-  'เม.ย. 2568': { rec:'1963766a61d10e01' },
-  'มี.ค. 2568': { rec:'19590420cb11a822' },
-  'ก.พ. 2568':  { rec:'1950f4d2d9029e67' },
-  'ม.ค. 2568':  { rec:'194606d9b8150c0e' },
+  'มี.ค. 2569': { rec:'19cf04f5cc7812d0', yr:'2569', mo:'03' },
+  'ก.พ. 2569':  { rec:'19c7b93175438094', yr:'2569', mo:'02' },
+  'ม.ค. 2569':  { rec:'19bc74eb79bf6518', yr:'2569', mo:'01' },
+  'ธ.ค. 2568':  { rec:'19b203206885980f', yr:'2568', mo:'12' },
+  'พ.ย. 2568':  { rec:'19a9b263e93bd1f5', yr:'2568', mo:'11' },
+  'ต.ค. 2568':  { rec:'199e45087fe605cd', yr:'2568', mo:'10' },
+  'ก.ย. 2568':  { rec:'1994ae78fecb0788', yr:'2568', mo:'09' },
+  'ส.ค. 2568':  { rec:'198a21123b4a2ce0', yr:'2568', mo:'08' },
+  'ก.ค. 2568':  { rec:'1980725e98cce298', yr:'2568', mo:'07' },
+  'มิ.ย. 2568': { rec:'19767ea72e3ea60a', yr:'2568', mo:'06' },
+  'พ.ค. 2568':  { rec:'196c4a5603df46db', yr:'2568', mo:'05' },
+  'เม.ย. 2568': { rec:'1963766a61d10e01', yr:'2568', mo:'04' },
+  'มี.ค. 2568': { rec:'19590420cb11a822', yr:'2568', mo:'03' },
+  'ก.พ. 2568':  { rec:'1950f4d2d9029e67', yr:'2568', mo:'02' },
+  'ม.ค. 2568':  { rec:'194606d9b8150c0e', yr:'2568', mo:'01' },
 };
 
 // ── Base billing data (amounts from K PLUS) ────────
 var _UT_MEA_BASE = [
-  { month:'ธ.ค. 2567', paidDate:'02/12/2024', amount:56440.56 },
-  { month:'ม.ค. 2568', paidDate:'12/01/2025', amount:44574.64 },
-  { month:'ก.พ. 2568', paidDate:'07/02/2025', amount:39230.96 },
-  { month:'มี.ค. 2568', paidDate:'13/03/2025', amount:51746.42 },
-  { month:'เม.ย. 2568', paidDate:'15/04/2025', amount:68931.45 },
-  { month:'พ.ค. 2568', paidDate:'12/05/2025', amount:72644.43 },
-  { month:'มิ.ย. 2568', paidDate:'13/06/2025', amount:71799.08 },
-  { month:'ก.ค. 2568', paidDate:'14/07/2025', amount:75304.81 },
-  { month:'ส.ค. 2568', paidDate:'12/08/2025', amount:59396.75 },
-  { month:'ก.ย. 2568', paidDate:'15/09/2025', amount:58866.97 },
-  { month:'ต.ค. 2568', paidDate:'—', amount:null },
-  { month:'พ.ย. 2568', paidDate:'—', amount:null },
-  { month:'ธ.ค. 2568', paidDate:'—', amount:null },
-  { month:'ม.ค. 2569', paidDate:'15/01/2026', amount:43958.45 },
-  { month:'ก.พ. 2569', paidDate:'12/02/2026', amount:40520.97 },
+  { month:'ธ.ค. 2567',  yr:'2567', mo:'12', paidDate:'02/12/2024', amount:56440.56 },
+  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'12/01/2025', amount:44574.64 },
+  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'07/02/2025', amount:39230.96 },
+  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'13/03/2025', amount:51746.42 },
+  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'15/04/2025', amount:68931.45 },
+  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'12/05/2025', amount:72644.43 },
+  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'13/06/2025', amount:71799.08 },
+  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'14/07/2025', amount:75304.81 },
+  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'12/08/2025', amount:59396.75 },
+  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'15/09/2025', amount:58866.97 },
+  { month:'ต.ค. 2568',  yr:'2568', mo:'10', paidDate:'—', amount:null },
+  { month:'พ.ย. 2568',  yr:'2568', mo:'11', paidDate:'—', amount:null },
+  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'—', amount:null },
+  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'15/01/2026', amount:43958.45 },
+  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'12/02/2026', amount:40520.97 },
 ];
 
 var _UT_MWA_BASE = [
-  { month:'ม.ค. 2568', paidDate:'13/01/2025', amount:null },
-  { month:'ก.พ. 2568', paidDate:'16/02/2025', amount:null },
-  { month:'มี.ค. 2568', paidDate:'13/03/2025', amount:null },
-  { month:'เม.ย. 2568', paidDate:'15/04/2025', amount:null },
-  { month:'พ.ค. 2568', paidDate:'12/05/2025', amount:null },
-  { month:'มิ.ย. 2568', paidDate:'13/06/2025', amount:null },
-  { month:'ก.ค. 2568', paidDate:'14/07/2025', amount:null },
-  { month:'ส.ค. 2568', paidDate:'13/08/2025', amount:null },
-  { month:'ก.ย. 2568', paidDate:'15/09/2025', amount:null },
-  { month:'ต.ค. 2568', paidDate:'15/10/2025', amount:null },
-  { month:'พ.ย. 2568', paidDate:'22/11/2025', amount:4867.54 },
-  { month:'ธ.ค. 2568', paidDate:'17/12/2025', amount:4133.30 },
-  { month:'ม.ค. 2569', paidDate:'15/01/2026', amount:5993.18 },
-  { month:'ก.พ. 2569', paidDate:'19/02/2026', amount:6461.84 },
-  { month:'มี.ค. 2569', paidDate:'15/03/2026', amount:null },
+  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'13/01/2025', amount:null },
+  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'16/02/2025', amount:null },
+  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'13/03/2025', amount:null },
+  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'15/04/2025', amount:null },
+  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'12/05/2025', amount:null },
+  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'13/06/2025', amount:null },
+  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'14/07/2025', amount:null },
+  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'13/08/2025', amount:null },
+  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'15/09/2025', amount:null },
+  { month:'ต.ค. 2568',  yr:'2568', mo:'10', paidDate:'15/10/2025', amount:null },
+  { month:'พ.ย. 2568',  yr:'2568', mo:'11', paidDate:'22/11/2025', amount:4867.54 },
+  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'17/12/2025', amount:4133.30 },
+  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'15/01/2026', amount:5993.18 },
+  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'19/02/2026', amount:6461.84 },
+  { month:'มี.ค. 2569', yr:'2569', mo:'03', paidDate:'15/03/2026', amount:null },
 ];
 
 // ── localStorage helpers ────────────────────────────
@@ -7702,6 +7700,39 @@ function _utFmtN(n) {
 }
 function _utGmailLink(msgId) {
   return 'https://mail.google.com/mail/u/0/#all/' + msgId;
+}
+
+// ── Google Drive Folder IDs ──────────────────────────
+var _UT_DRIVE_FOLDERS = {
+  'MEA_2567_12':'1M11cH0jdyJg0CvQJLvJXuOzG9h5tPDSL',
+  'MEA_2568_01':'15kmX_No-snrKpCeqfXInnJGYWDZTiwHJ','MEA_2568_02':'1nOtvn-VeP-u2zYUskAbC44zDINhsr0X6',
+  'MEA_2568_03':'1IbO0Uy1zvL8E6S1P-YrkPfciv7yO1G9j','MEA_2568_04':'1TI59zt-OdERUIVLxZS1IxTyIEP8Vrwx5',
+  'MEA_2568_05':'1PW2Rr101Rwve7Bxs_MQEU3Qbe9_aVBL0','MEA_2568_06':'1n73ipinDIrzz61Yf6wTw_MfgxIOtzKWA',
+  'MEA_2568_07':'1ptiKINKXJwYKsv_FdwhLvVVab6JbMk_J','MEA_2568_08':'11tTE3wW2HAG03rcpgQ-UwA-Tkjs6q_h0',
+  'MEA_2568_09':'13-8B-qsfYRRx4GhDSZl-HccMMG7CBtOD', 'MEA_2568_10':'1R-DyHotmjr9afpsnJzXwFOR4VQiAYR_T',
+  'MEA_2568_11':'1tmVixBU3YizCCh_0fsodqA4ZlxgPD72f', 'MEA_2568_12':'1J25YiiWfwFMT2ufkSJC3fHwgQfKnEH1R',
+  'MEA_2569_01':'13OhFbxvP9XdSw3KmjDBhVlJIAdo8DoYG','MEA_2569_02':'17AG1EgZiF29klB5XuVdFKMHzRCykAwJM',
+  'MWA_2568_01':'1_9DuqF2CQ0KNKA15U6c9or5NBxpK1Ckd','MWA_2568_02':'1S9sQL9ZEFdc2a3A_YFN-fEQKDouEricB',
+  'MWA_2568_03':'1rmufHS0TD_-hYhRos2-jnkC8vsYf6VSV','MWA_2568_04':'179lcJHbB71VvqPPkcBcetGkFQ22LV64N',
+  'MWA_2568_05':'1olIbkl7P_K8afB6f3VLOwUQr_dJDz_Rb','MWA_2568_06':'1RdEmM3G-Gni23ZxsuyDrKwzmyZSQuIGM',
+  'MWA_2568_07':'1nY8IN1t4V0aq4NLwxVYvPbDBt_5p5y7G','MWA_2568_08':'1WwFu8Q5HEEUrR2W3MjL8q-Y3yBoU0vSC',
+  'MWA_2568_09':'1WCA7Ifkdv7w4tRZF2BzvZq81XGleRaTE','MWA_2568_10':'1PQBlDc0Z84ANykqNMqusj8H2SJd_qdf_',
+  'MWA_2568_11':'1a4QfR3Qy20cWllG_AMogHCXhUShkBU5t','MWA_2568_12':'1xH5XsAcDa4gy2sU_JHnUyMQtJLbShWCK',
+  'MWA_2569_01':'13XjpFQuIOZRJYVxifegFYq1AgR6Vq0RP','MWA_2569_02':'1_GvydYBRZV6rVgAtb1F_eeN0COPAI_vJ',
+  'MWA_2569_03':'1q4lrTW1QKPej1kALSPtziwPaBgZXTOLS',
+};
+// Drive File IDs — paste จาก GetDriveFileIds.gs (เก็บใน localStorage)
+// key format: "MEA_2568_01_inv", "MEA_2568_01_rec", "MWA_2568_01_rec"
+var _UT_DRIVE_FILE_IDS = {};
+(function(){ try{ _UT_DRIVE_FILE_IDS = JSON.parse(localStorage.getItem('jres_utility_fids_v1')||'{}'); }catch(e){} })();
+
+// ถ้ามี File ID → เปิดไฟล์ตรง, ถ้าไม่มี → เปิด folder
+function _utDriveLink(utility, yr, mo, type) {
+  var fileId   = _UT_DRIVE_FILE_IDS[utility+'_'+yr+'_'+mo+'_'+type];
+  var folderId = _UT_DRIVE_FOLDERS[utility+'_'+yr+'_'+mo];
+  if (fileId)   return 'https://drive.google.com/file/d/'+fileId+'/view';
+  if (folderId) return 'https://drive.google.com/drive/folders/'+folderId;
+  return null;
 }
 
 // ── Tab switcher ────────────────────────────────────
@@ -7735,39 +7766,30 @@ function _utRenderMEA() {
     var hasData = m.offpeak || m.onpeak || m.meterDate;
     if (hasData) filledCount++;
     var emails = _UT_MEA_EMAILS[d.month] || {};
-    // trend vs previous month
-    var prev = _UT_MEA_BASE[_UT_MEA_BASE.indexOf(d)-1];
-    var trendHtml = '';
-    if (prev && prev.amount && d.amount) {
-      var pct = ((d.amount - prev.amount) / prev.amount * 100).toFixed(1);
-      trendHtml = pct > 0
-        ? ' <span style="color:var(--warn);font-size:10px;">▲'+pct+'%</span>'
-        : ' <span style="color:var(--success);font-size:10px;">▼'+Math.abs(pct)+'%</span>';
-    }
     var amtCell = d.amount === null
       ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trendHtml;
-    var offpeak  = m.offpeak  ? '<b style="color:var(--success);font-family:JetBrains Mono,monospace;">'  + _utFmtN(m.offpeak)  + '</b>' : '<span style="color:var(--text3);">—</span>';
-    var onpeak   = m.onpeak   ? '<b style="color:var(--warn);font-family:JetBrains Mono,monospace;">'     + _utFmtN(m.onpeak)   + '</b>' : '<span style="color:var(--text3);">—</span>';
-    var totUnits = (m.offpeak && m.onpeak) ? (+m.offpeak)+(+m.onpeak) : (m.totalUnits || '');
-    var total    = totUnits   ? '<b style="font-family:JetBrains Mono,monospace;">' + _utFmtN(totUnits) + '</b>' : '<span style="color:var(--text3);">—</span>';
-    var meterDate    = m.meterDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterDate + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var billingPeriod= m.period    ? '<span style="font-size:10px;color:var(--text2);">'                  + m.period    + '</span>' : '<span style="color:var(--text3);">—</span>';
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(d.amount) + '</span>';
+    var offpeak = hasData && m.offpeak ? '<span style="color:var(--success);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.offpeak) + '</span>' : '<span style="color:var(--text3);">—</span>';
+    var onpeak = hasData && m.onpeak ? '<span style="color:var(--warn);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.onpeak) + '</span>' : '<span style="color:var(--text3);">—</span>';
+    var total = (hasData && m.offpeak && m.onpeak) ? '<span style="font-family:JetBrains Mono,monospace;font-weight:700;">' + _utFmtN((+m.offpeak)+(+m.onpeak)) + '</span>' : (hasData && m.totalUnits ? '<span style="font-family:JetBrains Mono,monospace;font-weight:700;">' + _utFmtN(m.totalUnits) + '</span>' : '<span style="color:var(--text3);">—</span>');
+    var meterDate = m.meterDate || '<span style="color:var(--text3);">—</span>';
+    var billingPeriod = m.period || '<span style="color:var(--text3);">—</span>';
+    var invUrl = _utDriveLink('MEA', d.yr, d.mo, 'inv');
+    var recUrl = _utDriveLink('MEA', d.yr, d.mo, 'rec');
     var pdfLinks = '';
-    if (emails.inv) pdfLinks += '<a href="'+_utGmailLink(emails.inv)+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;margin-right:3px;">📋 Invoice</a>';
-    if (emails.rec) pdfLinks += '<a href="'+_utGmailLink(emails.rec)+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>';
+    if (invUrl) pdfLinks += '<a href="'+invUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;margin-right:3px;">📋 Invoice</a>';
+    if (recUrl) pdfLinks += '<a href="'+recUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>';
     if (!pdfLinks) pdfLinks = '<span style="color:var(--text3);font-size:10px;">—</span>';
-    var rowBg = !hasData ? 'background:var(--shell);' : '';
-    return '<tr style="' + rowBg + '">'
-      + '<td style="font-weight:700;">'                                              + d.month       + '</td>'
-      + '<td>'                                                                       + billingPeriod + '</td>'
-      + '<td>'                                                                       + meterDate     + '</td>'
-      + '<td style="text-align:right;">'                                             + offpeak       + '</td>'
-      + '<td style="text-align:right;">'                                             + onpeak        + '</td>'
-      + '<td style="text-align:right;">'                                             + total         + '</td>'
-      + '<td style="text-align:right;">'                                             + amtCell       + '</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + d.paidDate + '</td>'
-      + '<td style="white-space:nowrap;">'                                           + pdfLinks      + '</td>'
+    return '<tr>'
+      + '<td style="font-weight:700;">'+d.month+'</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+billingPeriod+'</td>'
+      + '<td style="font-size:11px;">'+meterDate+'</td>'
+      + '<td style="text-align:right;">'+offpeak+'</td>'
+      + '<td style="text-align:right;">'+onpeak+'</td>'
+      + '<td style="text-align:right;">'+total+'</td>'
+      + '<td style="text-align:right;">'+amtCell+'</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+d.paidDate+'</td>'
+      + '<td style="white-space:nowrap;">'+pdfLinks+'</td>'
       + '<td style="text-align:center;"><button onclick="utEditEntry(\'mea\',\''+d.month+'\')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">✏️</button></td>'
       + '</tr>';
   });
@@ -7785,41 +7807,28 @@ function _utRenderMWA() {
     var key = _utKey('mwa', d.month);
     var m = stored[key] || {};
     var emails = _UT_MWA_EMAILS[d.month] || {};
-    // trend vs previous month
-    var prev = _UT_MWA_BASE[_UT_MWA_BASE.indexOf(d)-1];
-    var trendHtml = '';
-    if (prev && prev.amount && d.amount) {
-      var pct = ((d.amount - prev.amount) / prev.amount * 100).toFixed(1);
-      trendHtml = pct > 0
-        ? ' <span style="color:var(--warn);font-size:10px;">▲'+pct+'%</span>'
-        : ' <span style="color:var(--success);font-size:10px;">▼'+Math.abs(pct)+'%</span>';
-    }
     var amtCell = d.amount === null
       ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trendHtml;
-    var units    = m.units    ? '<b style="color:var(--blue);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.units)    + '</b>' : '<span style="color:var(--text3);">—</span>';
-    var mOld     = m.meterOld ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterOld          + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var mNew     = m.meterNew ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterNew          + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var meterDate    = m.meterDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterDate    + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var billingPeriod= m.period    ? '<span style="font-size:10px;color:var(--text2);">'                  + m.period        + '</span>' : '<span style="color:var(--text3);">—</span>';
-    // วันออกใบเสร็จ = K PLUS receipt/payment date
-    var recDate = (d.paidDate && d.paidDate !== '—')
-      ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + d.paidDate + '</span>'
-      : '<span style="color:var(--text3);">—</span>';
-    var pdfLinks = emails.rec
-      ? '<a href="'+_utGmailLink(emails.rec)+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>'
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(d.amount) + '</span>';
+    var units = m.units ? '<span style="color:var(--blue);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.units) + '</span>' : '<span style="color:var(--text3);">—</span>';
+    var mOld = m.meterOld ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">'+m.meterOld+'</span>' : '<span style="color:var(--text3);">—</span>';
+    var mNew = m.meterNew ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">'+m.meterNew+'</span>' : '<span style="color:var(--text3);">—</span>';
+    var meterDate = m.meterDate || '<span style="color:var(--text3);">—</span>';
+    var billingPeriod = m.period || '<span style="color:var(--text3);">—</span>';
+    var mwaRecUrl = _utDriveLink('MWA', d.yr, d.mo, 'rec');
+    var pdfLinks = mwaRecUrl
+      ? '<a href="'+mwaRecUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>'
       : '<span style="color:var(--text3);font-size:10px;">—</span>';
-    var rowBg = (!m.units && !m.meterDate) ? 'background:var(--shell);' : '';
-    return '<tr style="' + rowBg + '">'
-      + '<td style="font-weight:700;">'                                                           + d.month       + '</td>'
-      + '<td>'                                                                                    + recDate       + '</td>'   /* วันออกใบเสร็จ = paidDate */
-      + '<td>'                                                                                    + meterDate     + '</td>'   /* วันจดมิเตอร์ - กรอกจาก PDF */
-      + '<td style="text-align:right;">'                                                          + units         + '</td>'
-      + '<td style="text-align:right;">'                                                          + mOld          + '</td>'
-      + '<td style="text-align:right;">'                                                          + mNew          + '</td>'
-      + '<td style="text-align:right;">'                                                          + amtCell       + '</td>'
-      + '<td>'                                                                                    + billingPeriod + '</td>'   /* รอบ จาก PDF - กรอกเอง */
-      + '<td style="text-align:center;">'                                                         + pdfLinks      + '</td>'
+    return '<tr>'
+      + '<td style="font-weight:700;">'+d.month+'</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+billingPeriod+'</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+meterDate+'</td>'
+      + '<td style="text-align:right;">'+units+'</td>'
+      + '<td style="text-align:right;">'+mOld+'</td>'
+      + '<td style="text-align:right;">'+mNew+'</td>'
+      + '<td style="text-align:right;">'+amtCell+'</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+d.paidDate+'</td>'
+      + '<td>'+pdfLinks+'</td>'
       + '<td style="text-align:center;"><button onclick="utEditEntry(\'mwa\',\''+d.month+'\')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">✏️</button></td>'
       + '</tr>';
   });
@@ -7827,144 +7836,96 @@ function _utRenderMWA() {
 }
 
 // ── Edit modal ───────────────────────────────────────
-// Drive File IDs store (loaded from localStorage or paste)
-var _UT_DRIVE_FILE_IDS = {};
-(function(){
-  try { _UT_DRIVE_FILE_IDS = JSON.parse(localStorage.getItem('jres_utility_fids_v1') || '{}'); } catch(e) {}
-})();
-
 function utEditEntry(type, month) {
   _utEditKey = _utKey(type, month);
   var stored = _utLoad();
   var m = stored[_utEditKey] || {};
   var emails = type === 'mea' ? (_UT_MEA_EMAILS[month] || {}) : (_UT_MWA_EMAILS[month] || {});
-
-  // Build Drive/Gmail PDF buttons
   var pdfBtns = '';
   if (type === 'mea') {
-    // Invoice button
-    var invFileId = _UT_DRIVE_FILE_IDS['MEA_'+_utYrMo(month)+'_inv'];
-    if (invFileId) {
-      pdfBtns += '<a href="https://drive.google.com/file/d/'+invFileId+'/view" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">📋 Invoice (Drive)</a> ';
-    } else if (emails.inv) {
-      pdfBtns += '<a href="'+_utGmailLink(emails.inv)+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">📋 Invoice (Gmail)</a> ';
-    }
-    // Receipt button
-    var recFileId = _UT_DRIVE_FILE_IDS['MEA_'+_utYrMo(month)+'_rec'];
-    if (recFileId) {
-      pdfBtns += '<a href="https://drive.google.com/file/d/'+recFileId+'/view" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Drive)</a>';
-    } else if (emails.rec) {
-      pdfBtns += '<a href="'+_utGmailLink(emails.rec)+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Gmail)</a>';
-    }
+    var _eInvUrl = _utDriveLink('MEA', emails.yr||'', emails.mo||'', 'inv');
+    var _eRecUrl = _utDriveLink('MEA', emails.yr||'', emails.mo||'', 'rec');
+    if (_eInvUrl) pdfBtns += '<a href="'+_eInvUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">📋 Invoice (Drive) →</a> ';
+    if (_eRecUrl) pdfBtns += '<a href="'+_eRecUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Drive) →</a>';
   } else {
-    var mwaFileId = _UT_DRIVE_FILE_IDS['MWA_'+_utYrMo(month)+'_rec'];
-    if (mwaFileId) {
-      pdfBtns = '<a href="https://drive.google.com/file/d/'+mwaFileId+'/view" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Drive)</a>';
-    } else if (emails.rec) {
-      pdfBtns = '<a href="'+_utGmailLink(emails.rec)+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Gmail)</a>';
-    }
+    var _eMwaUrl = _utDriveLink('MWA', emails.yr||'', emails.mo||'', 'rec');
+    if (_eMwaUrl) pdfBtns = '<a href="'+_eMwaUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">🧾 Receipt (Drive) →</a>';
   }
-  if (!pdfBtns) pdfBtns = '<span style="font-size:11px;color:var(--text3);">ไม่มีลิงก์ — โหลด File IDs ก่อน</span>';
-
   document.getElementById('ut-edit-title').textContent = (type==='mea'?'⚡ MEA':'💧 MWA') + ' — ' + month;
-  var html = '<div style="background:var(--shell);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
-    + '<span style="font-size:11px;color:var(--text2);font-weight:700;width:100%;margin-bottom:4px;">📂 เปิด PDF เพื่ออ่านข้อมูล แล้วกรอกด้านล่าง:</span>'
+  var html = '<div style="background:var(--shell);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<span style="font-size:11px;color:var(--text2);width:100%;margin-bottom:6px;font-weight:600;">📂 เปิดไฟล์ PDF จาก Gmail เพื่ออ่านข้อมูล:</span>'
     + pdfBtns
     + '</div>';
 
   if (type === 'mea') {
-    var curTotal = (m.offpeak && m.onpeak) ? _utFmtN((+m.offpeak)+(+m.onpeak))+' หน่วย' : (m.totalUnits ? _utFmtN(m.totalUnits)+' หน่วย' : '—');
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      + _utField('ut-ef-period','รอบบิล (เช่น 01/01/25–31/01/25)',m.period,'text')
-      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์ (DD/MM/YY)',m.meterDate,'text')
-      + _utField('ut-ef-offpeak','OFF PEAK (หน่วย)',m.offpeak,'number')
-      + _utField('ut-ef-onpeak','ON PEAK (หน่วย)',m.onpeak,'number')
-      + '<div><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">รวมหน่วย (คำนวณอัตโนมัติ)</label>'
-      + '<div id="ut-ef-totalDisp" style="padding:7px 10px;background:var(--shell);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:800;color:var(--gold2);font-family:JetBrains Mono,monospace;">' + curTotal + '</div></div>'
-      + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text')
+    html += '<div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + _utField('ut-ef-period','รอบบิล (เช่น 01/01/2025-31/01/2025)',m.period,'text','ut-ef-period')
+      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์',m.meterDate,'text','ut-ef-meterDate')
+      + _utField('ut-ef-offpeak','หน่วย Off Peak',m.offpeak,'number','ut-ef-offpeak')
+      + _utField('ut-ef-onpeak','หน่วย On Peak',m.onpeak,'number','ut-ef-onpeak')
+      + _utField('ut-ef-totalUnits','หน่วยรวม (กรอกถ้าไม่มี on/off)',m.totalUnits,'number','ut-ef-totalUnits')
+      + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text','ut-ef-notes')
       + '</div>';
   } else {
-    var curUnits = (m.meterOld && m.meterNew && (+m.meterNew)>(+m.meterOld)) ? _utFmtN((+m.meterNew)-(+m.meterOld))+' ลบ.ม.' : (m.units ? _utFmtN(m.units)+' ลบ.ม.' : '—');
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      + _utField('ut-ef-period','รอบบิล',m.period,'text')
-      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์',m.meterDate,'text')
-      + _utField('ut-ef-meterOld','มิเตอร์เก่า (ลบ.ม.)',m.meterOld,'number')
-      + _utField('ut-ef-meterNew','มิเตอร์ใหม่ (ลบ.ม.)',m.meterNew,'number')
-      + '<div><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">หน่วยที่ใช้ (คำนวณอัตโนมัติ)</label>'
-      + '<div id="ut-ef-totalDisp" style="padding:7px 10px;background:var(--shell);border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:800;color:var(--blue);font-family:JetBrains Mono,monospace;">' + curUnits + '</div></div>'
-      + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text')
+    html += '<div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + _utField('ut-ef-period','รอบบิล',m.period,'text','ut-ef-period')
+      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์',m.meterDate,'text','ut-ef-meterDate')
+      + _utField('ut-ef-meterOld','เลขมิเตอร์เก่า (ลบ.ม.)',m.meterOld,'number','ut-ef-meterOld')
+      + _utField('ut-ef-meterNew','เลขมิเตอร์ใหม่ (ลบ.ม.)',m.meterNew,'number','ut-ef-meterNew')
+      + _utField('ut-ef-units','หน่วยที่ใช้ (ลบ.ม.)',m.units,'number','ut-ef-units')
+      + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text','ut-ef-notes')
       + '</div>';
   }
   document.getElementById('ut-edit-body').innerHTML = html;
   document.getElementById('ut-edit-modal').style.display = 'flex';
 }
 
-// แปลง month string เป็น "YYYY_MM" key
-function _utYrMo(month) {
-  var tbl = {
-    'ม.ค.':'01','ก.พ.':'02','มี.ค.':'03','เม.ย.':'04','พ.ค.':'05','มิ.ย.':'06',
-    'ก.ค.':'07','ส.ค.':'08','ก.ย.':'09','ต.ค.':'10','พ.ย.':'11','ธ.ค.':'12'
-  };
-  var parts = month.split(' '); // ['ก.พ.', '2569']
-  var m = tbl[parts[0]] || '01';
-  var y = parts[1] || '2568';
-  return y + '_' + m;
-}
-
-function _utField(id, label, val, type) {
-  return '<div><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">'+label+'</label>'
-    + '<input type="'+type+'" id="'+id+'" value="'+(val||'')+'" placeholder="'+label+'" style="width:100%;padding:7px 10px;border:1.5px solid var(--border2);border-radius:6px;font-size:12px;font-family:JetBrains Mono,monospace;" oninput="utAutoCalcUnits()">'
+function _utField(id, label, val, type, eid) {
+  return '<div class="fr"><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">'+label+'</label>'
+    + '<input type="'+type+'" id="'+eid+'" value="'+(val||'')+'" placeholder="'+label+'" style="width:100%;padding:7px 10px;border:1.5px solid var(--border2);border-radius:6px;font-size:12px;font-family:JetBrains Mono,monospace;" onchange="utAutoCalcUnits(\''+eid+'\')">'
     + '</div>';
 }
 
-function utAutoCalcUnits() {
-  // MEA: off + on peak → display total
-  var off = parseFloat((document.getElementById('ut-ef-offpeak') || {}).value) || 0;
-  var on  = parseFloat((document.getElementById('ut-ef-onpeak')  || {}).value) || 0;
-  var td  = document.getElementById('ut-ef-totalDisp');
-  if (td && (off > 0 || on > 0)) {
-    var t = off + on;
-    td.textContent = t > 0 ? _utFmtN(t) + ' หน่วย' : '—';
-  }
-  // MWA: new - old → display units
-  var mo = parseFloat((document.getElementById('ut-ef-meterOld') || {}).value) || 0;
-  var mn = parseFloat((document.getElementById('ut-ef-meterNew') || {}).value) || 0;
-  if (td && mn > mo) {
-    td.textContent = _utFmtN(mn - mo) + ' ลบ.ม.';
-  }
+function utAutoCalcUnits(changedId) {
+  // Auto-calculate total units from off+on peak
+  var off = parseFloat(document.getElementById('ut-ef-offpeak') ? document.getElementById('ut-ef-offpeak').value : 0) || 0;
+  var on  = parseFloat(document.getElementById('ut-ef-onpeak')  ? document.getElementById('ut-ef-onpeak').value  : 0) || 0;
+  var tot = document.getElementById('ut-ef-totalUnits');
+  if (tot && off + on > 0) tot.value = off + on;
+  // Auto-calc units from meter readings (MWA)
+  var mo = parseFloat(document.getElementById('ut-ef-meterOld') ? document.getElementById('ut-ef-meterOld').value : 0) || 0;
+  var mn = parseFloat(document.getElementById('ut-ef-meterNew') ? document.getElementById('ut-ef-meterNew').value : 0) || 0;
+  var u  = document.getElementById('ut-ef-units');
+  if (u && mn > mo) u.value = mn - mo;
 }
 
 function utSaveEntry() {
   var stored = _utLoad();
-  var isMEA = !!document.getElementById('ut-ef-offpeak');
-  var g = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var isMEA = document.getElementById('ut-ef-offpeak') !== null;
   var data = {
-    period:    g('ut-ef-period'),
-    meterDate: g('ut-ef-meterDate'),
-    notes:     g('ut-ef-notes'),
+    period:     (document.getElementById('ut-ef-period')    || {}).value || '',
+    meterDate:  (document.getElementById('ut-ef-meterDate') || {}).value || '',
+    notes:      (document.getElementById('ut-ef-notes')     || {}).value || '',
   };
   if (isMEA) {
-    data.offpeak    = g('ut-ef-offpeak');
-    data.onpeak     = g('ut-ef-onpeak');
-    var off2 = parseFloat(data.offpeak) || 0;
-    var on2  = parseFloat(data.onpeak)  || 0;
-    if (off2 + on2 > 0) data.totalUnits = off2 + on2;
+    data.offpeak    = (document.getElementById('ut-ef-offpeak')    || {}).value || '';
+    data.onpeak     = (document.getElementById('ut-ef-onpeak')     || {}).value || '';
+    data.totalUnits = (document.getElementById('ut-ef-totalUnits') || {}).value || '';
   } else {
-    data.meterOld = g('ut-ef-meterOld');
-    data.meterNew = g('ut-ef-meterNew');
-    var mo2 = parseFloat(data.meterOld) || 0;
-    var mn2 = parseFloat(data.meterNew) || 0;
-    if (mn2 > mo2) data.units = mn2 - mo2;
+    data.meterOld = (document.getElementById('ut-ef-meterOld') || {}).value || '';
+    data.meterNew = (document.getElementById('ut-ef-meterNew') || {}).value || '';
+    data.units    = (document.getElementById('ut-ef-units')    || {}).value || '';
   }
   stored[_utEditKey] = data;
   _utSave(stored);
   document.getElementById('ut-edit-modal').style.display = 'none';
-  if (_utCurrentTab === 'mea') { _utRenderMEA(); setTimeout(_utInitMeaCharts, 50); }
-  else                         { _utRenderMWA(); setTimeout(_utInitMwaCharts, 50); }
-  if (typeof toast === 'function') toast('✅ บันทึกข้อมูลมิเตอร์แล้ว', 'ok');
+  if (_utCurrentTab === 'mea') { _utRenderMEA(); _utInitMeaCharts(); }
+  else { _utRenderMWA(); _utInitMwaCharts(); }
+  if (typeof toast === 'function') toast('บันทึกข้อมูลมิเตอร์แล้ว ✅', 'ok');
 }
 
 function utAddEntry() {
+  // Open edit for latest month
   var months = _utCurrentTab === 'mea' ? _UT_MEA_BASE : _UT_MWA_BASE;
   utEditEntry(_utCurrentTab, months[months.length-1].month);
 }
