@@ -363,6 +363,33 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .rl-active{background:var(--gold)!important;color:#1a1a2e!important;border-color:var(--gold2)!important;}
 .toast.show{opacity:1;}.toast.ok{background:var(--gold);color:#1a1a2e;}.toast.err{background:var(--danger);color:#fff;}
 .loading{text-align:center;padding:40px;color:var(--text3);font-weight:500;}
+/* Receipt Name Modal */
+.rc-modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;}
+.rc-modal-bg.show{display:flex;}
+.rc-modal{background:#fff;border-radius:12px;padding:24px;width:420px;max-width:92vw;box-shadow:0 10px 40px rgba(0,0,0,0.2);}
+.rc-modal h3{font-size:16px;color:#2E7D32;margin-bottom:4px;}
+.rc-modal p{font-size:12px;color:#888;margin-bottom:14px;}
+.rc-opt{padding:10px 12px;border:2px solid #e0e0e0;border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.15s;}
+.rc-opt:hover{border-color:#2E7D32;background:#f0faf0;}
+.rc-opt.sel{border-color:#2E7D32;background:#e8f5e9;}
+.rc-opt .rd{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.rc-opt.sel .rd{border-color:#2E7D32;}
+.rc-opt.sel .rd::after{content:"";width:9px;height:9px;border-radius:50%;background:#2E7D32;}
+.rc-opt .ol{font-size:13px;font-weight:600;}
+.rc-opt .os{font-size:11px;color:#888;}
+.rc-inp{width:100%;padding:8px 10px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:'Sarabun',sans-serif;margin-top:6px;display:none;}
+.rc-inp.show{display:block;}
+.rc-inp:focus{outline:none;border-color:#2E7D32;}
+.rc-co{display:none;margin-top:6px;}
+.rc-co.show{display:block;}
+.rc-co input{width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:'Sarabun',sans-serif;margin-bottom:5px;}
+.rc-co input:focus{outline:none;border-color:#2E7D32;}
+.rc-co label{font-size:10px;color:#888;}
+.rc-btns{display:flex;gap:8px;margin-top:14px;}
+.rc-btns button{flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;}
+.btn-rc-inv{background:#1565C0;color:#fff;}
+.btn-rc-rec{background:#2E7D32;color:#fff;}
+.btn-rc-can{background:#eee;color:#333;}
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:12px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 </style>
@@ -464,7 +491,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div id="floor-container"><div class="loading">กำลังโหลด...</div></div>
   <div class="card" style="margin-top:14px;">
     <div class="chdr"><span>📊 ตารางรายละเอียด</span><div style="display:flex;gap:4px;"><button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="bulkMonthlyInvoice('invoice')">📋 ใบแจ้งหนี้ทั้งหมด</button><button class="tbtn" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;" onclick="bulkMonthlyInvoice('both')">📋+🧾 ใบแจ้งหนี้+ใบเสร็จ</button><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th></tr></thead><tbody id="mtbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th><th>ใบเสร็จ</th></tr></thead><tbody id="mtbody"><tr><td colspan="12" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -1785,10 +1812,21 @@ function toggleFloor(el,floor){
 }
 function renderMTable(d){
   const tb=document.getElementById('mtbody');
-  if(!d.length){tb.innerHTML='<tr><td colspan="11" class="empty">ไม่มีข้อมูล</td></tr>';return;}
+  if(!d.length){tb.innerHTML='<tr><td colspan="12" class="empty">ไม่มีข้อมูล</td></tr>';return;}
   tb.innerHTML=d.map(r=>{
     const er=r.elec_rate_type||'apt',wr=r.water_rate_type||'apt';
     const isDaily=r.room_type==='daily';
+    const isPaid=r.status==='paid';
+    const hasT=r.tenant_name&&r.rent>0;
+    // Receipt button: green if paid, red if not
+    let rcBtn='';
+    if(hasT){
+      if(isPaid){
+        rcBtn=`<button onclick="showRcModal('${r.room}')" style="padding:4px 10px;border:none;border-radius:5px;background:#2E7D32;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;">🧾 ใบเสร็จ</button>`;
+      } else {
+        rcBtn=`<button onclick="alert('❌ ยังไม่ชำระ — ต้องเปลี่ยนสถานะเป็น paid ก่อน')" style="padding:4px 10px;border:none;border-radius:5px;background:#C62828;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;opacity:.8;">🔒 ใบเสร็จ</button>`;
+      }
+    }
     return `<tr${isDaily?' style="background:#f0f7ff;"':''}>
     <td class="mono" style="font-weight:800;">${r.room}</td>
     <td>${isDaily?'<span class="rtype-badge rtype-daily">📅 รายวัน</span>':'<span class="rtype-badge rtype-monthly">🏠 รายเดือน</span>'}</td>
@@ -1799,8 +1837,9 @@ function renderMTable(d){
     <td class="mono">฿${Math.round(r.water_cost||0).toLocaleString()}<span style="color:var(--text3);font-size:10px;"> (${(r.water_new||0)-(r.water_old||0)}u)</span></td>
     <td class="mono">฿${Math.round((r.parking_car||0)+(r.parking_moto||0)+(r.fridge_fee||0)+(r.other||0)).toLocaleString()}</td>
     <td class="mono" style="font-weight:800;">฿${Math.round(r.total||0).toLocaleString()}</td>
-    <td><span class="pill ${r.status==='paid'?'ppaid':'ppend'}">${r.status==='paid'?'ชำระแล้ว':'ค้างชำระ'}</span></td>
-    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button>${r.tenant_name&&r.rent>0?`<button class="ract" style="padding:4px 8px;margin-left:2px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:10px;" onclick="genMonthlyInvoice('${r.room}','both')">📄</button>`:''}</td></tr>`;
+    <td><span class="pill ${isPaid?'ppaid':'ppend'}">${isPaid?'ชำระแล้ว':'ค้างชำระ'}</span></td>
+    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button>${hasT?`<button class="ract" style="padding:4px 8px;margin-left:2px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:10px;" onclick="genMonthlyInvoice('${r.room}','both')">📄</button>`:''}</td>
+    <td style="text-align:center;">${rcBtn}</td></tr>`;
   }).join('');
 }
 function initDrag(g){
@@ -6443,5 +6482,103 @@ init();
 // Apply saved card size
 document.querySelectorAll('.card-size-bar button').forEach(b=>b.classList.toggle('active',b.dataset.sz===cardSize));
 </script>
+<!-- Receipt Name Modal -->
+<div class="rc-modal-bg" id="rcModal">
+<div class="rc-modal">
+<h3>🧾 ออกใบเสร็จ — ห้อง <span id="rcRoom"></span></h3>
+<p>เลือกชื่อที่จะออกใบเสร็จ:</p>
+
+<div class="rc-opt sel" id="rcOpt1" onclick="rcSel(1)">
+<div class="rd"></div>
+<div><div class="ol" id="rcName1">ใช้ชื่อเดิม</div><div class="os">ชื่อเดียวกับผู้เช่า</div></div>
+</div>
+
+<div class="rc-opt" id="rcOpt2" onclick="rcSel(2)">
+<div class="rd"></div>
+<div><div class="ol">พิมพ์ชื่อใหม่</div><div class="os">ออกในนามบุคคลอื่น</div></div>
+</div>
+<input type="text" class="rc-inp" id="rcCustom" placeholder="พิมพ์ชื่อ เช่น นายสมชาย ใจดี">
+
+<div class="rc-opt" id="rcOpt3" onclick="rcSel(3)">
+<div class="rd"></div>
+<div><div class="ol">ออกในนามบริษัท</div><div class="os">ใส่ชื่อบริษัท ที่อยู่ Tax ID</div></div>
+</div>
+<div class="rc-co" id="rcCo">
+<label>ชื่อบริษัท</label>
+<input type="text" id="rcCoName" placeholder="บริษัท ABC จำกัด">
+<label>ที่อยู่</label>
+<input type="text" id="rcCoAddr" placeholder="123 ถ.สุขุมวิท กทม.">
+<label>เลขผู้เสียภาษี / Tax ID</label>
+<input type="text" id="rcCoTax" placeholder="0123456789012">
+<label>สาขา</label>
+<input type="text" id="rcCoBranch" placeholder="สำนักงานใหญ่" value="สำนักงานใหญ่">
+</div>
+
+<div class="rc-btns">
+<button class="btn-rc-can" onclick="closeRcModal()">ยกเลิก</button>
+<button class="btn-rc-inv" onclick="rcDoInvoice()">📄 ใบแจ้งหนี้</button>
+<button class="btn-rc-rec" onclick="rcDoReceipt()">🧾 ออกใบเสร็จ</button>
+</div>
+</div>
+</div>
+
+<script>
+// Receipt Modal Logic
+var rcSelOpt=1,rcCurRoom='';
+function rcSel(n){
+  rcSelOpt=n;
+  for(var i=1;i<=3;i++){document.getElementById('rcOpt'+i).className='rc-opt'+(i===n?' sel':'');}
+  document.getElementById('rcCustom').className='rc-inp'+(n===2?' show':'');
+  document.getElementById('rcCo').className='rc-co'+(n===3?' show':'');
+}
+function showRcModal(room){
+  rcCurRoom=room;
+  var mc=mData.find(function(r){return r.room===room;});
+  if(!mc)return;
+  document.getElementById('rcRoom').textContent=room;
+  document.getElementById('rcName1').textContent='ใช้ชื่อเดิม: '+(mc.tenant_name||'—');
+  // Pre-fill company fields if exists
+  if(mc.company_name){
+    document.getElementById('rcCoName').value=mc.company_name||'';
+    document.getElementById('rcCoAddr').value=mc.company_address||'';
+    document.getElementById('rcCoTax').value=mc.company_tax_id||'';
+    document.getElementById('rcCoBranch').value=mc.company_branch||'สำนักงานใหญ่';
+  }
+  rcSel(1);
+  document.getElementById('rcModal').className='rc-modal-bg show';
+}
+function closeRcModal(){document.getElementById('rcModal').className='rc-modal-bg';}
+
+function rcBuildParams(){
+  var params='room='+rcCurRoom+'&month='+curMonth;
+  if(rcSelOpt===2){
+    var cn=document.getElementById('rcCustom').value.trim();
+    if(cn)params+='&name='+encodeURIComponent(cn);
+  }
+  if(rcSelOpt===3){
+    var co=document.getElementById('rcCoName').value.trim();
+    if(co){
+      params+='&co='+encodeURIComponent(co);
+      var a=document.getElementById('rcCoAddr').value.trim();if(a)params+='&addr='+encodeURIComponent(a);
+      var t=document.getElementById('rcCoTax').value.trim();if(t)params+='&tax='+encodeURIComponent(t);
+      var b=document.getElementById('rcCoBranch').value.trim();if(b)params+='&branch='+encodeURIComponent(b);
+    }
+  }
+  return params;
+}
+
+function rcDoInvoice(){
+  closeRcModal();
+  var url='invoice-system.html?'+rcBuildParams();
+  window.open(url,'_blank');
+}
+
+function rcDoReceipt(){
+  closeRcModal();
+  var url='invoice-system.html?'+rcBuildParams()+'&type=receipt';
+  window.open(url,'_blank');
+}
+</script>
+
 </body>
 </html>
