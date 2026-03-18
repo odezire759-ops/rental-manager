@@ -21,8 +21,8 @@
   --danger:#c0392b;--dbg:#fdedec;
   --purple:#7c3aed;--purple-bg:#f3e8ff;
   --r:8px;--rs:5px;--sh:0 1px 3px rgba(0,0,0,.08);--sh2:0 4px 16px rgba(0,0,0,.1);
-  --W:#1a73e8;--W-bg:#e8f0fe;--A:#e65100;--A-bg:#fff3e0;--B:#0d47a1;--B-bg:#e3f2fd;
-  --T:#b71c1c;--T-bg:#ffebee;--C:#6a1b9a;--C-bg:#f3e5f5;--O:#455a64;--O-bg:#eceff1;
+  --W:#2e7d32;--W-bg:#e8f5e9;--A:#c62828;--A-bg:#ffebee;--B:#003580;--B-bg:#e3f2fd;
+  --T:#0277bd;--T-bg:#e1f5fe;--C:#6a1b9a;--C-bg:#f3e5f5;--O:#455a64;--O-bg:#eceff1;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
@@ -330,7 +330,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .gantt-body td.gantt-name{position:sticky;left:0;z-index:1;background:var(--white);padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:2px solid var(--border);min-width:150px;max-width:180px;}
 .gantt-bar{position:absolute;top:4px;bottom:4px;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;transition:filter .12s;z-index:1;min-width:20px;}
 .gantt-bar:hover{filter:brightness(1.15);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.gantt-bar.gb-A{background:linear-gradient(135deg,#e65100,#ff8f00);}
+.gantt-bar.gb-A{background:linear-gradient(135deg,#c62828,#e53935);}
 .gantt-bar.gb-T{background:linear-gradient(135deg,#b71c1c,#e53935);}
 .gantt-bar.gb-B{background:linear-gradient(135deg,#0d47a1,#1976d2);}
 .gantt-bar.gb-W{background:linear-gradient(135deg,#1565c0,#42a5f5);}
@@ -1024,10 +1024,32 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 
   <!-- Daily VAT -->
   <div class="card">
-    <div class="chdr"><span>📅 ภาษีขายรายวัน (ห้องพักรายวัน)</span><span id="vat-d-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
-    <div style="overflow-x:auto;">
+    <div class="chdr"><span>📅 ภาษีขายรายวัน (ห้องพักรายวัน)</span><span id="vat-d-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span>
+      <input type="file" id="sv-upload-file" accept=".xlsx,.xls" style="display:none;" onchange="importSalesVatExcel(this)">
+      <button class="btn" onclick="document.getElementById('sv-upload-file').click()" style="font-size:11px;padding:5px 12px;margin-left:auto;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;">📤 Upload Excel</button>
+      <button class="btn" onclick="downloadSvTemplate()" style="font-size:11px;padding:5px 12px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📋 Template</button>
+    </div>
+    <!-- Add single record form -->
+    <div style="padding:12px;background:var(--shell);border-radius:var(--rs);margin:8px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">➕ เพิ่มรายการภาษีขายรายวัน</div>
+      <div style="display:grid;grid-template-columns:120px 140px 1fr 150px;gap:6px;">
+        <div><label style="font-size:10px;color:#888;">วันที่เอกสาร</label><input type="date" id="sv-date" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">เลขที่เอกสาร</label><input type="text" id="sv-docno" placeholder="RD6903/001" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">ชื่อลูกค้า</label><input type="text" id="sv-name" placeholder="ชื่อแขก/บริษัท" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">Tax ID ลูกค้า</label><input type="text" id="sv-taxid" placeholder="0123456789012" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 140px 140px auto;gap:6px;margin-top:6px;align-items:end;">
+        <div><label style="font-size:10px;color:#888;">ยอดก่อน VAT</label><input type="number" id="sv-amt" placeholder="0.00" oninput="calcSvVat()" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">VAT 7%</label><input type="number" id="sv-vat" placeholder="0.00" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;background:#fff3e0;" readonly></div>
+        <div><label style="font-size:10px;color:#888;">ยอดรวม VAT</label><input type="number" id="sv-total" placeholder="0.00" oninput="calcSvFromTotal()" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;"></div>
+        <button class="btn bp" onclick="addSalesVat()" style="padding:6px 16px;font-size:12px;background:#2e7d32;white-space:nowrap;">💾 บันทึก</button>
+      </div>
+      <div style="font-size:10px;color:#888;margin-top:4px;">💡 กรอก "ยอดก่อน VAT" หรือ "ยอดรวม VAT" อย่างใดอย่างหนึ่ง — ระบบจะคำนวณให้</div>
+    </div>
+    <!-- Table -->
+    <div style="overflow-x:auto;margin-top:8px;">
       <table class="dtbl"><thead><tr>
-        <th>ลำดับ</th><th>วันที่</th><th>เลขที่เอกสาร</th><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>ก่อน VAT</th><th>VAT <span class="vat-pct">7%</span></th><th>ยอดรวม</th>
+        <th>ลำดับ</th><th>วันที่</th><th>เลขที่เอกสาร</th><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>ก่อน VAT</th><th>VAT <span class="vat-pct">7%</span></th><th>ยอดรวม</th><th></th>
       </tr></thead>
       <tbody id="vat-daily-tbody"></tbody></table>
     </div>
@@ -1057,7 +1079,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <!-- ═══ ภาษีซื้อ (INPUT VAT) ═══ -->
   <div class="card" style="margin-top:14px;">
     <div class="chdr"><span>🛒 ภาษีซื้อ (Input VAT) — ค่าใช้จ่ายที่มี VAT</span>
-      <button class="btn bp" onclick="exportInputVat()" style="font-size:11px;padding:5px 12px;margin-left:auto;">⬇ Export</button>
+      <input type="file" id="iv-upload-file" accept=".xlsx,.xls" style="display:none;" onchange="importInputVatExcel(this)">
+      <button class="btn" onclick="document.getElementById('iv-upload-file').click()" style="font-size:11px;padding:5px 12px;margin-left:auto;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;">📤 Upload Excel</button>
+      <button class="btn" onclick="downloadIvTemplate()" style="font-size:11px;padding:5px 12px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📋 Template</button>
+      <button class="btn bp" onclick="exportInputVat()" style="font-size:11px;padding:5px 12px;">⬇ Export</button>
     </div>
     <!-- Add form -->
     <div style="padding:12px;background:var(--shell);border-radius:var(--rs);margin:8px;">
@@ -1578,7 +1603,7 @@ const SU='https://xjfzaarabsxngazzthpf.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqZnphYXJhYnN4bmdhenp0aHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDE2OTYsImV4cCI6MjA4OTA3NzY5Nn0.BUeCnbwYSDYgTh1SIpzWGE5LqsCz-q84vP0MuMo718M';
 const sb=supabase.createClient(SU,SK);
 
-const SRC={W:{label:'Walk-in',color:'#1a73e8',bg:'#e8f0fe'},A:{label:'Agoda',color:'#e65100',bg:'#fff3e0'},B:{label:'Booking.com',color:'#0d47a1',bg:'#e3f2fd'},T:{label:'Traveloka',color:'#b71c1c',bg:'#ffebee'},C:{label:'Central',color:'#6a1b9a',bg:'#f3e5f5'},O:{label:'OTA อื่น',color:'#455a64',bg:'#eceff1'}};
+const SRC={W:{label:'Walk-in',color:'#2e7d32',bg:'#e8f5e9'},A:{label:'Agoda',color:'#c62828',bg:'#ffebee'},B:{label:'Booking.com',color:'#003580',bg:'#e3f2fd'},T:{label:'Traveloka',color:'#0277bd',bg:'#e1f5fe'},C:{label:'Central',color:'#6a1b9a',bg:'#f3e5f5'},O:{label:'OTA อื่น',color:'#455a64',bg:'#eceff1'}};
 
 // Rate configs
 const RATES={
@@ -1914,7 +1939,7 @@ function renderFloors(data, containerId, filter){
               const hasGuest=!!guest;
               const stColor=hasGuest?'var(--blue)':r.room_status==='cleaning'?'var(--gold)':r.room_status==='repairing'?'var(--danger)':'var(--success)';
               const stText=hasGuest?'🔵 มีแขก':{ready:'✅ พร้อม',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 ซ่อม',blocked:'🚫 ปิด'}[r.room_status||'ready']||'✅ พร้อม';
-              const srcBadge=guest?{Agoda:'🟠 Agoda',Traveloka:'🔴 Traveloka','Booking.com':'🔵 Booking','Walk-in':'🟢 Walk-in'}[guest.source]||guest.source:'';
+              const srcBadge=guest?{Agoda:'🔴 Agoda',Traveloka:'🔵 Traveloka','Booking.com':'🟣 Booking','Walk-in':'🟢 Walk-in'}[guest.source]||guest.source:'';
               return `<div class="rcard daily-room" draggable="true" data-room="${r.room}" style="${hasGuest?'border-color:#90caf9;background:#f8fbff;':''}">
               <div class="rstripe daily" style="background:${stColor};"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -2351,7 +2376,7 @@ async function loadOTACards(){
   const tmr=new Date(Date.now()+86400000).toISOString().split('T')[0];
   
   const srcBadge=(s)=>{
-    const colors={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],'Walk-in':['#1a73e8','#e8f0fe']};
+    const colors={Agoda:['#c62828','#ffebee'],Traveloka:['#0277bd','#e1f5fe'],'Booking.com':['#003580','#e3f2fd'],'Walk-in':['#2e7d32','#e8f5e9']};
     const c=colors[s]||['#455a64','#eceff1'];
     return `<span style="background:${c[1]};color:${c[0]};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;float:right;">${s}</span>`;
   };
@@ -2410,13 +2435,40 @@ async function loadRecentOTABookings(){
   if(!tb) return;
   if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:#999;">ไม่มีข้อมูลเข้าพักเดือนนี้</td></tr>';return;}
 
-  const srcBadge=s=>{const c={Agoda:['#e65100','#fff3e0'],Traveloka:['#0288d1','#e1f5fe'],'Walk-in':['#2e7d32','#e8f5e9'],'Booking.com':['#003580','#e3f2fd']}[s]||['#455a64','#eceff1'];return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:${c[1]};color:${c[0]};">${s}</span>`;};
+  const srcBadge=(s,amt)=>{
+    if(s==='Agoda') return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#ffebee;color:#c62828;">Agoda</span>`;
+    if(s==='Traveloka') return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#e1f5fe;color:#0277bd;">Traveloka</span>`;
+    if(s==='Booking.com') return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#e3f2fd;color:#003580;">Booking</span>`;
+    // Walk-in แยกสีตามราคา
+    const p=Number(amt||0);
+    if(p>=790) return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#efebe9;color:#4e342e;">Walk-in ฿790</span>`;
+    if(p>0&&p<=750) return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;">Walk-in ฿750</span>`;
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;">Walk-in</span>`;
+  };
   const statusB=s=>s==='CANCELLED'?'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">✗ ยกเลิก</span>':'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;">✓ PREPAID</span>';
 
-  // Summary
+  // Summary — count walk-in by price too
   let totalRev=0; const srcCnt={};
-  rows.forEach(b=>{totalRev+=Number(b.total_amount||0);const s=b.source||'Walk-in';srcCnt[s]=(srcCnt[s]||0)+1;});
-  const sumParts=Object.entries(srcCnt).map(([s,n])=>srcBadge(s)+' '+n).join(' &nbsp;·&nbsp; ');
+  rows.forEach(b=>{
+    totalRev+=Number(b.total_amount||0);
+    const s=b.source||'Walk-in';
+    if(s==='Walk-in'){
+      const p=Number(b.total_amount||0);
+      const key=p>=790?'Walk-in ฿790':'Walk-in ฿750';
+      srcCnt[key]=(srcCnt[key]||0)+1;
+    } else {
+      srcCnt[s]=(srcCnt[s]||0)+1;
+    }
+  });
+  const sumParts=Object.entries(srcCnt).map(([s,n])=>{
+    let badge='';
+    if(s==='Agoda') badge=srcBadge('Agoda');
+    else if(s==='Traveloka') badge=srcBadge('Traveloka');
+    else if(s==='Booking.com') badge=srcBadge('Booking.com');
+    else if(s.includes('790')) badge=srcBadge('Walk-in',790);
+    else badge=srcBadge('Walk-in',750);
+    return badge+' '+n;
+  }).join(' &nbsp;·&nbsp; ');
 
   let html='<tr style="background:#fafafa;font-size:11px;"><td colspan="9" style="padding:10px 14px;"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;"><strong>สรุป:</strong> '+sumParts+' &nbsp;·&nbsp; <strong style="color:#e65100;">รวมรายได้ ฿'+totalRev.toLocaleString()+'</strong></div></td></tr>';
 
@@ -2432,7 +2484,7 @@ async function loadRecentOTABookings(){
     const amt=Number(b.total_amount||0);
     html+=`<tr style="${i%2?'background:#fafafa;':''}">
       <td style="font-size:11px;color:#999;">${i+1}</td>
-      <td>${srcBadge(b.source||'Walk-in')}</td>
+      <td>${srcBadge(b.source||'Walk-in',b.total_amount)}</td>
       <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.guest_name||'—'}</td>
       <td style="font-size:12px;font-weight:700;">${b.room||'—'}</td>
       <td style="font-size:12px;">${thDate(ci)}</td>
@@ -2466,7 +2518,7 @@ async function renderDailyCards(){
   }
   
   const srcBadge=(s)=>{
-    const m={Agoda:['#e65100','#fff3e0','A'],Traveloka:['#b71c1c','#ffebee','T'],'Booking.com':['#0d47a1','#e3f2fd','B'],'Walk-in':['#1a73e8','#e8f0fe','W']};
+    const m={Agoda:['#c62828','#ffebee','A'],Traveloka:['#0277bd','#e1f5fe','T'],'Booking.com':['#003580','#e3f2fd','B'],'Walk-in':['#2e7d32','#e8f5e9','W']};
     const cl=m[s]||['#455a64','#eceff1','O'];
     return `<span style="background:${cl[1]};color:${cl[0]};padding:3px 10px;border-radius:4px;font-size:10px;font-weight:800;">${s}</span>`;
   };
@@ -2526,7 +2578,7 @@ async function renderAvailTable(){
   if(!rooms.length){wrap.innerHTML='<div class="empty" style="padding:24px;">ยังไม่มีห้องรายวัน — ไปตั้งที่แท็บรายเดือน</div>';return;}
   
   const srcMap={Agoda:'A',Traveloka:'T','Booking.com':'B','Walk-in':'W',Other:'O'};
-  const srcColor={A:'linear-gradient(135deg,#e65100,#ff8f00)',T:'linear-gradient(135deg,#b71c1c,#e53935)',B:'linear-gradient(135deg,#0d47a1,#1976d2)',W:'linear-gradient(135deg,#1565c0,#42a5f5)',O:'linear-gradient(135deg,#455a64,#78909c)'};
+  const srcColor={A:'linear-gradient(135deg,#c62828,#e53935)',T:'linear-gradient(135deg,#0277bd,#0288d1)',B:'linear-gradient(135deg,#003580,#1565c0)',W:'linear-gradient(135deg,#2e7d32,#43a047)',O:'linear-gradient(135deg,#455a64,#78909c)'};
   const today=new Date().toISOString().split('T')[0];
   const thDows=['อา','จ','อ','พ','พฤ','ศ','ส'];
   
@@ -2707,7 +2759,7 @@ async function renderDailyRoomCards(){
   const{data:lastLogs}=await sb.from('room_logs').select('room,log_type,description,logged_at').in('room',roomIds).order('logged_at',{ascending:false}).limit(50);
   const lastLogMap={};(lastLogs||[]).forEach(l=>{if(!lastLogMap[l.room])lastLogMap[l.room]=l;});
   
-  const srcBadge=(s)=>{const m={Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],'Walk-in':['#1a73e8','#e8f0fe']};const cl=m[s]||['#455a64','#eceff1'];return `<span style="background:${cl[1]};color:${cl[0]};padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;">${s}</span>`;};
+  const srcBadge=(s)=>{const m={Agoda:['#c62828','#ffebee'],Traveloka:['#0277bd','#e1f5fe'],'Booking.com':['#003580','#e3f2fd'],'Walk-in':['#2e7d32','#e8f5e9']};const cl=m[s]||['#455a64','#eceff1'];return `<span style="background:${cl[1]};color:${cl[0]};padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;">${s}</span>`;};
   const stLabel={ready:'✅ พร้อมให้เช่า',occupied:'🔵 มีแขก',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 กำลังซ่อม',blocked:'🚫 ปิดห้อง'};
   const bedTxt=(b)=>b==='5ft'?'🛏 5ฟุต':b==='twin'?'🛏🛏 คู่':'🛏 6ฟุต';
   
@@ -3920,7 +3972,7 @@ function renderReport(months,yr){
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
     <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;">
       <div style="font-size:14px;font-weight:700;margin-bottom:12px;">💰 สัดส่วนรายรับ</div>
-      ${[{l:'ค่าเช่า',v:totRent,c:'#66bb6a'},{l:'ค่าไฟ',v:totElec,c:'#ffa726'},{l:'ค่าน้ำ',v:totWater,c:'#42a5f5'},{l:'อื่นๆ (รายเดือน)',v:totOther,c:'#ab47bc'},{l:'รายวัน Walk-in',v:totDaily,c:'#1976d2'},{l:'OTA',v:totOTA,c:'#e65100'}].map(x=>{
+      ${[{l:'ค่าเช่า',v:totRent,c:'#66bb6a'},{l:'ค่าไฟ',v:totElec,c:'#ffa726'},{l:'ค่าน้ำ',v:totWater,c:'#42a5f5'},{l:'อื่นๆ (รายเดือน)',v:totOther,c:'#ab47bc'},{l:'รายวัน Walk-in',v:totDaily,c:'#1976d2'},{l:'OTA',v:totOTA,c:'#c62828'}].map(x=>{
         const pct=totGrand>0?(x.v/totGrand*100):0;
         return `<div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
@@ -3965,7 +4017,7 @@ function drillMonth(mKey,tab){
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:14px;background:#f9f9f9;border-bottom:1px solid var(--border);">
     <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);">🏠 รายเดือน</div><div style="font-size:16px;font-weight:800;color:#2e7d32;">${fmt(m.monthlyTotal)}</div></div>
     <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);">📅 รายวัน</div><div style="font-size:16px;font-weight:800;color:#1565c0;">${fmt(m.dailyTotal)}</div><div style="font-size:9px;color:var(--text3);">${m.dailyCount} ใบ</div></div>
-    <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);">🌐 OTA</div><div style="font-size:16px;font-weight:800;color:#e65100;">${fmt(m.otaTotal)}</div><div style="font-size:9px;color:var(--text3);">${m.otaCount} booking</div></div>
+    <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);">🌐 OTA</div><div style="font-size:16px;font-weight:800;color:#c62828;">${fmt(m.otaTotal)}</div><div style="font-size:9px;color:var(--text3);">${m.otaCount} booking</div></div>
     <div style="text-align:center;"><div style="font-size:10px;color:var(--text3);">🏢 ห้องเช่า</div><div style="font-size:16px;font-weight:800;color:#5e35b1;">${m.occupiedCount}</div></div>
     <div style="text-align:center;background:linear-gradient(135deg,#fff8e1,#ffe082);border-radius:8px;padding:8px;"><div style="font-size:10px;color:#e65100;">💰 รวมทั้งหมด</div><div style="font-size:18px;font-weight:900;color:#bf360c;">${fmt(m.grandTotal)}</div></div>
   </div>
@@ -4631,7 +4683,7 @@ async function loadCheckins(){
   const tb=document.getElementById('ci-tbody');
   if(!data?.length){tb.innerHTML='<tr><td colspan="10" class="empty">ยังไม่มีรายการ</td></tr>';return;}
   const today=new Date().toISOString().split('T')[0];
-  const srcBadge=(s)=>{const m={'Walk-in':['#1a73e8','#e8f0fe'],Agoda:['#e65100','#fff3e0'],Traveloka:['#b71c1c','#ffebee'],'Booking.com':['#0d47a1','#e3f2fd'],Other:['#455a64','#eceff1'],manual:['#455a64','#eceff1']};const c=m[s]||m.manual;return `<span style="background:${c[1]};color:${c[0]};padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;">${s||'manual'}</span>`;};
+  const srcBadge=(s)=>{const m={'Walk-in':['#2e7d32','#e8f5e9'],Agoda:['#c62828','#ffebee'],Traveloka:['#0277bd','#e1f5fe'],'Booking.com':['#003580','#e3f2fd'],Other:['#455a64','#eceff1'],manual:['#455a64','#eceff1']};const c=m[s]||m.manual;return `<span style="background:${c[1]};color:${c[0]};padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;">${s||'manual'}</span>`;};
   tb.innerHTML=data.map(r=>{
     const name=r.guest_type==='thai'
       ?`${r.thai_prefix||''}${r.thai_first_name||''} ${r.thai_last_name||''}`
@@ -5776,7 +5828,7 @@ async function loadVatReport(){
   document.getElementById('vat-m-count').textContent=rooms.length+' ห้อง';
   
   // === DAILY DATA (from tax_sales_report) ===
-  const{data:dBookings}=await sb.from('tax_sales_report').select('seq,doc_date,doc_no,customer_name,customer_tax_id,amount_before_vat,vat_amount')
+  const{data:dBookings}=await sb.from('tax_sales_report').select('id,seq,doc_date,doc_no,customer_name,customer_tax_id,amount_before_vat,vat_amount')
     .eq('report_type','daily').eq('report_month',m).order('seq');
   const bks=dBookings||[];
   
@@ -5795,13 +5847,14 @@ async function loadVatReport(){
       +'<td class="mono">'+amt.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
       +'<td class="mono" style="color:var(--danger);">'+vat.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
       +'<td class="mono" style="font-weight:700;">'+total.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
+      +'<td><button onclick="delSalesVat('+b.id+')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;" title="ลบ">🗑</button></td>'
       +'</tr>';
   });
   document.getElementById('vat-daily-tbody').innerHTML=dRows.join('')
     +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="5">รวมรายวัน</td>'
     +'<td class="mono">'+sumDaily.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
     +'<td class="mono" style="color:var(--danger);">'+vatDaily.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
-    +'<td class="mono">'+(sumDaily+vatDaily).toLocaleString(undefined,{minimumFractionDigits:2})+'</td></tr>';
+    +'<td class="mono">'+(sumDaily+vatDaily).toLocaleString(undefined,{minimumFractionDigits:2})+'</td><td></td></tr>';
   document.getElementById('vat-d-count').textContent=bks.length+' รายการ';
   
   // === KPI (rent has NO VAT, daily uses actual DB values) ===
@@ -5886,6 +5939,163 @@ async function exportVatExcel(){
   
   XLSX.writeFile(wb,'VAT_Report_'+m+'_JResidence.xlsx');
   toast('Export รายงานภาษีขาย สำเร็จ ✅','ok');
+}
+
+// ══════════════════════════════════
+// 📅 SALES VAT — add / delete / upload / template
+// ══════════════════════════════════
+function calcSvVat(){
+  const a=Number(document.getElementById('sv-amt').value)||0;
+  const v=Math.round(a*VAT_RATE/100*100)/100;
+  document.getElementById('sv-vat').value=v.toFixed(2);
+  document.getElementById('sv-total').value=(a+v).toFixed(2);
+}
+function calcSvFromTotal(){
+  const t=Number(document.getElementById('sv-total').value)||0;
+  const b=Math.round(t*100/(100+VAT_RATE)*100)/100;
+  const v=Math.round((t-b)*100)/100;
+  document.getElementById('sv-amt').value=b.toFixed(2);
+  document.getElementById('sv-vat').value=v.toFixed(2);
+}
+
+async function addSalesVat(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');return;}
+  const name=document.getElementById('sv-name').value.trim();
+  if(!name){toast('กรอกชื่อลูกค้า','err');return;}
+  const amt=Number(document.getElementById('sv-amt').value)||0;
+  const vat=Number(document.getElementById('sv-vat').value)||0;
+  if(amt<=0){toast('กรอกจำนวนเงิน','err');return;}
+  const{data:maxR}=await sb.from('tax_sales_report').select('seq').eq('report_type','daily').eq('report_month',m).order('seq',{ascending:false}).limit(1);
+  const nextSeq=(maxR&&maxR[0]?maxR[0].seq:0)+1;
+  const{error}=await sb.from('tax_sales_report').insert({
+    report_month:m,report_type:'daily',seq:nextSeq,
+    doc_date:document.getElementById('sv-date').value||null,
+    doc_no:document.getElementById('sv-docno').value.trim()||('RD'+m.replace('-','').slice(2)+'/'+String(nextSeq).padStart(3,'0')),
+    customer_name:name,customer_tax_id:document.getElementById('sv-taxid').value.trim()||null,
+    is_head_office:true,amount_before_vat:amt,vat_amount:vat
+  });
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('เพิ่มภาษีขาย #'+nextSeq+' สำเร็จ','ok');
+  ['sv-date','sv-docno','sv-name','sv-taxid','sv-amt','sv-vat','sv-total'].forEach(id=>{document.getElementById(id).value='';});
+  loadVatReport();
+}
+
+async function delSalesVat(id){
+  if(!confirm('ลบรายการภาษีขายนี้?'))return;
+  await sb.from('tax_sales_report').delete().eq('id',id);
+  toast('ลบสำเร็จ','ok');loadVatReport();
+}
+
+// ═══ Parse Excel date helper ═══
+function parseExcelDate(v){
+  if(!v)return null;
+  if(v instanceof Date||typeof v==='object'&&v.getFullYear){
+    let y=v.getFullYear();if(y>2500)y-=543;
+    return y+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  }
+  const s=String(v).trim();
+  const p=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(p){let y=Number(p[3]);if(y>2500)y-=543;return y+'-'+p[2].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
+  const p2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(p2){let y=Number(p2[1]);if(y>2500)y-=543;return y+'-'+p2[2]+'-'+p2[3];}
+  return null;
+}
+
+// ═══ Upload Sales VAT Excel ═══
+async function importSalesVatExcel(input){
+  const file=input.files[0];if(!file)return;
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');input.value='';return;}
+  toast('กำลัง import ภาษีขาย...','info');
+  const data=await file.arrayBuffer();
+  const wb=XLSX.read(data);const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  let startRow=0;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i].map(c=>String(c));
+    if(r.some(c=>c.includes('ลำดับ'))||r.some(c=>c.includes('เล่มที่'))){startRow=i+1;break;}
+  }
+  if(startRow===0)startRow=1;
+  const records=[];
+  for(let i=startRow;i<rows.length;i++){
+    const r=rows[i];const seq=Number(r[0]);if(!seq||isNaN(seq))continue;
+    const custName=String(r[3]||'').trim();if(!custName)continue;
+    const amt=Number(r[7])||0;const vat=Number(r[8])||0;if(amt<=0&&vat<=0)continue;
+    let taxId=String(r[4]||'').trim().replace(/[^0-9]/g,'');
+    records.push({report_month:m,report_type:'daily',seq,doc_date:parseExcelDate(r[1]),
+      doc_no:String(r[2]||'').trim(),customer_name:custName,customer_tax_id:taxId||null,
+      is_head_office:true,amount_before_vat:amt,vat_amount:vat});
+  }
+  if(!records.length){toast('ไม่พบข้อมูลในไฟล์','err');input.value='';return;}
+  let ok=0;
+  for(let i=0;i<records.length;i+=50){
+    const batch=records.slice(i,i+50);
+    const{error}=await sb.from('tax_sales_report').insert(batch);
+    if(error){toast('Error: '+error.message,'err');break;}
+    ok+=batch.length;
+  }
+  toast('Import ภาษีขาย '+ok+' รายการ สำเร็จ ✅','ok');
+  input.value='';loadVatReport();
+}
+
+// ═══ Upload Input VAT Excel ═══
+async function importInputVatExcel(input){
+  const file=input.files[0];if(!file)return;
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');input.value='';return;}
+  toast('กำลัง import ภาษีซื้อ...','info');
+  const data=await file.arrayBuffer();
+  const wb=XLSX.read(data);const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  let startRow=0;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i].map(c=>String(c));
+    if(r.some(c=>c.includes('ลำดับ'))||r.some(c=>c.includes('เล่มที่'))){startRow=i+1;break;}
+  }
+  if(startRow===0)startRow=1;
+  const records=[];
+  for(let i=startRow;i<rows.length;i++){
+    const r=rows[i];const seq=Number(r[0]);if(!seq||isNaN(seq))continue;
+    const vendorName=String(r[3]||'').trim();if(!vendorName)continue;
+    const amt=Number(r[7])||0;const vat=Number(r[8])||0;if(amt<=0&&vat<=0)continue;
+    let taxId=String(r[4]||'').trim().replace(/[^0-9]/g,'');
+    records.push({month:m,doc_date:parseExcelDate(r[1]),doc_no:String(r[2]||'').trim(),
+      vendor_name:vendorName,vendor_tax_id:taxId||null,
+      amount:amt,vat_amount:vat,total:Math.round((amt+vat)*100)/100});
+  }
+  if(!records.length){toast('ไม่พบข้อมูลในไฟล์','err');input.value='';return;}
+  let ok=0;
+  for(let i=0;i<records.length;i+=50){
+    const batch=records.slice(i,i+50);
+    const{error}=await sb.from('input_vat').insert(batch);
+    if(error){toast('Error: '+error.message,'err');break;}
+    ok+=batch.length;
+  }
+  toast('Import ภาษีซื้อ '+ok+' รายการ สำเร็จ ✅','ok');
+  input.value='';loadInputVat();loadVatReport();
+}
+
+// ═══ Download Templates ═══
+function downloadIvTemplate(){
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['ลำดับที่','วัน เดือน ปี','เล่มที่/เลขที่','ชื่อผู้ขายสินค้า/ผู้ให้บริการ','เลขผู้เสียภาษีผู้ขาย','สำนักงานใหญ่/สาขา','สาขาที่','มูลค่าสินค้าหรือบริการ','จำนวนเงินภาษีมูลค่าเพิ่ม'],
+    [1,'15/01/2026','INV-001','บริษัท ตัวอย่าง จำกัด','0123456789012',0,'',1000.00,70.00]
+  ]);
+  ws['!cols']=[{wch:8},{wch:14},{wch:18},{wch:35},{wch:18},{wch:15},{wch:10},{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,'ข้อมูล');
+  XLSX.writeFile(wb,'template_ภาษีซื้อ.xlsx');
+}
+function downloadSvTemplate(){
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['ลำดับที่','วัน เดือน ปี','เล่มที่/เลขที่','ชื่อผู้ซื้อสินค้า/ผู้รับบริการ','เลขผู้เสียภาษีผู้ซื้อ','สำนักงานใหญ่/สาขา','สาขาที่','มูลค่าสินค้าหรือบริการ','จำนวนเงินภาษีมูลค่าเพิ่ม'],
+    [1,'02/01/2026','RD6901/001','ชื่อแขก/บริษัท','',0,'',1000.00,70.00]
+  ]);
+  ws['!cols']=[{wch:8},{wch:14},{wch:18},{wch:35},{wch:18},{wch:15},{wch:10},{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,'ข้อมูล');
+  XLSX.writeFile(wb,'template_ภาษีขาย.xlsx');
 }
 
 // ══════════════════════════════════
