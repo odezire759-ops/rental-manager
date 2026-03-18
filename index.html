@@ -1027,7 +1027,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <div class="chdr"><span>📅 ภาษีขายรายวัน (ห้องพักรายวัน)</span><span id="vat-d-count" style="font-size:11px;color:var(--text3);margin-left:8px;"></span></div>
     <div style="overflow-x:auto;">
       <table class="dtbl"><thead><tr>
-        <th>วันที่</th><th>ห้อง</th><th>แขก</th><th>แหล่ง</th><th>Check-in</th><th>Check-out</th><th>ยอดรวม</th><th>ก่อน VAT</th><th><span class="vat-pct">7%</span></th>
+        <th>ลำดับ</th><th>วันที่</th><th>เลขที่เอกสาร</th><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>ก่อน VAT</th><th>VAT <span class="vat-pct">7%</span></th><th>ยอดรวม</th>
       </tr></thead>
       <tbody id="vat-daily-tbody"></tbody></table>
     </div>
@@ -5751,56 +5751,51 @@ async function loadVatReport(){
     +'<td class="mono">'+(sumRent+sumOther).toLocaleString()+'</td><td class="mono" style="color:var(--danger);">'+vatOther.toLocaleString()+'</td></tr>';
   document.getElementById('vat-m-count').textContent=rooms.length+' ห้อง';
   
-  // === DAILY DATA ===
-  const y=m.split('-')[0], mm=m.split('-')[1];
-  const startD=m+'-01';
-  const endD=y+'-'+mm+'-31';
-  const{data:dBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount')
-    .eq('building','เจเรสซิเดนซ์').gte('check_in',startD).lte('check_in',endD).order('check_in');
+  // === DAILY DATA (from tax_sales_report) ===
+  const{data:dBookings}=await sb.from('tax_sales_report').select('seq,doc_date,doc_no,customer_name,customer_tax_id,amount_before_vat,vat_amount')
+    .eq('report_type','daily').eq('report_month',m).order('seq');
   const bks=dBookings||[];
   
   let sumDaily=0, vatDaily=0;
   const dRows=bks.map(b=>{
-    const amt=Number(b.total_amount||0);
-    const v=calcVat(amt,inc);
-    sumDaily+=amt; vatDaily+=v.vat;
-    const srcBadge={'Agoda':'🟠','Traveloka':'🔴','Walk-in':'🔵','Booking.com':'🔵'}[b.source]||'⚫';
+    const amt=Number(b.amount_before_vat||0);
+    const vat=Number(b.vat_amount||0);
+    const total=amt+vat;
+    sumDaily+=amt; vatDaily+=vat;
     return '<tr>'
-      +'<td class="mono">'+fmtD(b.check_in)+'</td>'
-      +'<td class="mono" style="font-weight:700;">'+(b.room||'—')+'</td>'
-      +'<td style="font-size:11px;">'+(b.guest_name||'—').substring(0,20)+'</td>'
-      +'<td>'+srcBadge+' '+(b.source||'')+'</td>'
-      +'<td class="mono">'+fmtD(b.check_in)+'</td>'
-      +'<td class="mono">'+fmtD(b.check_out)+'</td>'
-      +'<td class="mono" style="font-weight:700;">'+amt.toLocaleString()+'</td>'
-      +'<td class="mono">'+v.before.toLocaleString()+'</td>'
-      +'<td class="mono" style="color:var(--danger);">'+v.vat.toLocaleString()+'</td>'
+      +'<td class="mono" style="text-align:center;">'+b.seq+'</td>'
+      +'<td class="mono">'+fmtD(b.doc_date)+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(b.doc_no||'—')+'</td>'
+      +'<td style="font-size:11px;">'+(b.customer_name||'—').substring(0,25)+'</td>'
+      +'<td class="mono" style="font-size:10px;color:var(--text3);">'+(b.customer_tax_id||'—')+'</td>'
+      +'<td class="mono">'+amt.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
+      +'<td class="mono" style="color:var(--danger);">'+vat.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+total.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
       +'</tr>';
   });
   document.getElementById('vat-daily-tbody').innerHTML=dRows.join('')
-    +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="6">รวมรายวัน</td>'
-    +'<td class="mono">'+sumDaily.toLocaleString()+'</td>'
-    +'<td class="mono">'+calcVat(sumDaily,inc).before.toLocaleString()+'</td>'
-    +'<td class="mono" style="color:var(--danger);">'+vatDaily.toLocaleString()+'</td></tr>';
+    +'<tr style="font-weight:800;background:var(--bg2);"><td colspan="5">รวมรายวัน</td>'
+    +'<td class="mono">'+sumDaily.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
+    +'<td class="mono" style="color:var(--danger);">'+vatDaily.toLocaleString(undefined,{minimumFractionDigits:2})+'</td>'
+    +'<td class="mono">'+(sumDaily+vatDaily).toLocaleString(undefined,{minimumFractionDigits:2})+'</td></tr>';
   document.getElementById('vat-d-count').textContent=bks.length+' รายการ';
   
-  // === KPI (rent has NO VAT) ===
+  // === KPI (rent has NO VAT, daily uses actual DB values) ===
   const totalVat=vatOther+vatDaily;
   document.getElementById('vat-total').textContent='฿'+Math.round(totalVat).toLocaleString();
   document.getElementById('vat-rent').textContent='฿'+sumRent.toLocaleString();
   document.getElementById('vat-other').textContent='฿'+Math.round(vatOther).toLocaleString();
   document.getElementById('vat-daily').textContent='฿'+Math.round(vatDaily).toLocaleString();
   
-  // === SUMMARY TABLE (rent = exempt) ===
+  // === SUMMARY TABLE (rent = exempt, daily uses actual DB values) ===
   const vOtherAll=calcVat(sumOther,inc);
-  const vDailyAll=calcVat(sumDaily,inc);
-  const vatableTotal=sumOther+sumDaily;
-  const grandTotal=sumRent+sumOther+sumDaily;
+  const dailyTotal=sumDaily+vatDaily;
+  const grandTotal=sumRent+sumOther+dailyTotal;
   
   document.getElementById('vat-summary-tbody').innerHTML=
     '<tr style="background:#f5f5f5;"><td style="font-weight:700;">🏠 ค่าเช่ารายเดือน</td><td class="mono">'+sumRent.toLocaleString()+'</td><td class="mono">'+sumRent.toLocaleString()+'</td><td class="mono" style="color:var(--text3);">ยกเว้น VAT</td></tr>'
     +'<tr><td style="font-weight:700;">⚡ ค่าไฟ+น้ำ+อื่นๆ (รายเดือน)</td><td class="mono">'+sumOther.toLocaleString()+'</td><td class="mono">'+vOtherAll.before.toLocaleString()+'</td><td class="mono" style="color:var(--danger);font-weight:700;">'+vatOther.toLocaleString()+'</td></tr>'
-    +'<tr><td style="font-weight:700;">📅 ห้องพักรายวัน</td><td class="mono">'+sumDaily.toLocaleString()+'</td><td class="mono">'+vDailyAll.before.toLocaleString()+'</td><td class="mono" style="color:var(--danger);font-weight:700;">'+vatDaily.toLocaleString()+'</td></tr>';
+    +'<tr><td style="font-weight:700;">📅 ห้องพักรายวัน</td><td class="mono">'+dailyTotal.toLocaleString()+'</td><td class="mono">'+sumDaily.toLocaleString()+'</td><td class="mono" style="color:var(--danger);font-weight:700;">'+vatDaily.toLocaleString()+'</td></tr>';
   
   document.getElementById('vs-total').textContent='฿'+grandTotal.toLocaleString();
   document.getElementById('vs-before').textContent='฿'+(grandTotal-totalVat).toLocaleString();
@@ -5820,8 +5815,8 @@ async function exportVatExcel(){
   const{data:mRooms}=await sb.from('monthly_charges').select('room,tenant_name,rent,elec_cost,water_cost,parking_car,parking_moto,tv_fee,fridge_fee,other,total')
     .eq('month',m).eq('building','เจเรสซิเดนซ์').gt('total',0).order('room');
   const y=m.split('-')[0],mm=m.split('-')[1];
-  const{data:dBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount')
-    .eq('building','เจเรสซิเดนซ์').gte('check_in',m+'-01').lte('check_in',y+'-'+mm+'-31').order('check_in');
+  const{data:dBookings}=await sb.from('tax_sales_report').select('seq,doc_date,doc_no,customer_name,customer_tax_id,amount_before_vat,vat_amount')
+    .eq('report_type','daily').eq('report_month',m).order('seq');
   
   const wb=XLSX.utils.book_new();
   
@@ -5835,7 +5830,7 @@ async function exportVatExcel(){
     const oth=Number(r.elec_cost||0)+Number(r.water_cost||0)+Number(r.parking_car||0)+Number(r.parking_moto||0)+Number(r.tv_fee||0)+Number(r.fridge_fee||0)+Number(r.other||0);
     tOther+=oth; vOther+=calcVat(oth,inc).vat;
   });
-  (dBookings||[]).forEach(b=>{const a=Number(b.total_amount||0);tDaily+=a;vDaily+=calcVat(a,inc).vat;});
+  (dBookings||[]).forEach(b=>{const a=Number(b.amount_before_vat||0);const v=Number(b.vat_amount||0);tDaily+=a+v;vDaily+=v;});
   ws1.push(['ค่าเช่ารายเดือน',tRent,tRent,0,'ยกเว้น VAT']);
   ws1.push(['ค่าไฟ+น้ำ+อื่นๆ (รายเดือน)',tOther,tOther-vOther,vOther,'VAT '+VAT_RATE+'%']);
   ws1.push(['ห้องพักรายวัน',tDaily,tDaily-vDaily,vDaily,'VAT '+VAT_RATE+'%']);
@@ -5856,12 +5851,12 @@ async function exportVatExcel(){
   });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws2),'รายเดือน');
   
-  // Sheet 3: รายวัน
+  // Sheet 3: รายวัน (from tax_sales_report)
   const ws3=[['ภาษีขายรายวัน — '+monthLabel(m)],[],
-    ['วันที่','ห้อง','แขก','แหล่ง','Check-in','Check-out','ยอดรวม','ก่อน VAT','VAT '+VAT_RATE+'%']];
+    ['ลำดับ','วันที่','เลขที่เอกสาร','ชื่อลูกค้า','เลขผู้เสียภาษี','ก่อน VAT','VAT '+VAT_RATE+'%','ยอดรวม']];
   (dBookings||[]).forEach(b=>{
-    const a=Number(b.total_amount||0);const v=calcVat(a,inc);
-    ws3.push([b.check_in,b.room||'',b.guest_name||'',b.source||'',b.check_in,b.check_out,a,v.before,v.vat]);
+    const a=Number(b.amount_before_vat||0);const v=Number(b.vat_amount||0);
+    ws3.push([b.seq,b.doc_date||'',b.doc_no||'',b.customer_name||'',b.customer_tax_id||'',a,v,a+v]);
   });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws3),'รายวัน');
   
