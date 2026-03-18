@@ -330,10 +330,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .gantt-body td.gantt-name{position:sticky;left:0;z-index:1;background:var(--white);padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:2px solid var(--border);min-width:150px;max-width:180px;}
 .gantt-bar{position:absolute;top:4px;bottom:4px;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;transition:filter .12s;z-index:1;min-width:20px;}
 .gantt-bar:hover{filter:brightness(1.15);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.gantt-bar.gb-A{background:linear-gradient(135deg,#c62828,#e53935);}
-.gantt-bar.gb-T{background:linear-gradient(135deg,#b71c1c,#e53935);}
+.gantt-bar.gb-A{background:linear-gradient(135deg,#c62828,#ef5350);}
+.gantt-bar.gb-T{background:linear-gradient(135deg,#0277bd,#29b6f6);}
 .gantt-bar.gb-B{background:linear-gradient(135deg,#0d47a1,#1976d2);}
-.gantt-bar.gb-W{background:linear-gradient(135deg,#1565c0,#42a5f5);}
+.gantt-bar.gb-W{background:linear-gradient(135deg,#2e7d32,#66bb6a);}
 .gantt-bar.gb-O{background:linear-gradient(135deg,#455a64,#78909c);}
 .gantt-day-col{border-left:1px solid #f5f5f5;}
 .gantt-day-col.gd-today{background:rgba(212,160,23,.06);}
@@ -654,8 +654,8 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
             <div class="fr"><label>แหล่งที่มา</label>
               <select id="ci-source">
                 <option value="Walk-in">🚶 Walk-in</option>
-                <option value="Agoda">🟠 Agoda</option>
-                <option value="Traveloka">🔴 Traveloka</option>
+                <option value="Agoda">🔴 Agoda</option>
+                <option value="Traveloka">🔵 Traveloka</option>
                 <option value="Booking.com">🔵 Booking.com</option>
                 <option value="Other">⚫ อื่นๆ</option>
               </select>
@@ -741,7 +741,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         <div class="bform-rooms" id="brooms"><div class="loading">กำลังโหลด...</div></div>
         <div class="fg">
           <div class="fr"><label>แหล่งที่มา</label>
-            <select id="bsrc"><option value="W">🔵 Walk-in</option><option value="A">🟠 Agoda</option><option value="B">🔵 Booking.com</option><option value="T">🔴 Traveloka</option><option value="O">⚫ OTA อื่นๆ</option></select>
+            <select id="bsrc"><option value="W">🟢 Walk-in</option><option value="A">🔴 Agoda</option><option value="B">🔵 Booking.com</option><option value="T">🔵 Traveloka</option><option value="O">⚫ OTA อื่นๆ</option></select>
           </div>
           <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="bprice" value="750" oninput="calcBT()"></div>
         </div>
@@ -1939,7 +1939,7 @@ function renderFloors(data, containerId, filter){
               const hasGuest=!!guest;
               const stColor=hasGuest?'var(--blue)':r.room_status==='cleaning'?'var(--gold)':r.room_status==='repairing'?'var(--danger)':'var(--success)';
               const stText=hasGuest?'🔵 มีแขก':{ready:'✅ พร้อม',cleaning:'🧹 ทำความสะอาด',repairing:'🔧 ซ่อม',blocked:'🚫 ปิด'}[r.room_status||'ready']||'✅ พร้อม';
-              const srcBadge=guest?{Agoda:'🔴 Agoda',Traveloka:'🔵 Traveloka','Booking.com':'🟣 Booking','Walk-in':'🟢 Walk-in'}[guest.source]||guest.source:'';
+              const srcBadge=guest?{Agoda:'🔴 Agoda',Traveloka:'🔵 Traveloka','Booking.com':'🔵 Booking','Walk-in':'🟢 Walk-in'}[guest.source]||guest.source:'';
               return `<div class="rcard daily-room" draggable="true" data-room="${r.room}" style="${hasGuest?'border-color:#90caf9;background:#f8fbff;':''}">
               <div class="rstripe daily" style="background:${stColor};"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -3692,14 +3692,14 @@ function renderReport(months,yr){
             <div style="width:100%;height:${h}px;border-radius:4px 4px 0 0;overflow:hidden;display:flex;flex-direction:column;">
               <div style="flex:${mPct};background:linear-gradient(180deg,#43a047,#66bb6a);min-height:${mPct>0?1:0}px;"></div>
               <div style="flex:${dPct};background:linear-gradient(180deg,#1976d2,#42a5f5);min-height:${dPct>0?1:0}px;"></div>
-              <div style="flex:${oPct};background:linear-gradient(180deg,#e65100,#ff9800);min-height:${oPct>0?1:0}px;"></div>
+              <div style="flex:${oPct};background:linear-gradient(180deg,#c62828,#ef5350);min-height:${oPct>0?1:0}px;"></div>
             </div>
             <div style="font-size:9px;color:var(--text3);font-weight:600;margin-top:4px;">${m.short}</div>
           </div>`;
         }).join('')}
       </div>
       <div style="display:flex;justify-content:center;gap:14px;margin-top:10px;font-size:10px;">
-        <span>🟢 รายเดือน</span><span>🔵 รายวัน</span><span>🟠 OTA</span>
+        <span>🟢 รายเดือน</span><span>🔵 รายวัน</span><span>🔴 OTA</span>
       </div>
     </div>
     <!-- Bar Chart: Monthly Breakdown -->
@@ -3972,7 +3972,7 @@ function renderReport(months,yr){
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
     <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;">
       <div style="font-size:14px;font-weight:700;margin-bottom:12px;">💰 สัดส่วนรายรับ</div>
-      ${[{l:'ค่าเช่า',v:totRent,c:'#66bb6a'},{l:'ค่าไฟ',v:totElec,c:'#ffa726'},{l:'ค่าน้ำ',v:totWater,c:'#42a5f5'},{l:'อื่นๆ (รายเดือน)',v:totOther,c:'#ab47bc'},{l:'รายวัน Walk-in',v:totDaily,c:'#1976d2'},{l:'OTA',v:totOTA,c:'#c62828'}].map(x=>{
+      ${[{l:'ค่าเช่า',v:totRent,c:'#66bb6a'},{l:'ค่าไฟ',v:totElec,c:'#ffa726'},{l:'ค่าน้ำ',v:totWater,c:'#42a5f5'},{l:'อื่นๆ (รายเดือน)',v:totOther,c:'#ab47bc'},{l:'รายวัน Walk-in',v:totDaily,c:'#2e7d32'},{l:'OTA',v:totOTA,c:'#c62828'}].map(x=>{
         const pct=totGrand>0?(x.v/totGrand*100):0;
         return `<div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
@@ -4237,7 +4237,7 @@ async function renderDashboard(){
 
   // ── Revenue by source chart ──
   const srcRev={};otaData.forEach(b=>{srcRev[b.source]=(srcRev[b.source]||0)+Number(b.total_amount||0);});
-  const srcColors={Agoda:'#e65100',Traveloka:'#b71c1c','Booking.com':'#0d47a1','Walk-in':'#1a73e8',Other:'#455a64'};
+  const srcColors={Agoda:'#c62828',Traveloka:'#0277bd','Booking.com':'#003580','Walk-in':'#2e7d32',Other:'#455a64'};
   const srcTotal=Object.values(srcRev).reduce((a,b)=>a+b,0)||1;
   const sorted=Object.entries(srcRev).sort((a,b)=>b[1]-a[1]);
   document.getElementById('ds-src-chart').innerHTML=sorted.length?sorted.map(([src,rev])=>{
@@ -6345,7 +6345,7 @@ async function openCustProfile(custId){
     const seen=new Set();
     const unique=allStays.filter(s=>{const k=s.ci+'|'+s.amount;if(seen.has(k))return false;seen.add(k);return true;});
     
-    const srcBadge=(s)=>({'Agoda':'🟠 Agoda','Traveloka':'🔴 Traveloka','Walk-in':'🔵 Walk-in','Booking.com':'🔵 Booking','ใบวางบิล':'📋 บิล'}[s]||s);
+    const srcBadge=(s)=>({'Agoda':'🔴 Agoda','Traveloka':'🔵 Traveloka','Walk-in':'🟢 Walk-in','Booking.com':'🔵 Booking','ใบวางบิล':'📋 บิล'}[s]||s);
     stb.innerHTML=unique.map(s=>'<tr>'
       +'<td class="mono" style="font-size:11px;">'+fmtD(s.ci)+'</td>'
       +'<td class="mono" style="font-size:11px;">'+fmtD(s.co)+'</td>'
