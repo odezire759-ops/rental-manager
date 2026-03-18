@@ -491,7 +491,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
   <div id="floor-container"><div class="loading">กำลังโหลด...</div></div>
   <div class="card" style="margin-top:14px;">
     <div class="chdr"><span>📊 ตารางรายละเอียด</span><div style="display:flex;gap:4px;"><button class="tbtn" style="font-size:11px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;" onclick="bulkMonthlyInvoice('invoice')">📋 ใบแจ้งหนี้ทั้งหมด</button><button class="tbtn" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;" onclick="bulkMonthlyInvoice('both')">📋+🧾 ใบแจ้งหนี้+ใบเสร็จ</button><button class="tbtn" style="font-size:11px;" onclick="exportXL()">⬇ Export</button></div></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th><th>ใบเสร็จ</th></tr></thead><tbody id="mtbody"><tr><td colspan="12" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>ชื่อผู้เช่า</th><th>เรท</th><th>ค่าเช่า</th><th>ไฟ</th><th>น้ำ</th><th>อื่นๆ</th><th>รวม</th><th>สถานะ</th><th></th><th>ใบแจ้งหนี้</th><th>ใบเสร็จ</th></tr></thead><tbody id="mtbody"><tr><td colspan="13" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -1900,7 +1900,8 @@ function renderMTable(d){
     <td class="mono">฿${Math.round((r.parking_car||0)+(r.parking_moto||0)+(r.fridge_fee||0)+(r.other||0)).toLocaleString()}</td>
     <td class="mono" style="font-weight:800;">฿${Math.round(r.total||0).toLocaleString()}</td>
     <td><span class="pill ${isPaid?'ppaid':'ppend'}">${isPaid?'ชำระแล้ว':'ค้างชำระ'}</span></td>
-    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button>${hasT?`<button class="ract" style="padding:4px 8px;margin-left:2px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:10px;" onclick="genMonthlyInvoice('${r.room}','both')">📄</button>`:''}</td>
+    <td><button class="ract" style="padding:4px 12px;" onclick="openEdit('${r.room}')">แก้ไข</button></td>
+    <td style="text-align:center;">${hasT?`<button onclick="genMonthlyInvoice('${r.room}','invoice')" style="padding:4px 10px;border:none;border-radius:5px;background:#1565C0;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;">📋 ใบแจ้งหนี้</button>`:'—'}</td>
     <td style="text-align:center;">${rcBtn}</td></tr>`;
   }).join('');
 }
