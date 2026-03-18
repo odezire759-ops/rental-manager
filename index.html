@@ -6569,13 +6569,13 @@ function rcBuildParams(){
 
 function rcDoInvoice(){
   closeRcModal();
-  var url='invoice-system.html?'+rcBuildParams();
+  var url='https://xjfzaarabsxngazzthpf.supabase.co/functions/v1/invoice-page?'+rcBuildParams();
   window.open(url,'_blank');
 }
 
 function rcDoReceipt(){
   closeRcModal();
-  var url='invoice-system.html?'+rcBuildParams()+'&type=receipt';
+  var url='https://xjfzaarabsxngazzthpf.supabase.co/functions/v1/invoice-page?'+rcBuildParams()+'&type=receipt';
   window.open(url,'_blank');
 }
 </script>
