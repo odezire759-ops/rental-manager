@@ -411,10 +411,10 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('slips',this)">💳 สลิป</button>
     <button class="nbtn" onclick="showSec('staff',this)">👥 พนักงาน</button>
     <button class="nbtn" onclick="showSec('tax',this)">📊 บัญชี</button>
-    <button class="nbtn" onclick="showSec('vat',this)">🧾 ภาษีขาย</button>
+    <button class="nbtn" onclick="showSec('vat',this)">🧾 ภาษีซื้อ-ขาย</button>
     <button class="nbtn" onclick="showSec('invoice',this)">📄 ใบเสร็จ</button>
     <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
-    <button class="nbtn" onclick="showSec('tax',this)">💼 สรรพากร</button>
+
   </div>
   <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
 </div>
@@ -1029,6 +1029,68 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
         <th>วันที่</th><th>ห้อง</th><th>แขก</th><th>แหล่ง</th><th>Check-in</th><th>Check-out</th><th>ยอดรวม</th><th>ก่อน VAT</th><th><span class="vat-pct">7%</span></th>
       </tr></thead>
       <tbody id="vat-daily-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ═══ NET VAT — ภาษีขาย vs ภาษีซื้อ ═══ -->
+  <div class="card" style="margin-top:14px;border:2px solid var(--gold);background:linear-gradient(135deg,#fffde7,#fff8e1);">
+    <div class="chdr"><span style="font-size:15px;font-weight:800;">⚖️ สรุปภาษี — ขาย vs ซื้อ (เดือน)</span></div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;padding:16px;align-items:center;">
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:14px;border:2px solid #C62828;">
+        <div style="font-size:10px;color:#888;font-weight:600;">ภาษีขาย (Output VAT)</div>
+        <div id="net-output" style="font-size:26px;font-weight:800;color:#C62828;font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="font-size:28px;font-weight:800;color:#888;">−</div>
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:14px;border:2px solid #2E7D32;">
+        <div style="font-size:10px;color:#888;font-weight:600;">ภาษีซื้อ (Input VAT)</div>
+        <div id="net-input" style="font-size:26px;font-weight:800;color:#2E7D32;font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="font-size:28px;font-weight:800;color:#888;">=</div>
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:14px;border:2px solid var(--gold2);">
+        <div style="font-size:10px;color:#888;font-weight:600;" id="net-label">ภาษีต้องนำส่ง</div>
+        <div id="net-result" style="font-size:26px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ภาษีซื้อ (INPUT VAT) ═══ -->
+  <div class="card" style="margin-top:14px;">
+    <div class="chdr"><span>🛒 ภาษีซื้อ (Input VAT) — ค่าใช้จ่ายที่มี VAT</span>
+      <button class="btn bp" onclick="exportInputVat()" style="font-size:11px;padding:5px 12px;margin-left:auto;">⬇ Export</button>
+    </div>
+    <!-- Add form -->
+    <div style="padding:12px;background:var(--shell);border-radius:var(--rs);margin:8px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">➕ เพิ่มรายการภาษีซื้อ</div>
+      <div style="display:grid;grid-template-columns:120px 1fr 1fr 120px;gap:6px;">
+        <div><label style="font-size:10px;color:#888;">วันที่เอกสาร</label><input type="date" id="iv-date" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">ร้านค้า/ผู้ขาย</label><input type="text" id="iv-vendor" placeholder="ชื่อร้าน/บริษัท" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">รายการ</label><input type="text" id="iv-desc" placeholder="ค่าซ่อมแอร์, วัสดุ, ฯลฯ" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">หมวด</label>
+          <select id="iv-cat" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;">
+            <option value="repair">🔧 ค่าซ่อม</option><option value="material">🧱 วัสดุ</option><option value="equipment">🖥 อุปกรณ์</option>
+            <option value="utility">💡 สาธารณูปโภค</option><option value="service">📋 ค่าบริการ</option><option value="other">📦 อื่นๆ</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:120px 140px 140px 140px 1fr auto;gap:6px;margin-top:6px;align-items:end;">
+        <div><label style="font-size:10px;color:#888;">เลขที่เอกสาร</label><input type="text" id="iv-docno" placeholder="IV-001" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">Tax ID ผู้ขาย</label><input type="text" id="iv-taxid" placeholder="0123456789012" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">ยอดก่อน VAT</label><input type="number" id="iv-amt" placeholder="0.00" oninput="calcIvVat()" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:#888;">VAT 7%</label><input type="number" id="iv-vat" placeholder="0.00" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;background:#fff3e0;" readonly></div>
+        <div><label style="font-size:10px;color:#888;">ยอดรวม VAT</label><input type="number" id="iv-total" placeholder="0.00" oninput="calcIvFromTotal()" style="width:100%;padding:6px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-weight:700;"></div>
+        <button class="btn bp" onclick="addInputVat()" style="padding:6px 16px;font-size:12px;background:var(--success);white-space:nowrap;">💾 บันทึก</button>
+      </div>
+      <div style="font-size:10px;color:#888;margin-top:4px;">💡 กรอก "ยอดก่อน VAT" หรือ "ยอดรวม VAT" อย่างใดอย่างหนึ่ง — ระบบจะคำนวณให้</div>
+    </div>
+    <!-- Table -->
+    <div style="overflow-x:auto;margin-top:8px;">
+      <table class="dtbl"><thead><tr>
+        <th>วันที่</th><th>เลขที่</th><th>ร้านค้า/ผู้ขาย</th><th>Tax ID</th><th>รายการ</th><th>หมวด</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th></th>
+      </tr></thead>
+      <tbody id="ivat-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody>
+      <tfoot><tr style="font-weight:800;background:var(--bg2);">
+        <td colspan="6">รวมภาษีซื้อ (เดือน)</td><td id="ivat-sum-amt" class="mono">—</td><td id="ivat-sum-vat" class="mono" style="color:#2E7D32;">—</td><td id="ivat-sum-total" class="mono">—</td><td></td>
+      </tr></tfoot></table>
     </div>
   </div>
 
@@ -5593,6 +5655,10 @@ async function loadVatReport(){
   document.getElementById('vs-total').textContent='฿'+grandTotal.toLocaleString();
   document.getElementById('vs-before').textContent='฿'+(grandTotal-totalVat).toLocaleString();
   document.getElementById('vs-vat').textContent='฿'+Math.round(totalVat).toLocaleString();
+  
+  // Store output VAT for net calculation
+  window._outputVat=Math.round(totalVat);
+  loadInputVat();
 }
 
 async function exportVatExcel(){
@@ -5651,6 +5717,128 @@ async function exportVatExcel(){
   
   XLSX.writeFile(wb,'VAT_Report_'+m+'_JResidence.xlsx');
   toast('Export รายงานภาษีขาย สำเร็จ ✅','ok');
+}
+
+// ══════════════════════════════════
+// 🛒 INPUT VAT (ภาษีซื้อ)
+// ══════════════════════════════════
+const IV_CAT={repair:'🔧 ค่าซ่อม',material:'🧱 วัสดุ',equipment:'🖥 อุปกรณ์',utility:'💡 สาธารณูปโภค',service:'📋 ค่าบริการ',other:'📦 อื่นๆ'};
+
+function calcIvVat(){
+  const amt=Number(document.getElementById('iv-amt').value)||0;
+  const vat=Math.round(amt*VAT_RATE/100*100)/100;
+  document.getElementById('iv-vat').value=vat.toFixed(2);
+  document.getElementById('iv-total').value=(amt+vat).toFixed(2);
+}
+function calcIvFromTotal(){
+  const total=Number(document.getElementById('iv-total').value)||0;
+  const before=Math.round(total*100/(100+VAT_RATE)*100)/100;
+  const vat=Math.round((total-before)*100)/100;
+  document.getElementById('iv-amt').value=before.toFixed(2);
+  document.getElementById('iv-vat').value=vat.toFixed(2);
+}
+
+async function addInputVat(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');return;}
+  const vendor=document.getElementById('iv-vendor').value.trim();
+  if(!vendor){toast('กรอกชื่อร้านค้า','err');return;}
+  const amt=Number(document.getElementById('iv-amt').value)||0;
+  const vat=Number(document.getElementById('iv-vat').value)||0;
+  const total=Number(document.getElementById('iv-total').value)||0;
+  if(total<=0){toast('กรอกจำนวนเงิน','err');return;}
+  
+  const obj={
+    month:m,
+    doc_date:document.getElementById('iv-date').value||null,
+    doc_no:document.getElementById('iv-docno').value.trim()||null,
+    vendor_name:vendor,
+    vendor_tax_id:document.getElementById('iv-taxid').value.trim()||null,
+    description:document.getElementById('iv-desc').value.trim()||null,
+    category:document.getElementById('iv-cat').value,
+    amount:amt,vat_amount:vat,total:total,
+    building:'เจเรสซิเดนซ์'
+  };
+  const{error}=await sb.from('input_vat').insert(obj);
+  if(error){toast('Error: '+error.message,'err');return;}
+  toast('บันทึกภาษีซื้อ ฿'+total.toLocaleString()+' สำเร็จ ✅','ok');
+  // Clear form
+  ['iv-date','iv-docno','iv-vendor','iv-taxid','iv-desc','iv-amt','iv-vat','iv-total'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('iv-cat').value='repair';
+  loadInputVat();
+}
+
+async function loadInputVat(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m)return;
+  const{data,error}=await sb.from('input_vat').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('doc_date').order('created_at');
+  const rows=data||[];
+  let sumAmt=0,sumVat=0,sumTotal=0;
+  const html=rows.map(r=>{
+    sumAmt+=Number(r.amount);sumVat+=Number(r.vat_amount);sumTotal+=Number(r.total);
+    return '<tr>'
+      +'<td class="mono" style="font-size:10px;">'+fmtD(r.doc_date)+'</td>'
+      +'<td class="mono" style="font-size:10px;">'+(r.doc_no||'-')+'</td>'
+      +'<td style="font-weight:600;font-size:11px;">'+(r.vendor_name||'-')+'</td>'
+      +'<td class="mono" style="font-size:10px;">'+(r.vendor_tax_id||'-')+'</td>'
+      +'<td style="font-size:11px;">'+(r.description||'-')+'</td>'
+      +'<td><span style="font-size:10px;padding:2px 6px;background:#f5f5f5;border-radius:4px;">'+(IV_CAT[r.category]||r.category)+'</span></td>'
+      +'<td class="mono">'+Number(r.amount).toLocaleString()+'</td>'
+      +'<td class="mono" style="color:#2E7D32;font-weight:700;">'+Number(r.vat_amount).toLocaleString()+'</td>'
+      +'<td class="mono" style="font-weight:700;">'+Number(r.total).toLocaleString()+'</td>'
+      +'<td><button onclick="delInputVat('+r.id+')" style="padding:2px 8px;border:1px solid #ffcdd2;border-radius:4px;background:#fff;color:#C62828;font-size:10px;cursor:pointer;">🗑</button></td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('ivat-tbody').innerHTML=html||'<tr><td colspan="10" class="empty">ยังไม่มีรายการภาษีซื้อ</td></tr>';
+  document.getElementById('ivat-sum-amt').textContent='฿'+Math.round(sumAmt).toLocaleString();
+  document.getElementById('ivat-sum-vat').textContent='฿'+Math.round(sumVat).toLocaleString();
+  document.getElementById('ivat-sum-total').textContent='฿'+Math.round(sumTotal).toLocaleString();
+  
+  // Update NET VAT
+  const outputVat=window._outputVat||0;
+  const inputVat=Math.round(sumVat);
+  const net=outputVat-inputVat;
+  document.getElementById('net-output').textContent='฿'+outputVat.toLocaleString();
+  document.getElementById('net-input').textContent='฿'+inputVat.toLocaleString();
+  document.getElementById('net-result').textContent='฿'+Math.abs(net).toLocaleString();
+  if(net>=0){
+    document.getElementById('net-label').textContent='ภาษีต้องนำส่ง';
+    document.getElementById('net-result').style.color='#C62828';
+  } else {
+    document.getElementById('net-label').textContent='ภาษีซื้อเกิน (ขอคืน)';
+    document.getElementById('net-result').style.color='#2E7D32';
+  }
+}
+
+async function delInputVat(id){
+  if(!confirm('ลบรายการนี้?'))return;
+  await sb.from('input_vat').delete().eq('id',id);
+  toast('ลบสำเร็จ','ok');
+  loadInputVat();
+}
+
+async function exportInputVat(){
+  const m=document.getElementById('vat-month')?.value;
+  if(!m){toast('เลือกเดือนก่อน','err');return;}
+  const{data}=await sb.from('input_vat').select('*').eq('month',m).eq('building','เจเรสซิเดนซ์').order('doc_date');
+  const rows=data||[];
+  const aoa=[['รายงานภาษีซื้อ (Input VAT) — '+monthLabel(m)+' — เจเรสซิเดนซ์'],[],
+    ['วันที่','เลขที่เอกสาร','ร้านค้า/ผู้ขาย','Tax ID','รายการ','หมวด','ก่อน VAT','VAT','รวม']];
+  let sA=0,sV=0,sT=0;
+  rows.forEach(r=>{
+    sA+=Number(r.amount);sV+=Number(r.vat_amount);sT+=Number(r.total);
+    aoa.push([r.doc_date||'',r.doc_no||'',r.vendor_name||'',r.vendor_tax_id||'',r.description||'',IV_CAT[r.category]||r.category,Number(r.amount),Number(r.vat_amount),Number(r.total)]);
+  });
+  aoa.push([]);
+  aoa.push(['','','','','','รวม',sA,sV,sT]);
+  aoa.push([]);
+  aoa.push(['ภาษีขาย (Output VAT)','',window._outputVat||0]);
+  aoa.push(['ภาษีซื้อ (Input VAT)','',Math.round(sV)]);
+  aoa.push(['ภาษีสุทธิ (นำส่ง/ขอคืน)','',((window._outputVat||0)-Math.round(sV))]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'ภาษีซื้อ');
+  XLSX.writeFile(wb,'InputVAT_'+m+'_JResidence.xlsx');
+  toast('Export ภาษีซื้อ สำเร็จ ✅','ok');
 }
 
 // ══════════════════════════════════
