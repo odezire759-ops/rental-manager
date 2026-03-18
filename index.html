@@ -6755,17 +6755,340 @@ function rcBuildParams(){
   return params;
 }
 
-function rcDoInvoice(){
-  closeRcModal();
-  var url='https://xjfzaarabsxngazzthpf.supabase.co/functions/v1/invoice-page?'+rcBuildParams();
-  window.open(url,'_blank');
+// rcDoInvoice / rcDoReceipt overridden by PDF patch below
+}
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   J.Residence — PDF ใบแจ้งหนี้ / ใบเสร็จ  (patch)
+═══════════════════════════════════════════════════════════════════ */
+
+function _thDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  return dt.getDate()+'/'+( dt.getMonth()+1)+'/'+(dt.getFullYear()+543);
+}
+function _thMonthFull(monthStr){
+  const TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+            'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const [y,m] = monthStr.split('-');
+  return TH[parseInt(m)-1]+' '+(parseInt(y)+543);
+}
+function _fmt(n){ return Number(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function _baht(n){
+  if(!n||n===0) return 'ศูนย์บาทถ้วน';
+  const t=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+  const p=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  let b=Math.floor(Math.abs(n)), s=Math.round((Math.abs(n)-b)*100), r='';
+  const toW=num=>{
+    if(!num) return ''; let res=''; const ns=num.toString();
+    for(let i=0;i<ns.length;i++){
+      const d=parseInt(ns[i]), pos=ns.length-i-1;
+      if(!d) continue;
+      if(pos===1&&d===2) res+='ยี่';
+      else if(pos===1&&d===1) res+='';
+      else if(pos===0&&d===1&&num>1) res+='เอ็ด';
+      else res+=t[d];
+      res+=p[pos%7];
+    }
+    return res;
+  };
+  r=(b?toW(b):'ศูนย์')+'บาท';
+  if(!s) r+='ถ้วน';
+  else {
+    const d1=Math.floor(s/10), d2=s%10;
+    if(d1){r+=(d1===2?'ยี่สิบ':d1===1?'สิบ':t[d1]+'สิบ');}
+    if(d2){r+=(d2===1&&d1?'เอ็ด':t[d2]);}
+    r+='สตางค์';
+  }
+  return (n<0?'ลบ':'')+r;
 }
 
-function rcDoReceipt(){
-  closeRcModal();
-  var url='https://xjfzaarabsxngazzthpf.supabase.co/functions/v1/invoice-page?'+rcBuildParams()+'&type=receipt';
-  window.open(url,'_blank');
+async function _nextDocNo(prefix, month){
+  const [y,m] = month.split('-');
+  const yymm = (parseInt(y)+543)+''+m;
+  const like = prefix+yymm+'/%';
+  const field = prefix==='INV' ? 'invoice_no' : 'receipt_no';
+  const {data} = await sb.from('monthly_invoices')
+    .select(field).like(field, like)
+    .order(field, {ascending:false}).limit(1);
+  let seq = 1;
+  if(data && data[0]){
+    const last = (data[0][field]||'').split('/');
+    seq = (parseInt(last[1])||0) + 1;
+  }
+  return prefix+yymm+'/'+String(seq).padStart(3,'0');
 }
+
+function _buildBillingHTML(cfg){
+  const isReceipt = cfg.type === 'receipt';
+  const titleTH = isReceipt ? 'ใบเสร็จรับเงิน / TAX INVOICE' : 'ใบแจ้งหนี้ / BILLING NOTE';
+  const color = isReceipt ? '#2E7D32' : '#1a73e8';
+
+  let vatBase=0, vatAmt=0, nonVat=0;
+  cfg.items.forEach(it => {
+    if(it.vat){ const base=it.amount*100/107; vatBase+=base; vatAmt+=it.amount-base; }
+    else { nonVat+=it.amount; }
+  });
+  const grandTotal = vatBase + vatAmt + nonVat;
+
+  const rows = [...cfg.items];
+  while(rows.length < 6) rows.push(null);
+
+  const itemsHTML = rows.map((it,i) => it ? `
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td style="text-align:left;padding-left:8px;">${it.desc}</td>
+      <td style="text-align:center;">${it.qty !== '' ? it.qty : ''}</td>
+      <td style="text-align:center;">${it.unit||''}</td>
+      <td style="text-align:right;">${it.price !== '' ? _fmt(it.price) : ''}</td>
+      <td style="text-align:right;">${_fmt(it.amount)}</td>
+    </tr>` : `<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
+  ).join('');
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;font-size:13px;background:#fff;color:#222;}
+.page{width:794px;padding:32px 40px 28px;background:#fff;}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;}
+.logo-wrap{display:flex;align-items:center;gap:14px;}
+.logo{width:56px;height:56px;background:linear-gradient(135deg,#d4a017,#f0c040);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#1a1a2e;
+  flex-shrink:0;box-shadow:0 2px 8px rgba(212,160,23,.35);}
+.co-name{font-size:17px;font-weight:800;color:#1a1a2e;line-height:1.2;}
+.co-sub{font-size:10.5px;color:#555;line-height:1.55;margin-top:3px;}
+.title-block{text-align:right;}
+.title-th{font-size:22px;font-weight:800;color:${color};}
+.doc-no{font-size:13px;font-weight:700;color:#333;margin-top:4px;}
+.divider{height:3px;background:linear-gradient(90deg,${color},${color}88);border-radius:2px;margin:16px 0 14px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.info-cell{border:1px solid #dde3ea;border-radius:6px;padding:8px 12px;background:#f8fafc;}
+.info-cell.accent{border-left:3px solid ${color};}
+.info-lbl{font-size:10px;color:#888;font-weight:600;margin-bottom:3px;}
+.info-val{font-size:14px;font-weight:700;color:#1a1a2e;}
+.items-tbl{width:100%;border-collapse:collapse;margin-bottom:0;}
+.items-tbl th{background:${color};color:#fff;font-size:11.5px;font-weight:700;padding:7px 6px;text-align:center;}
+.items-tbl th:nth-child(2){text-align:left;padding-left:10px;}
+.items-tbl td{padding:6px 6px;font-size:12.5px;border-bottom:1px solid #edf0f4;vertical-align:middle;}
+.summary-wrap{display:flex;justify-content:flex-end;}
+.summary-box{width:310px;border:1px solid #dde3ea;border-radius:8px;overflow:hidden;margin-top:12px;}
+.sum-row{display:flex;justify-content:space-between;padding:6px 14px;font-size:12.5px;}
+.sum-row:not(:last-child){border-bottom:1px solid #edf0f4;}
+.sum-row.grand{background:${color};color:#fff;font-weight:800;font-size:14px;padding:10px 14px;}
+.sum-lbl{color:#555;} .sum-val{font-weight:700;}
+.grand .sum-lbl,.grand .sum-val{color:#fff;}
+.baht-text{margin-top:10px;font-size:12px;padding:7px 12px;background:#f8f9fc;border-radius:6px;border:1px dashed #c8d0dc;}
+.pay-box{margin-top:14px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:12px 16px;font-size:12px;}
+.pay-box strong{color:#92400e;font-size:12.5px;}
+.pay-box p{color:#78350f;margin-top:3px;line-height:1.65;}
+.sig-area{display:flex;justify-content:flex-end;margin-top:18px;}
+.sig-box{text-align:center;width:200px;}
+.sig-line{border-top:1px solid #555;margin:30px 0 5px;}
+.sig-lbl{font-size:12px;color:#555;}
+</style></head><body>
+<div class="page">
+  <div class="hdr">
+    <div class="logo-wrap">
+      <div class="logo">J</div>
+      <div>
+        <div class="co-name">J.Residence</div>
+        <div class="co-sub">
+          ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์ / # J.Residence<br>
+          19/9 หมู่ที่ 6 ถนน ศรีนครินทร์ ตำบล บางเมืองใหม่<br>
+          อำเภอ เมือง จังหวัด สมุทรปราการ 10270<br>
+          โทร: 080-1766571, 02-3856919 | Tax ID: 0992002541070
+        </div>
+      </div>
+    </div>
+    <div class="title-block">
+      <div class="title-th">${titleTH}</div>
+      <div class="doc-no">เลขที่ ${cfg.docNo}</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="info-grid">
+    <div class="info-cell accent">
+      <div class="info-lbl">ผู้เช่า / Customer</div>
+      <div class="info-val">${cfg.customer||'—'}</div>
+    </div>
+    <div class="info-cell accent">
+      <div class="info-lbl">ห้อง / Room</div>
+      <div class="info-val">${cfg.roomLabel||cfg.room}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">รอบบิล / Billing Period</div>
+      <div class="info-val">${cfg.billingPeriod}</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-lbl">วันที่ออกเอกสาร</div>
+      <div class="info-val">${cfg.issueDate}</div>
+    </div>
+  </div>
+  <table class="items-tbl">
+    <thead>
+      <tr>
+        <th style="width:42px;">ลำดับ</th>
+        <th>รายการ / Description</th>
+        <th style="width:60px;">จำนวน</th>
+        <th style="width:60px;">หน่วย</th>
+        <th style="width:90px;">ราคา/หน่วย</th>
+        <th style="width:100px;">จำนวนเงิน</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHTML}</tbody>
+  </table>
+  <div class="summary-wrap">
+    <div class="summary-box">
+      <div class="sum-row"><span class="sum-lbl">รวมรายการมี VAT</span><span class="sum-val">${_fmt(vatBase)}</span></div>
+      <div class="sum-row"><span class="sum-lbl">ภาษีมูลค่าเพิ่ม VAT 7%</span><span class="sum-val">${_fmt(vatAmt)}</span></div>
+      <div class="sum-row"><span class="sum-lbl">รวมรายการไม่มี VAT</span><span class="sum-val">${_fmt(nonVat)}</span></div>
+      <div class="sum-row grand"><span class="sum-lbl">ยอดรวมทั้งสิ้น / Grand Total</span><span class="sum-val">฿ ${_fmt(grandTotal)}</span></div>
+    </div>
+  </div>
+  <div class="baht-text">( ${_baht(Math.round(grandTotal*100)/100)} )</div>
+  <div class="pay-box">
+    <strong>🏦 ช่องทางชำระเงิน:</strong>
+    <p>ธนาคารกรุงเทพ สาขาบางนา<br>
+    ชื่อบัญชี: <strong>ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์</strong><br>
+    เลขที่บัญชี: <strong>179-4-74602-2</strong><br>
+    กรุณาชำระภายในวันที่ 5 ของเดือน</p>
+  </div>
+  <div class="sig-area">
+    <div class="sig-box">
+      <div class="sig-line"></div>
+      <div class="sig-lbl">${isReceipt?'ผู้รับเงิน':'ผู้ออกใบแจ้งหนี้'}</div>
+      <div class="sig-lbl" style="margin-top:2px;font-size:11px;">J.Residence</div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+}
+
+async function _exportBillingPDF(htmlStr, filename){
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
+  document.body.appendChild(iframe);
+  await new Promise(res => { iframe.onload = res; iframe.srcdoc = htmlStr; });
+  await new Promise(res => setTimeout(res, 900));
+  try {
+    const canvas = await html2canvas(iframe.contentDocument.body, {
+      scale:2, useCORS:true, backgroundColor:'#ffffff', windowWidth:794, width:794
+    });
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    const imgW=210, imgH=(canvas.height*210)/canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,imgW,imgH);
+    pdf.save(filename);
+    toast('ดาวน์โหลด '+filename+' สำเร็จ ✅','ok');
+  } finally { document.body.removeChild(iframe); }
+}
+
+function _buildCfgFromRoom(room, month, type, customName){
+  const mc = mData.find(r => r.room === room);
+  if(!mc) return null;
+  const er = mc.elec_rate_type||'apt', wr = mc.water_rate_type||'apt';
+  const elecRate = (RATES.elec[er]||RATES.elec.apt).rate;
+  const waterRate = (RATES.water[wr]||RATES.water.apt).rate;
+  const eu = (Number(mc.elec_new)||0)-(Number(mc.elec_old)||0);
+  const wu = (Number(mc.water_new)||0)-(Number(mc.water_old)||0);
+  const items = [];
+  if(mc.rent>0) items.push({desc:'ค่าเช่าห้องพัก เดือน '+_thMonthFull(month),qty:1,unit:'เดือน',price:mc.rent,amount:mc.rent,vat:false});
+  if(eu>0||mc.elec_cost>0) items.push({desc:'ค่าไฟฟ้า ('+(mc.elec_old||0)+' → '+(mc.elec_new||0)+' = '+eu+' หน่วย)',qty:eu,unit:'หน่วย',price:elecRate,amount:Number(mc.elec_cost||0),vat:true});
+  if(wu>0||mc.water_cost>0) items.push({desc:'ค่าน้ำประปา ('+(mc.water_old||0)+' → '+(mc.water_new||0)+' = '+wu+' หน่วย)',qty:wu,unit:'หน่วย',price:waterRate,amount:Number(mc.water_cost||0),vat:true});
+  const parkFee=(Number(mc.parking_car)||0)+(Number(mc.parking_moto)||0);
+  if(parkFee>0) items.push({desc:'ค่าที่จอดรถ',qty:1,unit:'รายการ',price:parkFee,amount:parkFee,vat:false});
+  if(mc.fridge_fee>0) items.push({desc:'ค่าเช่าตู้เย็น',qty:1,unit:'รายการ',price:mc.fridge_fee,amount:mc.fridge_fee,vat:false});
+  if(mc.other>0) items.push({desc:'ค่าบริการอื่นๆ',qty:1,unit:'รายการ',price:mc.other,amount:mc.other,vat:false});
+  return {
+    type, room,
+    roomLabel: room+' — เจเรสซิเดนซ์',
+    customer: customName||mc.tenant_name||'—',
+    billingPeriod: _thMonthFull(month),
+    issueDate: _thDate(new Date().toISOString().split('T')[0]),
+    items
+  };
+}
+
+async function genMonthlyInvoicePDF(room, type){
+  const mc = mData.find(r => r.room === room);
+  if(!mc||!mc.tenant_name||!mc.rent){ toast('ห้อง '+room+' ไม่มีผู้เช่า','err'); return; }
+  toast('กำลังสร้าง PDF ห้อง '+room+'…','ok');
+  const invNo = (type!=='receipt') ? await _nextDocNo('INV',curMonth) : null;
+  const rcNo  = (type!=='invoice') ? await _nextDocNo('RC', curMonth) : null;
+  try {
+    await sb.from('monthly_invoices').upsert({
+      month:curMonth,room,building:'เจเรสซิเดนซ์',
+      invoice_no:invNo, receipt_no:rcNo,
+      invoice_date:new Date().toISOString().split('T')[0],
+      customer_name:mc.tenant_name, grand_total:mc.total||0, status:'issued'
+    },{onConflict:'month,room,building'});
+  } catch(e){}
+  if(type==='both'){
+    const cfgI=_buildCfgFromRoom(room,curMonth,'invoice',null); cfgI.docNo=invNo;
+    await _exportBillingPDF(_buildBillingHTML(cfgI),'ใบแจ้งหนี้_'+invNo.replace('/','_')+'_ห้อง'+room+'.pdf');
+    await new Promise(r=>setTimeout(r,600));
+    const cfgR=_buildCfgFromRoom(room,curMonth,'receipt',null); cfgR.docNo=rcNo;
+    await _exportBillingPDF(_buildBillingHTML(cfgR),'ใบเสร็จ_'+rcNo.replace('/','_')+'_ห้อง'+room+'.pdf');
+  } else {
+    const cfg=_buildCfgFromRoom(room,curMonth,type,null);
+    cfg.docNo = type==='receipt' ? rcNo : invNo;
+    const fn = (type==='receipt'?'ใบเสร็จ_'+rcNo:'ใบแจ้งหนี้_'+invNo).replace('/','_')+'_ห้อง'+room+'.pdf';
+    await _exportBillingPDF(_buildBillingHTML(cfg),fn);
+  }
+}
+
+function _getRcName(mc){
+  if(rcSelOpt===2){ const cn=document.getElementById('rcCustom').value.trim(); return cn||mc.tenant_name; }
+  if(rcSelOpt===3){ return document.getElementById('rcCoName').value.trim()||mc.tenant_name; }
+  return mc.tenant_name;
+}
+
+async function rcDoInvoice(){
+  closeRcModal();
+  const mc=mData.find(r=>r.room===rcCurRoom);
+  if(!mc){ toast('ไม่พบข้อมูลห้อง','err'); return; }
+  toast('กำลังสร้าง PDF…','ok');
+  const customName=_getRcName(mc);
+  const invNo=await _nextDocNo('INV',curMonth);
+  try { await sb.from('monthly_invoices').upsert({month:curMonth,room:rcCurRoom,building:'เจเรสซิเดนซ์',invoice_no:invNo,invoice_date:new Date().toISOString().split('T')[0],customer_name:customName,grand_total:mc.total||0,status:'issued'},{onConflict:'month,room,building'}); } catch(e){}
+  const cfg=_buildCfgFromRoom(rcCurRoom,curMonth,'invoice',customName); cfg.docNo=invNo;
+  await _exportBillingPDF(_buildBillingHTML(cfg),'ใบแจ้งหนี้_'+invNo.replace('/','_')+'_ห้อง'+rcCurRoom+'.pdf');
+}
+
+async function rcDoReceipt(){
+  closeRcModal();
+  const mc=mData.find(r=>r.room===rcCurRoom);
+  if(!mc){ toast('ไม่พบข้อมูลห้อง','err'); return; }
+  if(mc.status!=='paid'){ toast('ห้อง '+rcCurRoom+' ยังไม่ชำระ — เปลี่ยนสถานะเป็น paid ก่อน','err'); return; }
+  toast('กำลังสร้าง PDF…','ok');
+  const customName=_getRcName(mc);
+  const rcNo=await _nextDocNo('RC',curMonth);
+  try { await sb.from('monthly_invoices').upsert({month:curMonth,room:rcCurRoom,building:'เจเรสซิเดนซ์',receipt_no:rcNo,receipt_date:new Date().toISOString().split('T')[0],customer_name:customName,grand_total:mc.total||0,status:'issued'},{onConflict:'month,room,building'}); } catch(e){}
+  const cfg=_buildCfgFromRoom(rcCurRoom,curMonth,'receipt',customName); cfg.docNo=rcNo;
+  await _exportBillingPDF(_buildBillingHTML(cfg),'ใบเสร็จ_'+rcNo.replace('/','_')+'_ห้อง'+rcCurRoom+'.pdf');
+}
+
+async function genMonthlyInvoice(room, type){
+  await genMonthlyInvoicePDF(room, type);
+}
+
+async function bulkMonthlyInvoice(type){
+  const occupied=mData.filter(r=>r.tenant_name&&r.tenant_name.trim()&&Number(r.rent)>0);
+  if(!occupied.length){ toast('ไม่มีห้องที่มีผู้เช่า','err'); return; }
+  if(!confirm('ออกใบแจ้งหนี้ทั้งหมด '+occupied.length+' ห้อง เดือน '+_thMonthFull(curMonth)+'?')) return;
+  toast('กำลังสร้าง PDF '+occupied.length+' ใบ…','ok');
+  for(const mc of occupied){
+    try { await genMonthlyInvoicePDF(mc.room,type); } catch(e){ console.error(e); }
+    await new Promise(r=>setTimeout(r,500));
+  }
+  toast('ออกใบแจ้งหนี้ '+occupied.length+' ห้อง เสร็จแล้ว ✅','ok');
+}
+
+console.log('✅ J.Residence PDF Billing Patch loaded');
 </script>
 
 </body>
