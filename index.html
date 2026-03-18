@@ -6780,7 +6780,7 @@ function _getSeq(prefix,month){
 }
 
 /* ── Build the full invoice HTML (same layout as invoice-system.html) ── */
-function _buildInvoiceHTML(d, isR, displayName, coName, coAddr, coTax, coBranch){
+function _buildInvoiceHTML(d, isR, displayName, coName, coAddr, coTax, coBranch, docType){
   var ac = isR ? "#2E7D32" : "#1565C0";
   var title = isR ? "ใบเสร็จรับเงิน / RECEIPT" : "ใบแจ้งหนี้ / BILLING NOTE";
   var seq = _getSeq(isR?"RC":"INV", curMonth);
@@ -6889,7 +6889,7 @@ ${custHTML}
     <div class="sr tot" style="background:${ac}"><span>ยอดรวมทั้งสิ้น / Grand Total</span><span>฿ ${_fmtN(total)}</span></div>
   </div>
 </div>
-${!isR ? _buildBankBox() : ''}
+${!isR ? _buildBankBox(docType||'monthly') : ''}
 ${isR ? '<div class="stamp"><div class="pd">✅ PAID — ชำระแล้ว</div></div>' : ''}
 <div class="ft"><div>J.Residence — ระบบออกบิลอัตโนมัติ</div><div>หน้า 1/1</div></div>
 </div></body></html>`;
@@ -6951,7 +6951,7 @@ function rcDoInvoice(){
   if(!mc){ toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err'); return; }
   var co = _getRcCo();
   var displayName = _getRcDisplayName(mc);
-  var html = _buildInvoiceHTML(mc, false, displayName, co.name, co.addr, co.tax, co.branch);
+  var html = _buildInvoiceHTML(mc, false, displayName, co.name, co.addr, co.tax, co.branch, 'monthly');
   _showInvoiceOverlay(html, '📋 ใบแจ้งหนี้ — ห้อง '+rcCurRoom+' | '+_thM(curMonth));
 }
 
@@ -6961,7 +6961,7 @@ function rcDoReceipt(){
   if(!mc){ toast('ไม่พบข้อมูลห้อง '+rcCurRoom,'err'); return; }
   var co = _getRcCo();
   var displayName = _getRcDisplayName(mc);
-  var html = _buildInvoiceHTML(mc, true, displayName, co.name, co.addr, co.tax, co.branch);
+  var html = _buildInvoiceHTML(mc, true, displayName, co.name, co.addr, co.tax, co.branch, 'monthly');
   _showInvoiceOverlay(html, '🧾 ใบเสร็จรับเงิน — ห้อง '+rcCurRoom+' | '+_thM(curMonth));
 }
 
@@ -6970,12 +6970,12 @@ function genMonthlyInvoice(room, type){
   var mc = mData.find(function(r){ return r.room===room; });
   if(!mc||!mc.tenant_name||!mc.rent){ toast('ห้อง '+room+' ไม่มีผู้เช่า','err'); return; }
   if(type==='invoice'||type==='both'){
-    var h = _buildInvoiceHTML(mc, false, mc.tenant_name, '','','','');
+    var h = _buildInvoiceHTML(mc, false, mc.tenant_name, '','','','','monthly');
     _showInvoiceOverlay(h, '📋 ใบแจ้งหนี้ — ห้อง '+room);
   }
   if(type==='receipt'||type==='both'){
     setTimeout(function(){
-      var h = _buildInvoiceHTML(mc, true, mc.tenant_name, '','','','');
+      var h = _buildInvoiceHTML(mc, true, mc.tenant_name, '','','','','monthly');
       _showInvoiceOverlay(h, '🧾 ใบเสร็จ — ห้อง '+room);
     }, type==='both'?700:0);
   }
@@ -6998,120 +6998,228 @@ function bulkMonthlyInvoice(type){
 
 
 /* ── Payment Settings (localStorage) ── */
-var _PAY_KEY = 'jres_pay_settings';
+/* ══════════════════════════════════════════════════════════════
+   ตั้งค่าธนาคาร — รองรับหลายบัญชี + เลือกใช้แยก รายเดือน/รายวัน
+══════════════════════════════════════════════════════════════ */
+var _PAY_KEY = 'jres_banks_v3';
 
-function _getPaySettings(){
-  try { return JSON.parse(localStorage.getItem(_PAY_KEY)||'{}'); } catch(e){ return {}; }
+var _DEFAULT_BANKS = [
+  { id:'b1', label:'บัญชีหลัก', bank:'ธนาคารกรุงเทพ สาขาบางนา', name:'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์', acct:'179-4-74602-2', due:'5', extra:'' }
+];
+
+function _getPayData(){
+  try {
+    var raw = localStorage.getItem(_PAY_KEY);
+    if(!raw) return { banks:JSON.parse(JSON.stringify(_DEFAULT_BANKS)), monthly:['b1'], daily:['b1'] };
+    var d = JSON.parse(raw);
+    // migrate from old single-value format
+    if(typeof d.monthly === 'string') d.monthly = [d.monthly];
+    if(typeof d.daily   === 'string') d.daily   = [d.daily];
+    if(!Array.isArray(d.monthly)) d.monthly = ['b1'];
+    if(!Array.isArray(d.daily))   d.daily   = ['b1'];
+    return d;
+  } catch(e){ return { banks:JSON.parse(JSON.stringify(_DEFAULT_BANKS)), monthly:['b1'], daily:['b1'] }; }
+}
+function _savePayData(d){ localStorage.setItem(_PAY_KEY, JSON.stringify(d)); }
+
+function _getBankById(id){
+  var d = _getPayData();
+  return d.banks.find(function(b){ return b.id===id; }) || null;
 }
 
-function _buildBankBox(){
-  var s = _getPaySettings();
-  var bank  = s.bank   || 'ธนาคารกรุงเทพ สาขาบางนา';
-  var name  = s.name   || 'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์';
-  var acct  = s.acct   || '179-4-74602-2';
-  var due   = s.due    || '5';
-  var extra = s.extra  || '';
+/* ── Build bank box — แสดงหลายบัญชีในใบแจ้งหนี้ ── */
+function _buildBankBox(type){
+  var d   = _getPayData();
+  var ids = type==='daily' ? d.daily : d.monthly;
+  if(!Array.isArray(ids)||!ids.length) ids = d.banks.length ? [d.banks[0].id] : [];
+  var banks = ids.map(function(id){ return _getBankById(id); }).filter(Boolean);
+  if(!banks.length) banks = d.banks.slice(0,1);
+  if(!banks.length) banks = _DEFAULT_BANKS;
+
+  if(banks.length===1){
+    var b = banks[0];
+    return '<div class="bank">' +
+      '<b>💰 ช่องทางชำระเงิน:</b><br>' +
+      b.bank + '<br>' +
+      'ชื่อบัญชี: <b>' + b.name + '</b><br>' +
+      'เลขที่บัญชี: <b>' + b.acct + '</b><br>' +
+      (b.extra ? b.extra + '<br>' : '') +
+      '<span style="color:#C62828">กรุณาชำระภายในวันที่ ' + (b.due||'5') + ' ของเดือน</span>' +
+    '</div>';
+  }
+
+  // Multiple banks
+  var inner = banks.map(function(b, i){
+    return '<div style="' + (i>0?'border-top:1px dashed #fcd34d;margin-top:6px;padding-top:6px;':'') + '">' +
+      (b.label ? '<b style="color:#e65100;">[' + b.label + ']</b> ' : '') +
+      b.bank + '<br>' +
+      'ชื่อบัญชี: <b>' + b.name + '</b><br>' +
+      'เลขที่บัญชี: <b>' + b.acct + '</b>' +
+      (b.extra ? '<br>' + b.extra : '') +
+    '</div>';
+  }).join('');
+  // Use first bank's due date
+  var due = banks[0].due || '5';
   return '<div class="bank">' +
-    '<b>💰 ช่องทางชำระเงิน:</b><br>' +
-    bank + '<br>' +
-    'ชื่อบัญชี: <b>' + name + '</b><br>' +
-    'เลขที่บัญชี: <b>' + acct + '</b><br>' +
-    (extra ? extra + '<br>' : '') +
+    '<b>💰 ช่องทางชำระเงิน (' + banks.length + ' บัญชี):</b><br>' +
+    inner + '<br>' +
     '<span style="color:#C62828">กรุณาชำระภายในวันที่ ' + due + ' ของเดือน</span>' +
   '</div>';
 }
 
+/* ── Settings Modal ── */
+var _psBanks = [];
+
 function openPaySettings(){
-  var s = _getPaySettings();
-  // Create modal if not exists
-  var existing = document.getElementById('_paySettingsModal');
-  if(existing) existing.remove();
+  var ex = document.getElementById('_payModal');
+  if(ex) ex.remove();
+  var ov = document.createElement('div');
+  ov.id = '_payModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Sarabun,sans-serif;';
+  ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:14px;width:700px;max-width:97vw;max-height:94vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);display:flex;flex-direction:column;">' +
+      '<div style="background:linear-gradient(135deg,#0f1419,#1e3a5f);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;flex-shrink:0;">' +
+        '<span style="color:#fff;font-size:15px;font-weight:700;">🏦 ตั้งค่าบัญชีธนาคาร</span>' +
+        '<button onclick="document.getElementById(\'_payModal\').remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>' +
+      '</div>' +
+      '<div id="_ps_assign_section" style="padding:16px 20px 14px;background:#f8fafc;border-bottom:1px solid #e8edf2;flex-shrink:0;"></div>' +
+      '<div style="padding:16px 20px;flex:1;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<span style="font-size:13px;font-weight:700;color:#333;">รายการบัญชีทั้งหมด</span>' +
+          '<button onclick="_psAddBank()" style="padding:6px 16px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">+ เพิ่มบัญชีใหม่</button>' +
+        '</div>' +
+        '<div id="_ps_bank_list"></div>' +
+      '</div>' +
+      '<div style="padding:14px 20px;border-top:1px solid #e8edf2;display:flex;gap:8px;flex-shrink:0;">' +
+        '<button onclick="document.getElementById(\'_payModal\').remove()" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">ยกเลิก</button>' +
+        '<button onclick="_psSaveAll()" style="flex:2;padding:10px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 บันทึกทั้งหมด</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  _psBanks = JSON.parse(JSON.stringify(_getPayData().banks));
+  _psRenderAssign();
+  _psRenderList();
+}
 
-  var modal = document.createElement('div');
-  modal.id = '_paySettingsModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
-  modal.innerHTML = `
-  <div style="background:#fff;border-radius:12px;width:480px;max-width:95vw;padding:0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-    <div style="background:linear-gradient(135deg,#0f1419,#1e3a5f);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
-      <span style="color:#fff;font-size:15px;font-weight:700;font-family:'Sarabun',sans-serif;">⚙ ตั้งค่าข้อมูลธนาคาร / ช่องทางชำระเงิน</span>
-      <button onclick="document.getElementById('_paySettingsModal').remove()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
-    </div>
-    <div style="padding:20px;font-family:'Sarabun',sans-serif;">
-      <div style="display:grid;gap:12px;">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">🏦 ธนาคาร / สาขา</label>
-          <input id="_ps_bank" type="text" value="${s.bank||'ธนาคารกรุงเทพ สาขาบางนา'}"
-            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
-            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">👤 ชื่อบัญชี</label>
-          <input id="_ps_name" type="text" value="${s.name||'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์'}"
-            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
-            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">💳 เลขที่บัญชี</label>
-          <input id="_ps_acct" type="text" value="${s.acct||'179-4-74602-2'}"
-            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
-            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">📅 กำหนดชำระภายในวันที่ (ของเดือน)</label>
-          <input id="_ps_due" type="text" value="${s.due||'5'}" placeholder="เช่น 5"
-            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
-            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">📝 หมายเหตุเพิ่มเติม (ถ้ามี)</label>
-          <input id="_ps_extra" type="text" value="${s.extra||''}" placeholder="เช่น โอนแล้วแจ้งแคปสลิปที่ Line: @jresidence"
-            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
-            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
-        </div>
-      </div>
-      <!-- Preview -->
-      <div style="margin-top:16px;padding:12px 14px;background:#FFF3E0;border-radius:8px;border-left:3px solid #FFA726;font-size:12px;line-height:1.7;">
-        <b>💰 ช่องทางชำระเงิน:</b><br>
-        <span id="_ps_preview_bank"></span><br>
-        ชื่อบัญชี: <b><span id="_ps_preview_name"></span></b><br>
-        เลขที่บัญชี: <b><span id="_ps_preview_acct"></span></b><br>
-        <span id="_ps_preview_extra"></span>
-        <span style="color:#C62828">กรุณาชำระภายในวันที่ <span id="_ps_preview_due"></span> ของเดือน</span>
-      </div>
-      <!-- Buttons -->
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button onclick="document.getElementById('_paySettingsModal').remove()"
-          style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;">ยกเลิก</button>
-        <button onclick="_savePaySettings()"
-          style="flex:2;padding:10px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">💾 บันทึกการตั้งค่า</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
-  // Live preview
-  ['_ps_bank','_ps_name','_ps_acct','_ps_due','_ps_extra'].forEach(function(id){
-    document.getElementById(id).addEventListener('input', _updatePayPreview);
+/* ── Assign section: checkboxes per type ── */
+function _psRenderAssign(){
+  var sec = document.getElementById('_ps_assign_section');
+  if(!sec) return;
+  var d = _getPayData();
+  var sel_m = d.monthly || [];
+  var sel_d = d.daily   || [];
+
+  function chkRow(b, type, sel){
+    var checked = sel.indexOf(b.id)!==-1 ? 'checked' : '';
+    var color = type==='monthly' ? '#1565C0' : '#2E7D32';
+    return '<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:7px;cursor:pointer;margin-bottom:4px;background:#fff;border:1.5px solid '+(checked?color:'#dde3ea')+';">' +
+      '<input type="checkbox" id="_chk_'+type+'_'+b.id+'" value="'+b.id+'" '+checked+' onchange="_psUpdateAssignStyle(this,\''+color+'\')" style="width:16px;height:16px;accent-color:'+color+';cursor:pointer;">' +
+      '<span style="font-size:12px;font-weight:700;color:#333;">' + b.label + '</span>' +
+      '<span style="font-size:11px;color:#888;margin-left:4px;">' + b.bank + ' · ' + b.acct + '</span>' +
+    '</label>';
+  }
+
+  sec.innerHTML =
+    '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:10px;">📌 เลือกบัญชีที่แสดงในใบแจ้งหนี้ <span style="font-weight:400;color:#999;">(เลือกได้หลายบัญชี)</span></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+      '<div>' +
+        '<div style="font-size:11px;font-weight:700;color:#1565C0;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="background:#1565C0;color:#fff;border-radius:5px;padding:2px 8px;">🏠 รายเดือน</span></div>' +
+        '<div id="_ps_chk_monthly">' + (_psBanks.length ? _psBanks.map(function(b){ return chkRow(b,'monthly',sel_m); }).join('') : '<div style="color:#aaa;font-size:12px;">ยังไม่มีบัญชี</div>') + '</div>' +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:11px;font-weight:700;color:#2E7D32;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="background:#2E7D32;color:#fff;border-radius:5px;padding:2px 8px;">📅 รายวัน</span></div>' +
+        '<div id="_ps_chk_daily">' + (_psBanks.length ? _psBanks.map(function(b){ return chkRow(b,'daily',sel_d); }).join('') : '<div style="color:#aaa;font-size:12px;">ยังไม่มีบัญชี</div>') + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function _psUpdateAssignStyle(chk, color){
+  chk.parentElement.style.borderColor = chk.checked ? color : '#dde3ea';
+}
+
+/* ── Bank card list ── */
+function _psRenderList(){
+  var list = document.getElementById('_ps_bank_list');
+  if(!list) return;
+  if(!_psBanks.length){
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:#aaa;font-size:13px;">ยังไม่มีบัญชี — กด "+ เพิ่มบัญชีใหม่"</div>';
+    return;
+  }
+  list.innerHTML = _psBanks.map(function(b, i){
+    return '<div style="border:1.5px solid #dde3ea;border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fafbfc;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+        '<span style="background:#1565C0;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">'+(i+1)+'</span>' +
+        '<input value="'+(b.label||'')+'" oninput="_psField('+i+',\'label\',this.value)" placeholder="ชื่อบัญชี (เช่น บัญชีหลัก)" style="flex:1;padding:6px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:13px;font-family:Sarabun,sans-serif;font-weight:700;">' +
+        '<button onclick="_psDelete('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer;">🗑 ลบ</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<div><label style="font-size:10px;color:#888;font-weight:700;display:block;margin-bottom:3px;">🏦 ธนาคาร / สาขา</label>' +
+          '<input value="'+(b.bank||'')+'" oninput="_psField('+i+',\'bank\',this.value)" placeholder="ธนาคารกรุงเทพ สาขาบางนา" style="width:100%;padding:7px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12px;font-family:Sarabun,sans-serif;"></div>' +
+        '<div><label style="font-size:10px;color:#888;font-weight:700;display:block;margin-bottom:3px;">👤 ชื่อบัญชี</label>' +
+          '<input value="'+(b.name||'')+'" oninput="_psField('+i+',\'name\',this.value)" placeholder="ชื่อเจ้าของบัญชี" style="width:100%;padding:7px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12px;font-family:Sarabun,sans-serif;"></div>' +
+        '<div><label style="font-size:10px;color:#888;font-weight:700;display:block;margin-bottom:3px;">💳 เลขที่บัญชี</label>' +
+          '<input value="'+(b.acct||'')+'" oninput="_psField('+i+',\'acct\',this.value)" placeholder="xxx-x-xxxxx-x" style="width:100%;padding:7px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12px;font-family:Sarabun,sans-serif;"></div>' +
+        '<div><label style="font-size:10px;color:#888;font-weight:700;display:block;margin-bottom:3px;">📅 ชำระภายในวันที่</label>' +
+          '<input value="'+(b.due||'5')+'" oninput="_psField('+i+',\'due\',this.value)" placeholder="5" style="width:100%;padding:7px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12px;font-family:Sarabun,sans-serif;"></div>' +
+        '<div style="grid-column:1/-1;"><label style="font-size:10px;color:#888;font-weight:700;display:block;margin-bottom:3px;">📝 หมายเหตุ</label>' +
+          '<input value="'+(b.extra||'')+'" oninput="_psField('+i+',\'extra\',this.value)" placeholder="โอนแล้วแจ้งสลิปที่ Line @jresidence" style="width:100%;padding:7px 10px;border:1.5px solid #dde3ea;border-radius:6px;font-size:12px;font-family:Sarabun,sans-serif;"></div>' +
+      '</div>' +
+      '<div style="margin-top:10px;padding:8px 12px;background:#FFF3E0;border-radius:6px;border-left:3px solid #FFA726;font-size:11px;color:#555;line-height:1.7;">' +
+        '<b>Preview:</b> '+(b.bank||'?')+' | '+(b.name||'?')+' | '+(b.acct||'?')+' | ชำระวันที่ '+(b.due||'5') +
+      '</div>' +
+    '</div>';
+  }).join('');
+  // re-render assign checkboxes to reflect updated labels
+  _psRenderAssign();
+}
+
+function _psField(i, key, val){
+  if(_psBanks[i]) _psBanks[i][key] = val;
+  // Live update preview only — don't re-render whole list (would lose cursor)
+  var listEl = document.getElementById('_ps_bank_list');
+  if(listEl){
+    var cards = listEl.querySelectorAll('[style*="border-radius:10px"]');
+    var card = cards[i];
+    if(card){
+      var prev = card.querySelector('[style*="Preview"]');
+      if(prev) prev.innerHTML = '<b>Preview:</b> '+(_psBanks[i].bank||'?')+' | '+(_psBanks[i].name||'?')+' | '+(_psBanks[i].acct||'?')+' | ชำระวันที่ '+(_psBanks[i].due||'5');
+    }
+  }
+  _psRenderAssign();
+}
+
+function _psAddBank(){
+  var newId = 'b' + Date.now();
+  _psBanks.push({ id:newId, label:'บัญชีใหม่ '+((_psBanks.length)+1), bank:'', name:'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์', acct:'', due:'5', extra:'' });
+  _psRenderList();
+  setTimeout(function(){
+    var list = document.getElementById('_ps_bank_list');
+    if(list && list.lastElementChild) list.lastElementChild.scrollIntoView({behavior:'smooth'});
+  }, 100);
+}
+
+function _psDelete(i){
+  if(_psBanks.length<=1){ toast('ต้องมีบัญชีอย่างน้อย 1 บัญชี','err'); return; }
+  if(!confirm('ลบบัญชี "'+(_psBanks[i].label||'?')+'" ?')) return;
+  _psBanks.splice(i,1);
+  _psRenderList();
+}
+
+function _psGetChecked(type){
+  var ids = [];
+  document.querySelectorAll('input[id^="_chk_'+type+'_"]').forEach(function(chk){
+    if(chk.checked) ids.push(chk.value);
   });
-  _updatePayPreview();
+  return ids.length ? ids : (_psBanks.length ? [_psBanks[0].id] : ['b1']);
 }
 
-function _updatePayPreview(){
-  var g = function(id){ return document.getElementById(id) ? document.getElementById(id).value : ''; };
-  var ep = document.getElementById('_ps_preview_extra');
-  document.getElementById('_ps_preview_bank').textContent = g('_ps_bank');
-  document.getElementById('_ps_preview_name').textContent = g('_ps_name');
-  document.getElementById('_ps_preview_acct').textContent = g('_ps_acct');
-  document.getElementById('_ps_preview_due').textContent  = g('_ps_due')||'5';
-  if(ep) ep.textContent = g('_ps_extra') ? g('_ps_extra')+' ' : '';
-}
-
-function _savePaySettings(){
-  var g = function(id){ return (document.getElementById(id)||{value:''}).value.trim(); };
-  var s = { bank:g('_ps_bank'), name:g('_ps_name'), acct:g('_ps_acct'), due:g('_ps_due'), extra:g('_ps_extra') };
-  localStorage.setItem(_PAY_KEY, JSON.stringify(s));
-  document.getElementById('_paySettingsModal').remove();
-  toast('บันทึกข้อมูลธนาคารแล้ว ✅ — ใบแจ้งหนี้ถัดไปจะใช้ข้อมูลใหม่', 'ok');
+function _psSaveAll(){
+  var monthly = _psGetChecked('monthly');
+  var daily   = _psGetChecked('daily');
+  _savePayData({ banks:_psBanks, monthly:monthly, daily:daily });
+  document.getElementById('_payModal').remove();
+  toast('บันทึกแล้ว ✅ รายเดือน '+monthly.length+' บัญชี · รายวัน '+daily.length+' บัญชี', 'ok');
 }
 
 console.log('✅ J.Residence Billing v4 loaded');
