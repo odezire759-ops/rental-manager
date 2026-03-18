@@ -416,7 +416,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
 
   </div>
-  <div class="hright"><span id="hdate"></span><div class="hbadge">● LIVE</div></div>
+  <div class="hright"><span id="hdate"></span><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><div class="hbadge">● LIVE</div></div>
 </div>
 
 <!-- ══ KPI BAR ══ -->
@@ -6889,7 +6889,7 @@ ${custHTML}
     <div class="sr tot" style="background:${ac}"><span>ยอดรวมทั้งสิ้น / Grand Total</span><span>฿ ${_fmtN(total)}</span></div>
   </div>
 </div>
-${!isR ? '<div class="bank"><b>💰 ช่องทางชำระเงิน:</b><br>ธนาคารกรุงเทพ สาขาบางนา<br>ชื่อบัญชี: <b>ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์</b><br>เลขที่บัญชี: <b>179-4-74602-2</b><br><span style="color:#C62828">กรุณาชำระภายในวันที่ 5 ของเดือน</span></div>' : ''}
+${!isR ? _buildBankBox() : ''}
 ${isR ? '<div class="stamp"><div class="pd">✅ PAID — ชำระแล้ว</div></div>' : ''}
 <div class="ft"><div>J.Residence — ระบบออกบิลอัตโนมัติ</div><div>หน้า 1/1</div></div>
 </div></body></html>`;
@@ -6994,6 +6994,124 @@ function bulkMonthlyInvoice(type){
     setTimeout(next, 800);
   }
   next();
+}
+
+
+/* ── Payment Settings (localStorage) ── */
+var _PAY_KEY = 'jres_pay_settings';
+
+function _getPaySettings(){
+  try { return JSON.parse(localStorage.getItem(_PAY_KEY)||'{}'); } catch(e){ return {}; }
+}
+
+function _buildBankBox(){
+  var s = _getPaySettings();
+  var bank  = s.bank   || 'ธนาคารกรุงเทพ สาขาบางนา';
+  var name  = s.name   || 'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์';
+  var acct  = s.acct   || '179-4-74602-2';
+  var due   = s.due    || '5';
+  var extra = s.extra  || '';
+  return '<div class="bank">' +
+    '<b>💰 ช่องทางชำระเงิน:</b><br>' +
+    bank + '<br>' +
+    'ชื่อบัญชี: <b>' + name + '</b><br>' +
+    'เลขที่บัญชี: <b>' + acct + '</b><br>' +
+    (extra ? extra + '<br>' : '') +
+    '<span style="color:#C62828">กรุณาชำระภายในวันที่ ' + due + ' ของเดือน</span>' +
+  '</div>';
+}
+
+function openPaySettings(){
+  var s = _getPaySettings();
+  // Create modal if not exists
+  var existing = document.getElementById('_paySettingsModal');
+  if(existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = '_paySettingsModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+  <div style="background:#fff;border-radius:12px;width:480px;max-width:95vw;padding:0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="background:linear-gradient(135deg,#0f1419,#1e3a5f);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:#fff;font-size:15px;font-weight:700;font-family:'Sarabun',sans-serif;">⚙ ตั้งค่าข้อมูลธนาคาร / ช่องทางชำระเงิน</span>
+      <button onclick="document.getElementById('_paySettingsModal').remove()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div style="padding:20px;font-family:'Sarabun',sans-serif;">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">🏦 ธนาคาร / สาขา</label>
+          <input id="_ps_bank" type="text" value="${s.bank||'ธนาคารกรุงเทพ สาขาบางนา'}"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">👤 ชื่อบัญชี</label>
+          <input id="_ps_name" type="text" value="${s.name||'ห้างหุ้นส่วนสามัญ เจ.เรสซิเดนซ์'}"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">💳 เลขที่บัญชี</label>
+          <input id="_ps_acct" type="text" value="${s.acct||'179-4-74602-2'}"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">📅 กำหนดชำระภายในวันที่ (ของเดือน)</label>
+          <input id="_ps_due" type="text" value="${s.due||'5'}" placeholder="เช่น 5"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:4px;">📝 หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+          <input id="_ps_extra" type="text" value="${s.extra||''}" placeholder="เช่น โอนแล้วแจ้งแคปสลิปที่ Line: @jresidence"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde3ea;border-radius:7px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;"
+            onfocus="this.style.borderColor='#1565C0'" onblur="this.style.borderColor='#dde3ea'">
+        </div>
+      </div>
+      <!-- Preview -->
+      <div style="margin-top:16px;padding:12px 14px;background:#FFF3E0;border-radius:8px;border-left:3px solid #FFA726;font-size:12px;line-height:1.7;">
+        <b>💰 ช่องทางชำระเงิน:</b><br>
+        <span id="_ps_preview_bank"></span><br>
+        ชื่อบัญชี: <b><span id="_ps_preview_name"></span></b><br>
+        เลขที่บัญชี: <b><span id="_ps_preview_acct"></span></b><br>
+        <span id="_ps_preview_extra"></span>
+        <span style="color:#C62828">กรุณาชำระภายในวันที่ <span id="_ps_preview_due"></span> ของเดือน</span>
+      </div>
+      <!-- Buttons -->
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="document.getElementById('_paySettingsModal').remove()"
+          style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;">ยกเลิก</button>
+        <button onclick="_savePaySettings()"
+          style="flex:2;padding:10px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">💾 บันทึกการตั้งค่า</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  // Live preview
+  ['_ps_bank','_ps_name','_ps_acct','_ps_due','_ps_extra'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', _updatePayPreview);
+  });
+  _updatePayPreview();
+}
+
+function _updatePayPreview(){
+  var g = function(id){ return document.getElementById(id) ? document.getElementById(id).value : ''; };
+  var ep = document.getElementById('_ps_preview_extra');
+  document.getElementById('_ps_preview_bank').textContent = g('_ps_bank');
+  document.getElementById('_ps_preview_name').textContent = g('_ps_name');
+  document.getElementById('_ps_preview_acct').textContent = g('_ps_acct');
+  document.getElementById('_ps_preview_due').textContent  = g('_ps_due')||'5';
+  if(ep) ep.textContent = g('_ps_extra') ? g('_ps_extra')+' ' : '';
+}
+
+function _savePaySettings(){
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value.trim(); };
+  var s = { bank:g('_ps_bank'), name:g('_ps_name'), acct:g('_ps_acct'), due:g('_ps_due'), extra:g('_ps_extra') };
+  localStorage.setItem(_PAY_KEY, JSON.stringify(s));
+  document.getElementById('_paySettingsModal').remove();
+  toast('บันทึกข้อมูลธนาคารแล้ว ✅ — ใบแจ้งหนี้ถัดไปจะใช้ข้อมูลใหม่', 'ok');
 }
 
 console.log('✅ J.Residence Billing v4 loaded');
