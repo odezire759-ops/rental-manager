@@ -1796,6 +1796,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <button class="tbtn" id="ut-sync-btn" onclick="utSyncFromGAS()" style="font-size:11px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);color:#2e7d32;border:1px solid #a5d6a7;font-weight:700;">🔄 Sync จาก Drive</button>
     <button class="tbtn" onclick="utSyncFromGAS(true)" style="font-size:11px;color:var(--warn);border-color:var(--warn);" title="Force re-extract จาก PDF">🔄 Force</button>
     <button class="tbtn" onclick="utResetData()" style="font-size:11px;color:var(--danger);border-color:var(--danger);" title="ล้างข้อมูลทั้งหมดแล้ว sync ใหม่">🗑 Reset</button>
+    <button class="tbtn" onclick="utShowDebug()" style="font-size:11px;color:var(--text3);border-color:var(--border2);" title="แสดงข้อมูลใน localStorage + URL">🔍 Debug</button>
     <button class="tbtn" onclick="utOpenAllGmail()" style="font-size:11px;background:var(--blue-dim);color:var(--blue);border-color:#aac8f8;">📬 เปิด Gmail</button>
     <button class="tbtn" onclick="utOpenPdfModal()" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📄 ดึงข้อมูลจาก PDF</button>
     <button class="tbtn" onclick="utOpenImportModal()" style="font-size:11px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;">📥 Import JSON</button>
@@ -1835,13 +1836,12 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <thead>
           <tr>
             <th style="min-width:90px;">รอบบิล</th>
-            <th style="min-width:110px;">รอบ (จาก PDF)</th>
             <th style="min-width:80px;text-align:left;">วันจดมิเตอร์</th>
             <th style="min-width:70px;text-align:right;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
             <th style="min-width:70px;text-align:right;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
             <th style="min-width:70px;text-align:right;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
             <th style="min-width:100px;text-align:right;">ยอดรวม (฿)</th>
-            <th style="min-width:78px;">วันออกบิล</th>
+            <th style="min-width:100px;">ชำระเงินวันสุดท้าย</th>
             <th style="text-align:center;min-width:180px;">เอกสาร PDF</th>
             <th style="text-align:center;width:42px;">แก้ไข</th>
           </tr>
@@ -8421,7 +8421,6 @@ function _utRenderMEA() {
     var rb = !hasData ? 'background:var(--shell);' : '';
     return '<tr style="'+rb+'">'
       + '<td style="font-weight:700;">' + d.month + '</td>'
-      + '<td>' + period + '</td>'
       + '<td>' + mDate + '</td>'
       + '<td style="text-align:right;">' + offpeak + '</td>'
       + '<td style="text-align:right;">' + onpeak + '</td>'
@@ -9577,6 +9576,7 @@ function utSyncFromGAS(force) {
   if (status) status.textContent = 'กำลังดึงข้อมูลจาก Drive...';
 
   var url = _UT_GAS_URL + (force ? '?refresh=1' : '');
+  console.log('[UT-SYNC] Fetching:', url);
 
   fetch(url)
     .then(function(r) {
@@ -9584,9 +9584,13 @@ function utSyncFromGAS(force) {
       return r.json();
     })
     .then(function(resp) {
-      if (!resp.ok || !resp.data) throw new Error('Invalid response');
+      console.log('[UT-SYNC] Response ok:', resp.ok, '| count:', resp.count, '| keys:', Object.keys(resp.data||{}).join(', '));
+      if (!resp.ok || !resp.data) throw new Error('Invalid response: ' + JSON.stringify(resp).substring(0,200));
 
       var incoming = resp.data;
+      // Log first mea key for quick verification
+      var meaKey = Object.keys(incoming).find(function(k){ return k.indexOf('mea_')===0; });
+      if (meaKey) console.log('[UT-SYNC] Sample MEA key:', meaKey, '=', JSON.stringify(incoming[meaKey]));
       var stored = _utLoad();
       var updated = 0, skipped = 0;
 
@@ -9668,6 +9672,33 @@ function utResetData() {
   var s = document.getElementById('ut-sync-status');
   if (s) s.textContent = '';
   toast('🗑 ล้างข้อมูลสาธารณูปโภคแล้ว — กด Sync เพื่อดึงข้อมูลใหม่', 'ok');
+}
+
+function utShowDebug() {
+  var stored = _utLoad();
+  var keys = Object.keys(stored).sort();
+  var meaKeys = keys.filter(function(k){ return k.indexOf('mea_')===0; });
+  var lines = ['GAS URL: ' + (_UT_GAS_URL || '(ยังไม่ได้ตั้งค่า)'), ''];
+  lines.push('localStorage [' + _UT_STORE + '] — ' + keys.length + ' records:');
+  meaKeys.forEach(function(k) {
+    var d = stored[k];
+    lines.push('  ' + k + ':');
+    lines.push('    amount=' + (d.amount||'—') + '  onpeak=' + (d.onpeak||'—') + '  offpeak=' + (d.offpeak||'—') + '  paidDate=' + (d.paidDate||'—'));
+  });
+  var mwaKeys = keys.filter(function(k){ return k.indexOf('mwa_')===0; });
+  if (mwaKeys.length) {
+    lines.push('');
+    mwaKeys.forEach(function(k) {
+      var d = stored[k];
+      lines.push('  ' + k + ': amount=' + (d.amount||'—') + '  units=' + (d.units||'—'));
+    });
+  }
+  if (_UT_GAS_URL) {
+    lines.push('');
+    lines.push('เปิด GAS URL ใน tab ใหม่เพื่อดู raw JSON:');
+    lines.push(_UT_GAS_URL + '?refresh=1');
+  }
+  alert(lines.join('\n'));
 }
 
 function utConfigGasUrl() {
@@ -9778,12 +9809,8 @@ function hrRender() {
   } else {
     if (grid) grid.innerHTML = recs.map(function(r) {
       var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
-      var empSupa2 = _hrEmployees.find(function(e){return e.uid===r.user_id;}) || {};
-      var attRec2 = _hrAttendance.find(function(a){return a.uid===r.user_id&&a.year_month===month;});
-      // ใช้ค่าแรงจาก attendance record ของเดือนนั้น (เก็บแยกตามเดือน)
-      // ถ้าไม่มีค่อย fallback ไป hr_employees
-      var wage = (attRec2 && attRec2.daily_wage) ? attRec2.daily_wage : (empSupa2.daily_wage || emp.daily_wage || r.daily_wage || 0);
-      var wageTotal = (attRec2 && attRec2.wage_total) ? attRec2.wage_total : (r.days * wage);
+      var wage = emp.daily_wage || r.daily_wage || 0;
+      var wageTotal = r.days * wage;
       var pct = Math.min(100, Math.round(r.days/26*100));
       var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
       var hoursDisplay = r.hours > 0 ? r.hours.toFixed(1)+' ชม.' : r.days+' วัน';
@@ -9818,11 +9845,10 @@ function hrRender() {
     tb.innerHTML = recs.map(function(r) {
       var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
       var empSupa = empLookupHr[r.user_id] || {};
+      var wage = empSupa.daily_wage || emp.daily_wage || r.daily_wage || 0;
       var attRec = _hrAttendance.find(function(a){return a.uid===r.user_id&&a.year_month===month;});
-      // ใช้ค่าแรงจาก attendance record ของเดือนนั้น ถ้าไม่มีค่อย fallback
-      var wage = (attRec && attRec.daily_wage) ? attRec.daily_wage : (empSupa.daily_wage || emp.daily_wage || r.daily_wage || 0);
       var bonus = attRec ? (attRec.bonus||0) : (empSupa.bonus||0);
-      var wageTotal = (attRec && attRec.wage_total) ? attRec.wage_total : (r.days * wage + bonus);
+      var wageTotal = r.days * wage + bonus;
       total_wage += wageTotal; total_days += r.days; total_bonus += bonus;
       var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
       return '<tr>'
@@ -10027,8 +10053,6 @@ async function saveEmployee(idx) {
     // highlight row briefly
     var row = document.getElementById('hr-emp-row-'+idx);
     if(row){row.style.background='#e8f5e9';setTimeout(function(){row.style.background='';},1200);}
-    // re-render เพื่ออัพเดตค่าแรงในตารางทันที
-    hrRender();
   } catch(e) {
     toast('บันทึกไม่สำเร็จ: '+e.message,'err');
   }
@@ -10109,8 +10133,8 @@ async function saveHrAttendance() {
 
     // อัพเดต local cache
     var local = _hrAttendance.find(function(r){return r.uid===uid&&r.year_month===month;});
-    if(local){local.days=days;local.hours=hours;local.bonus=bonus;local.note=note;local.daily_wage=emp.daily_wage;local.wage_total=total;}
-    else _hrAttendance.push({uid:uid,year_month:month,days:days,hours:hours,bonus:bonus,note:note,daily_wage:emp.daily_wage,wage_total:total});
+    if(local){local.days=days;local.hours=hours;local.bonus=bonus;local.note=note;}
+    else _hrAttendance.push({uid,year_month:month,days,hours,bonus,note});
 
     // อัพเดต _HR_DATA.records
     var lr = _HR_DATA.records.find(function(r){return r.user_id===uid&&r.year_month===month;});
