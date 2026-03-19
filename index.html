@@ -9596,7 +9596,6 @@ var _utSyncing = false;
 function utSyncFromGAS(force) {
   if (_utSyncing) return;
 
-  // Check if URL is configured
   if (!_UT_GAS_URL) {
     utConfigGasUrl();
     return;
@@ -9612,60 +9611,64 @@ function utSyncFromGAS(force) {
     }
   }
 
+  // ── Abort controller: timeout 30 วินาที ──
+  var controller = new AbortController();
+  var fetchTimeout = setTimeout(function() { controller.abort(); }, 30000);
+
   _utSyncing = true;
-  var btn = document.getElementById('ut-sync-btn');
+  var btn    = document.getElementById('ut-sync-btn');
   var status = document.getElementById('ut-sync-status');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลัง Sync...'; }
-  if (status) status.textContent = 'กำลังดึงข้อมูลจาก Drive...';
+  if (btn)    { btn.disabled = true; btn.innerHTML = '⏳ กำลัง Sync...'; }
+  if (status)   status.textContent = 'กำลังดึงข้อมูลจาก Drive...';
 
   var url = _UT_GAS_URL + (force ? '?refresh=1' : '');
   console.log('[UT-SYNC] Fetching:', url);
 
-  fetch(url)
+  fetch(url, { signal: controller.signal })
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(function(resp) {
-      console.log('[UT-SYNC] Response ok:', resp.ok, '| count:', resp.count, '| keys:', Object.keys(resp.data||{}).join(', '));
-      if (!resp.ok) throw new Error(resp.error || 'Apps Script error');
-      if (!resp.data) throw new Error('Invalid response: no data');
+      console.log('[UT-SYNC] ok:', resp.ok, '| count:', resp.count);
+      if (!resp.ok) {
+        var msg = resp.error || '';
+        if (msg.indexOf('ยังไม่มีข้อมูล') !== -1 || msg.indexOf('extractAndSave') !== -1) {
+          throw new Error('NO_DATA');
+        }
+        throw new Error(msg || 'GAS returned ok:false');
+      }
+      if (!resp.data || typeof resp.data !== 'object') throw new Error('ไม่มี data ใน response');
 
       var incoming = resp.data;
-      // Log first mea key for quick verification
-      var meaKey = Object.keys(incoming).find(function(k){ return k.indexOf('mea_')===0; });
-      if (meaKey) console.log('[UT-SYNC] Sample MEA key:', meaKey, '=', JSON.stringify(incoming[meaKey]));
-      var stored = _utLoad();
-      var updated = 0, skipped = 0;
+      var stored   = _utLoad();
+      var updated  = 0, skipped = 0;
 
       Object.keys(incoming).forEach(function(key) {
         var vals = incoming[key];
         if (!vals || typeof vals !== 'object') return;
-        var normKey = key.replace(/\s/g, '_');
+        var normKey  = key.replace(/\s/g, '_');
         var existing = stored[normKey] || {};
-        var changed = false;
+        var changed  = false;
 
-        // Validate: reject if offpeak === onpeak (OCR bug)
+        // Reject offpeak === onpeak (OCR bug)
         if (vals.offpeak && vals.onpeak && vals.offpeak === vals.onpeak) {
-          delete vals.offpeak;
-          delete vals.onpeak;
-          delete vals.totalUnits;
+          delete vals.offpeak; delete vals.onpeak; delete vals.totalUnits;
         }
 
-        // OVERWRITE mode: extraction data replaces existing
         Object.keys(vals).forEach(function(field) {
           var v = vals[field];
           if (v !== null && v !== '' && v !== undefined) {
-            existing[field] = String(v);
-            changed = true;
+            existing[field] = String(v); changed = true;
           }
         });
 
-        // Auto-calc
+        // Auto-calc totalUnits (MEA)
         if (existing.offpeak && existing.onpeak && existing.offpeak !== existing.onpeak) {
           var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
           if (tot > 0) existing.totalUnits = tot;
         }
+        // Auto-calc units (MWA)
         if (existing.meterOld && existing.meterNew && !existing.units) {
           var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
           if (u > 0) existing.units = u;
@@ -9677,12 +9680,9 @@ function utSyncFromGAS(force) {
       _utSave(stored);
       localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
 
-      // Re-render
       _utRenderMEA(); _utRenderMWA();
       setTimeout(_utInitMeaCharts, 50);
       setTimeout(_utInitMwaCharts, 100);
-
-      // Update KPI
       _utUpdateMwaKpi(stored);
 
       var syncTime = new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
@@ -9691,14 +9691,23 @@ function utSyncFromGAS(force) {
     })
     .catch(function(err) {
       if (status) status.textContent = '';
-      if (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1) {
-        toast('❌ เชื่อมต่อ Apps Script ไม่ได้ — ตรวจสอบ URL และ Deploy', 'err');
+      console.error('[UT-SYNC] error:', err.name, err.message);
+
+      if (err.name === 'AbortError') {
+        toast('❌ Sync หมดเวลา 30 วิ — GAS ตอบช้าเกินไป ลอง Force sync', 'err');
+      } else if (err.message === 'NO_DATA') {
+        toast('❌ GAS ยังไม่มีข้อมูล — ไปรัน extractAndSave() ใน Apps Script ก่อน', 'err');
+      } else if (err.message.indexOf('Failed to fetch') !== -1 ||
+                 err.message.indexOf('NetworkError')    !== -1) {
+        toast('❌ CORS/Network error — ตรวจสอบ: URL ต้องลงท้าย /exec ไม่ใช่ /dev และ Who has access = Anyone', 'err');
+      } else if (err.message.indexOf('HTTP 4') !== -1 || err.message.indexOf('HTTP 5') !== -1) {
+        toast('❌ GAS ตอบ ' + err.message + ' — Deploy อาจไม่ถูกต้อง', 'err');
       } else {
         toast('❌ Sync ล้มเหลว: ' + err.message, 'err');
       }
-      console.error('GAS sync error:', err);
     })
     .finally(function() {
+      clearTimeout(fetchTimeout);  // ยกเลิก timeout เสมอ
       _utSyncing = false;
       if (btn) { btn.disabled = false; btn.innerHTML = '🔄 Sync จาก Drive'; }
     });
