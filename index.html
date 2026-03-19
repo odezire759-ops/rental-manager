@@ -1251,7 +1251,9 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
           <option value="">— เลือก LINE user —</option>
         </select>
         <button class="btn bp" onclick="promoteStaff()" style="font-size:13px;padding:8px 20px;">✅ เพิ่มเป็น Staff</button>
+        <button class="btn" onclick="bulkPromoteHrStaff()" style="font-size:12px;padding:8px 16px;background:#e3f2fd;color:#1565c0;border-color:#90caf9;">&#x1F465; เพิ่ม Staff HR ทั้งหมด (9 คน)</button>
       </div>
+      <div id="bulk-promote-result" style="margin-top:8px;font-size:11px;"></div>
     </div>
   </div>
 
@@ -1300,6 +1302,49 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <div style="padding:0 14px 14px;">
       <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">📈 ชั่วโมงทำงานรายเดือน (ทุกคน)</div>
       <div style="position:relative;height:180px;"><canvas id="hr-trend-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Leave Requests -->
+  <div class="card" style="margin-top:14px;border-top:4px solid #f9a825;">
+    <div class="chdr" style="background:#fffde7;">
+      <span style="color:#f57f17;font-weight:700;">&#x1F3D6; คำขอลาหยุด / ลาป่วย</span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <select id="leave-filter" onchange="loadLeaveRequests()" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-family:'Sarabun',sans-serif;">
+          <option value="all">ทั้งหมด</option>
+          <option value="pending">&#x23F3; รอพิจารณา</option>
+          <option value="approved">&#x2705; อนุมัติ</option>
+          <option value="rejected">&#x274C; ไม่อนุมัติ</option>
+        </select>
+        <button class="tbtn" onclick="loadLeaveRequests()">&#x1F504;</button>
+        <button class="tbtn" onclick="openAddLeaveModal()" style="background:#fffde7;color:#f57f17;border-color:#f9a825;">+ เพิ่มคำขอ</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;background:var(--shell);">
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;border-top:3px solid #f9a825;">
+        <div style="font-size:10px;color:var(--text3);">&#x23F3; รอพิจารณา</div>
+        <div id="leave-kpi-pending" style="font-size:22px;font-weight:800;color:#f57f17;font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;border-top:3px solid var(--success);">
+        <div style="font-size:10px;color:var(--text3);">&#x2705; อนุมัติ</div>
+        <div id="leave-kpi-approved" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;border-top:3px solid var(--danger);">
+        <div style="font-size:10px;color:var(--text3);">&#x274C; ไม่อนุมัติ</div>
+        <div id="leave-kpi-rejected" style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;border-top:3px solid var(--blue);">
+        <div style="font-size:10px;color:var(--text3);">&#x1F4C5; วันลา (เดือนนี้)</div>
+        <div id="leave-kpi-days" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;padding:0 0 8px;">
+      <table class="dtbl">
+        <thead><tr>
+          <th>พนักงาน</th><th>ประเภท</th><th>วันที่</th><th>วัน</th><th>สาเหตุ</th><th>LINE</th><th>สถานะ</th><th>อนุมัติ</th><th></th>
+        </tr></thead>
+        <tbody id="leave-tbody"><tr><td colspan="9" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -1913,6 +1958,43 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 </div>
 
 <!-- QUICK WALK-IN MODAL -->
+<!-- LEAVE REQUEST MODAL -->
+<div class="moverlay" id="leave-modal">
+  <div class="modal" style="max-width:500px;">
+    <div class="mhdr"><span class="mtitle">&#x1F3D6; เพิ่มคำขอลา</span><button class="mclose" onclick="closeM('leave-modal')">&#x00D7;</button></div>
+    <div class="mbdy">
+      <div class="fg">
+        <div class="fr"><label>พนักงาน *</label>
+          <select id="leave-emp" onchange="updateLeavePreview()" style="font-size:12px;">
+            <option value="">— เลือกพนักงาน —</option>
+          </select>
+        </div>
+        <div class="fr"><label>ประเภทการลา *</label>
+          <select id="leave-type" onchange="updateLeavePreview()" style="font-size:12px;">
+            <option value="sick">&#x1F912; ลาป่วย</option>
+            <option value="personal">&#x1F3E0; ลากิจ</option>
+            <option value="vacation">&#x1F3D6; ลาพักร้อน</option>
+            <option value="other">&#x1F4DD; อื่นๆ</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>วันที่เริ่มลา *</label><input type="date" id="leave-start" oninput="updateLeavePreview()"></div>
+        <div class="fr"><label>วันที่สิ้นสุด *</label><input type="date" id="leave-end" oninput="updateLeavePreview()"></div>
+      </div>
+      <div class="fr"><label>สาเหตุ</label><input type="text" id="leave-reason" placeholder="เช่น ไข้หวัด, ธุระส่วนตัว..." oninput="updateLeavePreview()"></div>
+      <div class="fr"><label>เอกสารประกอบ</label><input type="text" id="leave-doc" placeholder="เช่น ใบรับรองแพทย์ หรือ -"></div>
+      <div style="margin-top:12px;background:#06C755;border-radius:var(--r);padding:14px;color:#fff;">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px;">&#x1F4F1; Preview ข้อความ LINE ที่จะส่งให้ oero:</div>
+        <div id="leave-preview" style="font-size:12px;background:rgba(255,255,255,.15);border-radius:6px;padding:10px;white-space:pre-wrap;font-family:'Sarabun',sans-serif;line-height:1.7;">— กรอกข้อมูลเพื่อดู Preview —</div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-top:14px;padding:10px;font-size:13px;" onclick="submitLeaveRequest()">
+        &#x1F4E4; ส่งคำขอ + แจ้ง LINE oero
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="moverlay" id="wimod">
   <div class="modal" style="max-width:480px;">
     <div class="mhdr"><span class="mtitle" id="wi-title">🚶 Walk-in เข้าพัก</span><button class="mclose" onclick="closeM('wimod')">×</button></div>
@@ -8526,7 +8608,7 @@ function _utInitMwaCharts() {
   });
 }
 
-// ── Hook into showSec ────────────────────────────────
+// ── Hook into showSec (utility + HR combined) ─────────
 (function(){
   var _origShowSec = window.showSec;
   window.showSec = function(id, btn) {
@@ -8535,6 +8617,9 @@ function _utInitMwaCharts() {
       _utRenderMEA();
       _utRenderMWA();
       setTimeout(_utInitMeaCharts, 60);
+    }
+    if (id === 'staff') {
+      setTimeout(hrInit, 100);
     }
   };
 })();
@@ -9037,6 +9122,16 @@ var _HR_DATA = {"records": [{"user_id": "U132253f8e485021cbc114662fba91233", "ye
 
 var _hrChart = null;
 var _hrCurrentMonth = '';
+var _hrLineUsers = {}; // cache: user_id → line_session object
+
+// โหลด line_sessions เพื่อ match กับ HR user_id
+async function loadHrLineLink() {
+  try {
+    var res = await sb.from('line_sessions').select('line_user_id,display_name,nickname,phone,role').in('role',['staff','admin','tenant']);
+    var data = res.data || [];
+    data.forEach(function(u) { _hrLineUsers[u.line_user_id] = u; });
+  } catch(e) { console.warn('HR line link error:', e); }
+}
 
 function hrInit() {
   var months = _HR_DATA.months;
@@ -9049,8 +9144,11 @@ function hrInit() {
   // default = latest month
   _hrCurrentMonth = months[months.length-1];
   sel.value = _hrCurrentMonth;
-  hrRender();
-  hrUpdateKPI();
+  // โหลด LINE sessions แล้วค่อย render
+  loadHrLineLink().then(function(){
+    hrRender();
+    hrUpdateKPI();
+  });
 }
 
 function _hrMonthLabel(m) {
@@ -9100,7 +9198,12 @@ function hrRender() {
         +(wage>0 ? '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span style="color:var(--text3);">💵 ค่าจ้าง/วัน</span><b>฿'+wage.toLocaleString()+'</b></div>' : '')
         +(wage>0 ? '<div style="background:linear-gradient(135deg,#f3e8ff,#ede0ff);border-radius:6px;padding:8px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;font-weight:700;color:#6b21a8;">💰 รวม</span><span style="font-size:18px;font-weight:800;color:#7b1fa2;font-family:JetBrains Mono,monospace;">฿'+wageTotal.toLocaleString()+'</span></div>' : '')
         +'<div style="margin-top:8px;background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:#7b1fa2;border-radius:4px;"></div></div>'
-        +'<div style="font-size:9px;color:var(--text3);text-align:right;margin-top:2px;">'+pct+'% ของ 26 วัน</div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">'
+          +'<div style="font-size:9px;color:var(--text3);">'+pct+'% ของ 26 วัน</div>'
+          +(_hrLineUsers[r.user_id]
+            ? '<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:6px;font-weight:700;">✅ LINE</span>'
+            : '<span style="font-size:9px;color:#bbb;">— ไม่ได้เชื่อม</span>')
+        +'</div>'
       +'</div>';
     }).join('');
   }
@@ -9124,7 +9227,13 @@ function hrRender() {
         +'<td class="mono" style="text-align:center;">'+(r.hours>0?r.hours.toFixed(1)+' ชม.':'—')+'</td>'
         +'<td class="mono" style="text-align:right;">'+(wage>0?'฿'+wage.toLocaleString():'—')+'</td>'
         +'<td class="mono" style="text-align:right;font-weight:700;color:#7b1fa2;">'+(wageTotal>0?'฿'+wageTotal.toLocaleString():'—')+'</td>'
-        +'<td style="text-align:center;font-size:10px;">🔗 LINE</td>'
+        +'<td style="text-align:center;font-size:10px;">'
+        +(_hrLineUsers[r.user_id]
+          ? '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;" title="'
+            +(_hrLineUsers[r.user_id].nickname||_hrLineUsers[r.user_id].display_name)
+            +'">✅ LINE</span>'
+          : '<span style="background:#f5f5f5;color:#999;padding:2px 8px;border-radius:8px;font-size:10px;">— ไม่ได้เชื่อม</span>')
+        +'</td>'
         +'</tr>';
     }).join('')
     + (recs.length > 0 ? '<tr style="background:#f3e8ff;font-weight:700;"><td>รวม '+recs.length+' คน</td><td></td><td class="mono" style="text-align:center;color:#7b1fa2;">'+total_days+' วัน</td><td></td><td></td><td class="mono" style="text-align:right;color:#7b1fa2;font-size:14px;">฿'+total_wage.toLocaleString()+'</td><td></td></tr>' : '');
@@ -9196,16 +9305,236 @@ function hrUpdateKPI() {
   s('hr-kpi-month', _hrMonthLabel(month));
 }
 
-// Hook เข้า showSec
-(function(){
-  var _origSS = window.showSec;
-  window.showSec = function(id, btn) {
-    if (_origSS) _origSS(id, btn);
-    if (id === 'staff') {
-      setTimeout(hrInit, 100);
-    }
-  };
-})();
+
+// ══════════════════════════════════════════════════════════════
+// BULK PROMOTE HR STAFF TO role='staff'
+// ══════════════════════════════════════════════════════════════
+var _HR_EMPLOYEE_IDS = [
+  {uid:'U132253f8e485021cbc114662fba91233', name:'\u0e27\u0e34\u0e44\u0e25'},
+  {uid:'Ubb1058c5e92d6df6744b5aaabf544ca7', name:'Da'},
+  {uid:'U53b89ee656a0c12281567ad0530a9c48', name:'khammuen'},
+  {uid:'U5c87e935a28c638a0c3a4fc792f42952', name:'\u0e27\u0e31\u0e19 \u0e27\u0e31\u0e19'},
+  {uid:'U64bfbdbf49e68b6e7885245a2f461983', name:'Phai Leakhena'},
+  {uid:'Ue3f0846fb2cc20424409eadf1c6cf05d', name:'vilaiporn srimookda'},
+  {uid:'U4ee7a2460330750ca45eeb1fa7fb76b3', name:'DON'},
+  {uid:'U277ad82e26d027a490e6ab21fa8cb642', name:'\u0e08\u0e2d\u0e19\u0e35\u0e49(\u0e01\u0e34)'},
+  {uid:'U5b7b676a8383f2859bd49e6e3f1a7d75', name:'\u0e2a\u0e21\u0e0a\u0e32\u0e22'}
+];
+
+async function bulkPromoteHrStaff() {
+  var res = document.getElementById('bulk-promote-result');
+  if(!confirm('\u0e40\u0e1e\u0e34\u0e48\u0e21 role "staff" \u0e43\u0e2b\u0e49\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19 HR \u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14 '+_HR_EMPLOYEE_IDS.length+' \u0e04\u0e19?\n\n\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19\u0e17\u0e35\u0e48\u0e21\u0e35 LINE account \u0e08\u0e30\u0e40\u0e2b\u0e47\u0e19 Rich Menu \u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19\n\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23?'))return;
+  if(res) res.innerHTML = '<span style="color:var(--blue);">Processing...</span>';
+  var ok=0, fail=0, results=[];
+  for(var i=0;i<_HR_EMPLOYEE_IDS.length;i++){
+    var emp=_HR_EMPLOYEE_IDS[i];
+    try {
+      var r = await sb.from('line_sessions').upsert({
+        line_user_id:emp.uid, display_name:emp.name, role:'staff'
+      },{onConflict:'line_user_id',ignoreDuplicates:false});
+      if(r.error){fail++;results.push('<span style="color:var(--danger);">X '+emp.name+': '+r.error.message+'</span>');}
+      else {
+        ok++;results.push('<span style="color:var(--success);">OK '+emp.name+'</span>');
+        try{await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_menu',line_user_id:emp.uid,role:'staff'})});}catch(e2){}
+      }
+    }catch(e){fail++;results.push('<span style="color:var(--danger);">X '+emp.name+'</span>');}
+  }
+  if(res) res.innerHTML='<div style="background:var(--sbg);border-radius:var(--rs);padding:10px;margin-top:4px;">'
+    +'<div style="font-weight:700;margin-bottom:6px;">\u2705 \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08: '+ok+' \u0e04\u0e19'+(fail>0?' | X \u0e1c\u0e34\u0e14: '+fail+' \u0e04\u0e19':'')+' \u2014 \u0e23\u0e35\u0e40\u0e1f\u0e23\u0e0a\u0e2a\u0e15\u0e32\u0e1f\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e14\u0e39\u0e1c\u0e25</div>'
+    +'<div style="font-size:11px;display:flex;flex-wrap:wrap;gap:8px;">'+results.join('')+'</div></div>';
+  toast('\u0e40\u0e1e\u0e34\u0e48\u0e21 Staff HR: '+ok+' \u0e04\u0e19 \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'+(fail>0?' ('+fail+' \u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14)':''),fail>0?'err':'ok');
+  setTimeout(loadStaffList,600);
+}
+
+// ══════════════════════════════════════════════════════════════
+// LEAVE REQUEST SYSTEM
+// ══════════════════════════════════════════════════════════════
+var _OERO_LINE_ID = null;
+async function getOeroLineId() {
+  if(_OERO_LINE_ID) return _OERO_LINE_ID;
+  var{data}=await sb.from('line_sessions').select('line_user_id').eq('role','admin').limit(1);
+  if(data&&data[0]) _OERO_LINE_ID=data[0].line_user_id;
+  return _OERO_LINE_ID;
+}
+
+function _leaveTypeTh(t){
+  return {sick:'\ud83e\udd12 \u0e25\u0e32\u0e1b\u0e48\u0e27\u0e22',personal:'\ud83c\udfe0 \u0e25\u0e32\u0e01\u0e34\u0e08',vacation:'\ud83c\udfd6 \u0e25\u0e32\u0e1e\u0e31\u0e01\u0e23\u0e49\u0e2d\u0e19',other:'\ud83d\udcdd \u0e2d\u0e37\u0e48\u0e19\u0e46'}[t]||t;
+}
+function _countDays(s,e){
+  if(!s||!e) return 1;
+  return Math.max(1,Math.round((new Date(e)-new Date(s))/86400000)+1);
+}
+function _fmtDate(d){
+  if(!d) return '';
+  var dt=new Date(d);
+  var m=['\u0e21.\u0e04.','\u0e01.\u0e1e.','\u0e21\u0e35.\u0e04.','\u0e40\u0e21.\u0e22.','\u0e1e.\u0e04.','\u0e21\u0e34.\u0e22.','\u0e01.\u0e04.','\u0e2a.\u0e04.','\u0e01.\u0e22.','\u0e15.\u0e04.','\u0e1e.\u0e22.','\u0e18.\u0e04.'];
+  return dt.getDate()+' '+m[dt.getMonth()]+' '+(dt.getFullYear()+543);
+}
+function _leaveMsg(empName,leaveType,startDate,endDate,reason){
+  var days=_countDays(startDate,endDate);
+  var typ=_leaveTypeTh(leaveType);
+  var dateStr=startDate===endDate?_fmtDate(startDate):_fmtDate(startDate)+' - '+_fmtDate(endDate);
+  var n='\n';
+  return '\ud83d\udd14 \u0e41\u0e08\u0e49\u0e02\u0e2d\u0e25\u0e32\u0e2b\u0e22\u0e38\u0e14'+n
+    +'\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'+n
+    +'\ud83d\udc64 \u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19: '+empName+n
+    +'\ud83d\udccb \u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17: '+typ+n
+    +'\ud83d\udcc5 \u0e27\u0e31\u0e19\u0e17\u0e35\u0e48: '+dateStr+n
+    +'\ud83d\udd22 \u0e08\u0e33\u0e19\u0e27\u0e19: '+days+' \u0e27\u0e31\u0e19'+n
+    +'\ud83d\udcdd \u0e2a\u0e32\u0e40\u0e2b\u0e15\u0e38: '+(reason||'\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38')+n
+    +'\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'+n
+    +'\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e14 \u2705 \u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34 \u0e2b\u0e23\u0e37\u0e2d \u274c \u0e44\u0e21\u0e48\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34'+n
+    +'(\u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e19\u0e35\u0e49 \u0e2b\u0e23\u0e37\u0e2d\u0e40\u0e1b\u0e34\u0e14 Dashboard)';
+}
+
+function openAddLeaveModal(){
+  var sel=document.getElementById('leave-emp');
+  if(sel){
+    sel.innerHTML='<option value="">\u2014 \u0e40\u0e25\u0e37\u0e2d\u0e01\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19 \u2014</option>'
+      +_HR_EMPLOYEE_IDS.map(function(e){return '<option value="'+e.uid+'">'+e.name+'</option>';}).join('');
+  }
+  var today=new Date().toISOString().split('T')[0];
+  var sd=document.getElementById('leave-start'), ed=document.getElementById('leave-end');
+  if(sd&&!sd.value) sd.value=today;
+  if(ed&&!ed.value) ed.value=today;
+  updateLeavePreview();
+  document.getElementById('leave-modal').classList.add('open');
+}
+
+function updateLeavePreview(){
+  var empSel=document.getElementById('leave-emp');
+  var empName=empSel?(empSel.selectedOptions[0]||{}).text||'':'';
+  var typ=(document.getElementById('leave-type')||{}).value||'sick';
+  var s=(document.getElementById('leave-start')||{}).value||'';
+  var e=(document.getElementById('leave-end')||{}).value||'';
+  var r=(document.getElementById('leave-reason')||{}).value||'';
+  var prev=document.getElementById('leave-preview');
+  if(!prev) return;
+  if(!empName||empName.indexOf('\u2014')>=0){prev.textContent='\u2014 \u0e01\u0e23\u0e2d\u0e01\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e14\u0e39 Preview \u2014';return;}
+  prev.textContent=_leaveMsg(empName,typ,s,e,r);
+}
+
+async function submitLeaveRequest(){
+  var empSel=document.getElementById('leave-emp');
+  var empUid=empSel?empSel.value:'';
+  var empName=empSel?(empSel.selectedOptions[0]||{}).text||'':'';
+  var typ=(document.getElementById('leave-type')||{}).value||'sick';
+  var s=(document.getElementById('leave-start')||{}).value;
+  var e=(document.getElementById('leave-end')||{}).value;
+  var reason=((document.getElementById('leave-reason')||{}).value||'').trim();
+  var doc=((document.getElementById('leave-doc')||{}).value||'').trim();
+  if(!empUid){toast('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19','err');return;}
+  if(!s||!e){toast('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48','err');return;}
+  if(new Date(e)<new Date(s)){toast('\u0e27\u0e31\u0e19\u0e2a\u0e34\u0e49\u0e19\u0e2a\u0e38\u0e14\u0e15\u0e49\u0e2d\u0e07\u0e44\u0e21\u0e48\u0e19\u0e49\u0e2d\u0e22\u0e01\u0e27\u0e48\u0e32\u0e27\u0e31\u0e19\u0e40\u0e23\u0e34\u0e48\u0e21','err');return;}
+  var days=_countDays(s,e);
+  var msg=_leaveMsg(empName,typ,s,e,reason);
+
+  var{data:ins,error}=await sb.from('leave_requests').insert({
+    employee_line_id:empUid, employee_name:empName, leave_type:typ,
+    start_date:s, end_date:e, days:days, reason:reason||null,
+    document_ref:doc||null, status:'pending', notified_at:new Date().toISOString()
+  }).select().single();
+  if(error){toast('\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08: '+error.message,'err');return;}
+
+  var oeroId=await getOeroLineId();
+  var lineSent=false;
+  if(oeroId){
+    try{
+      var lr=await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'send_message',line_user_id:oeroId,message:msg,leave_request_id:ins?ins.id:null})});
+      if(lr.ok) lineSent=true;
+    }catch(e2){console.warn('LINE oero error:',e2);}
+  }
+
+  try{
+    await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'send_message',line_user_id:empUid,
+        message:'\u2705 \u0e23\u0e30\u0e1a\u0e1a\u0e44\u0e14\u0e49\u0e23\u0e31\u0e1a\u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e23\u0e30\u0e1a\u0e1a\u0e41\u0e25\u0e49\u0e27\n\n\ud83d\udccb \u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17: '+_leaveTypeTh(typ)+'\n\ud83d\udcc5 \u0e27\u0e31\u0e19\u0e17\u0e35\u0e48: '+_fmtDate(s)+(s!==e?' - '+_fmtDate(e):'')+'\n\ud83d\udd22 \u0e08\u0e33\u0e19\u0e27\u0e19: '+days+' \u0e27\u0e31\u0e19\n\n\u23f3 \u0e23\u0e2d\u0e01\u0e32\u0e23\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34\u0e08\u0e32\u0e01\u0e1c\u0e39\u0e49\u0e08\u0e31\u0e14\u0e01\u0e32\u0e23...'
+      })});
+  }catch(e3){}
+
+  closeM('leave-modal');
+  toast('\u0e2a\u0e48\u0e07\u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32 '+empName+' \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'+(lineSent?' + \u0e41\u0e08\u0e49gor LINE oero \u0e41\u0e25\u0e49\u0e27':' (\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49\u0e41\u0e08\u0e49 LINE)'),'ok');
+  loadLeaveRequests();
+}
+
+async function loadLeaveRequests(){
+  var flt=(document.getElementById('leave-filter')||{}).value||'all';
+  var q=sb.from('leave_requests').select('*').order('created_at',{ascending:false}).limit(100);
+  if(flt!=='all') q=q.eq('status',flt);
+  var{data}=await q; var recs=data||[];
+
+  var now=new Date();
+  var tm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var s=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  s('leave-kpi-pending', recs.filter(function(r){return r.status==='pending';}).length);
+  s('leave-kpi-approved', recs.filter(function(r){return r.status==='approved';}).length);
+  s('leave-kpi-rejected', recs.filter(function(r){return r.status==='rejected';}).length);
+  s('leave-kpi-days', recs.filter(function(r){return r.status==='approved'&&r.start_date&&r.start_date.startsWith(tm);})
+    .reduce(function(a,r){return a+(r.days||1);},0)+' \u0e27\u0e31\u0e19');
+
+  var tb=document.getElementById('leave-tbody');
+  if(!tb) return;
+  if(!recs.length){tb.innerHTML='<tr><td colspan="9" class="empty">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32</td></tr>';return;}
+
+  var tb_color={sick:'#ffebee',personal:'#fff3e0',vacation:'#e3f2fd',other:'#f5f5f5'};
+  var tc={sick:'#c62828',personal:'#e65100',vacation:'#1565c0',other:'#666'};
+  tb.innerHTML=recs.map(function(r,i){
+    var ds=r.start_date===r.end_date?_fmtDate(r.start_date):_fmtDate(r.start_date)+' \u2014 '+_fmtDate(r.end_date);
+    var typBadge='<span style="background:'+tb_color[r.leave_type]+';color:'+tc[r.leave_type]+';padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+_leaveTypeTh(r.leave_type)+'</span>';
+    var stBadge={
+      pending:'<span style="background:#fff8e1;color:#f57f17;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">\u23f3 \u0e23\u0e2d</span>',
+      approved:'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">\u2705 \u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34</span>',
+      rejected:'<span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">\u274c \u0e44\u0e21\u0e48\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34</span>'
+    }[r.status]||r.status;
+    var actions=r.status==='pending'
+      ?'<button onclick="approveLeave(\''+r.id+'\',\'approved\')" style="padding:3px 8px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:var(--rs);font-size:10px;cursor:pointer;margin-right:3px;">\u2705</button>'
+        +'<button onclick="approveLeave(\''+r.id+'\',\'rejected\')" style="padding:3px 8px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:var(--rs);font-size:10px;cursor:pointer;">\u274c</button>'
+      :'';
+    return '<tr style="'+(r.status==='pending'?'background:#fffde7;':i%2?'background:#fafafa;':'')+'">'
+      +'<td style="font-weight:700;">'+r.employee_name+'</td>'
+      +'<td>'+typBadge+'</td>'
+      +'<td style="font-size:11px;">'+ds+'</td>'
+      +'<td class="mono" style="text-align:center;font-weight:700;color:var(--blue);">'+(r.days||1)+'</td>'
+      +'<td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.reason||'')+'">'+(r.reason||'\u2014')+'</td>'
+      +'<td style="text-align:center;">'+(r.notified_at?'<span style="color:var(--success);font-size:10px;">\u2705</span>':'<span style="color:#bbb;font-size:10px;">\u2014</span>')+'</td>'
+      +'<td>'+stBadge+'</td>'
+      +'<td style="font-size:10px;color:var(--text3);">'+(r.approved_by||'\u2014')+'</td>'
+      +'<td style="white-space:nowrap;">'+actions+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+async function approveLeave(id, action){
+  var label=action==='approved'?'\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34':'\u0e44\u0e21\u0e48\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34';
+  if(!confirm(label+'\u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32\u0e19\u0e35\u0e49?')) return;
+  var note=action==='rejected'?prompt('\u0e40\u0e2b\u0e15\u0e38\u0e1c\u0e25\u0e17\u0e35\u0e48\u0e44\u0e21\u0e48\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34 (\u0e16\u0e49\u0e32\u0e21\u0e35):',''):null;
+  if(note===undefined) return;
+  var{data:rec}=await sb.from('leave_requests').select('*').eq('id',id).single();
+  if(!rec){toast('\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25','err');return;}
+  await sb.from('leave_requests').update({
+    status:action, approved_by:'admin', approved_at:new Date().toISOString(), reject_reason:note||null
+  }).eq('id',id);
+
+  var empMsg=action==='approved'
+    ?'\u2705 \u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e44\u0e14\u0e49\u0e23\u0e31\u0e1a\u0e01\u0e32\u0e23\u0e2d\u0e19\u0e38\u0e21\u0e31\u0e15\u0e34!\n\n'
+      +'\ud83d\udccb '+_leaveTypeTh(rec.leave_type)+'\n'
+      +'\ud83d\udcc5 '+_fmtDate(rec.start_date)+(rec.start_date!==rec.end_date?' - '+_fmtDate(rec.end_date):'')+'\n'
+      +'\ud83d\udd22 '+rec.days+' \u0e27\u0e31\u0e19\n\n'
+      +'\u0e02\u0e2d\u0e43\u0e2b\u0e49\u0e2b\u0e32\u0e22\u0e40\u0e23\u0e47\u0e27 / \u0e1e\u0e31\u0e01\u0e1c\u0e48\u0e2d\u0e19\u0e43\u0e2b\u0e49\u0e40\u0e15\u0e47\u0e21\u0e17\u0e35\u0e48 \ud83d\ude0a'
+    :'\u274c \u0e04\u0e33\u0e02\u0e2d\u0e25\u0e32\u0e16\u0e39\u0e01\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\n\n'
+      +'\ud83d\udccb '+_leaveTypeTh(rec.leave_type)+'\n'
+      +'\ud83d\udcc5 '+_fmtDate(rec.start_date)+'\n'
+      +(note?'\ud83d\udcac \u0e40\u0e2b\u0e15\u0e38\u0e1c\u0e25: '+note+'\n':'')
+      +'\n\u0e01\u0e23\u0e38\u0e13\u0e32\u0e15\u0e34\u0e14\u0e15\u0e48\u0e2d\u0e1c\u0e39\u0e49\u0e08\u0e31\u0e14\u0e01\u0e32\u0e23';
+  try{
+    await fetch(SU+'/functions/v1/line-webhook',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'send_message',line_user_id:rec.employee_line_id,message:empMsg})});
+  }catch(e){}
+  toast(label+' '+rec.employee_name+' \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08','ok');
+  loadLeaveRequests();
+}
+// showSec hook unified above
 </script>
 </body>
 </html>
