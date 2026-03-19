@@ -1791,7 +1791,9 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <button class="sb" id="ut-tab-mwa-btn" onclick="utSwitchTab('mwa',this)" style="padding:7px 18px;border:none;border-left:1px solid var(--border2);font-size:12px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text2);font-family:'Sarabun',sans-serif;">💧 MWA ค่าน้ำ</button>
   </div>
   <span style="font-size:11px;color:var(--text3);margin-left:4px;" id="ut-account-label">บัญชี 012076042</span>
-  <div style="margin-left:auto;display:flex;gap:6px;">
+  <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+    <span id="ut-sync-status" style="font-size:10px;color:var(--text3);"></span>
+    <button class="tbtn" id="ut-sync-btn" onclick="utSyncFromGAS()" style="font-size:11px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);color:#2e7d32;border:1px solid #a5d6a7;font-weight:700;">🔄 Sync จาก Drive</button>
     <button class="tbtn" onclick="utOpenAllGmail()" style="font-size:11px;background:var(--blue-dim);color:var(--blue);border-color:#aac8f8;">📬 เปิด Gmail</button>
     <button class="tbtn" onclick="utOpenPdfModal()" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📄 ดึงข้อมูลจาก PDF</button>
     <button class="tbtn" onclick="utOpenImportModal()" style="font-size:11px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;">📥 Import JSON</button>
@@ -8218,6 +8220,10 @@ var _utCharts = {};
 var _utCurrentTab = 'mea';
 var _utEditKey = null;
 var _UT_STORE = 'jres_utility_v2';
+// Google Apps Script Web App URL — วาง URL หลัง Deploy
+var _UT_GAS_URL = localStorage.getItem('jres_gas_url') || '';
+var _UT_SYNC_KEY = 'jres_utility_last_sync';
+var _UT_SYNC_MIN_INTERVAL = 5 * 60 * 1000; // 5 นาที debounce
 
 // ── Gmail message IDs ──────────────────────────────
 var _UT_MEA_EMAILS = {
@@ -8729,6 +8735,8 @@ function _utInitMwaCharts() {
       _utRenderMEA();
       _utRenderMWA();
       setTimeout(_utInitMeaCharts, 60);
+      // Auto-sync จาก GAS ถ้ามี URL configured (debounce 5 นาที)
+      if (_UT_GAS_URL) setTimeout(function(){ utSyncFromGAS(); }, 200);
     }
     if (id === 'staff') {
       setTimeout(hrInit, 100);
@@ -9518,6 +9526,147 @@ function utPdfSaveAll() {
   document.getElementById('ut-pdf-modal').style.display = 'none';
   toast('✅ บันทึกข้อมูลจาก PDF สำเร็จ ' + saved + ' รายการ', 'ok');
 }
+
+// ══════════════════════════════════════════════════════════════
+// SYNC FROM GOOGLE APPS SCRIPT WEB APP
+// ══════════════════════════════════════════════════════════════
+var _utSyncing = false;
+
+function utSyncFromGAS(force) {
+  if (_utSyncing) return;
+
+  // Check if URL is configured
+  if (!_UT_GAS_URL) {
+    utConfigGasUrl();
+    return;
+  }
+
+  // Debounce: ไม่ sync ถี่กว่า 5 นาที (ยกเว้น force)
+  if (!force) {
+    var lastSync = parseInt(localStorage.getItem(_UT_SYNC_KEY) || '0');
+    if (Date.now() - lastSync < _UT_SYNC_MIN_INTERVAL) {
+      var ago = Math.round((Date.now() - lastSync) / 60000);
+      toast('⏳ Sync ล่าสุด ' + ago + ' นาทีที่แล้ว — รอ 5 นาที', 'warn');
+      return;
+    }
+  }
+
+  _utSyncing = true;
+  var btn = document.getElementById('ut-sync-btn');
+  var status = document.getElementById('ut-sync-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลัง Sync...'; }
+  if (status) status.textContent = 'กำลังดึงข้อมูลจาก Drive...';
+
+  var url = _UT_GAS_URL + (force ? '?refresh=1' : '');
+
+  fetch(url)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(resp) {
+      if (!resp.ok || !resp.data) throw new Error('Invalid response');
+
+      var incoming = resp.data;
+      var stored = _utLoad();
+      var updated = 0, skipped = 0;
+
+      Object.keys(incoming).forEach(function(key) {
+        var vals = incoming[key];
+        if (!vals || typeof vals !== 'object') return;
+        var normKey = key.replace(/\s/g, '_');
+        var existing = stored[normKey] || {};
+        var changed = false;
+
+        Object.keys(vals).forEach(function(field) {
+          var v = vals[field];
+          if (v !== null && v !== '' && v !== undefined) {
+            if (!existing[field] || existing[field] !== String(v)) {
+              existing[field] = String(v);
+              changed = true;
+            }
+          }
+        });
+
+        // Auto-calc
+        if (existing.offpeak && existing.onpeak) {
+          var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
+          if (tot > 0) existing.totalUnits = tot;
+        }
+        if (existing.meterOld && existing.meterNew && !existing.units) {
+          var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
+          if (u > 0) existing.units = u;
+        }
+
+        if (changed) { stored[normKey] = existing; updated++; } else { skipped++; }
+      });
+
+      _utSave(stored);
+      localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
+
+      // Re-render
+      _utRenderMEA(); _utRenderMWA();
+      setTimeout(_utInitMeaCharts, 50);
+      setTimeout(_utInitMwaCharts, 100);
+
+      // Update KPI
+      _utUpdateMwaKpi(stored);
+
+      var syncTime = new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+      if (status) status.textContent = 'sync: ' + syncTime;
+      toast('✅ Sync สำเร็จ — อัปเดต ' + updated + ' รายการ (ข้าม ' + skipped + ')', 'ok');
+    })
+    .catch(function(err) {
+      if (status) status.textContent = '';
+      if (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1) {
+        toast('❌ เชื่อมต่อ Apps Script ไม่ได้ — ตรวจสอบ URL และ Deploy', 'err');
+      } else {
+        toast('❌ Sync ล้มเหลว: ' + err.message, 'err');
+      }
+      console.error('GAS sync error:', err);
+    })
+    .finally(function() {
+      _utSyncing = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = '🔄 Sync จาก Drive'; }
+    });
+}
+
+// ── Config GAS URL ──────────────────────────────────────────
+function utConfigGasUrl() {
+  var current = _UT_GAS_URL || '';
+  var url = prompt(
+    '🔗 วาง Google Apps Script Web App URL\n\n'
+    + 'วิธีได้ URL:\n'
+    + '1. เปิด Apps Script → Deploy → Manage deployments\n'
+    + '2. New deployment → Web app\n'
+    + '3. Execute as: Me / Access: Anyone\n'
+    + '4. Copy URL มาวางที่นี่\n\n'
+    + 'ตัวอย่าง: https://script.google.com/macros/s/AKfyc.../exec',
+    current
+  );
+  if (url && url.trim()) {
+    url = url.trim();
+    if (url.indexOf('script.google.com') === -1) {
+      toast('❌ URL ไม่ถูกต้อง — ต้องเป็น script.google.com', 'err');
+      return;
+    }
+    _UT_GAS_URL = url;
+    localStorage.setItem('jres_gas_url', url);
+    toast('✅ บันทึก Apps Script URL แล้ว', 'ok');
+    // Sync immediately
+    utSyncFromGAS(true);
+  }
+}
+
+// ── Show last sync time on load ─────────────────────────────
+(function() {
+  var lastSync = parseInt(localStorage.getItem(_UT_SYNC_KEY) || '0');
+  if (lastSync > 0) {
+    var d = new Date(lastSync);
+    var el = document.getElementById('ut-sync-status');
+    if (el) el.textContent = 'sync: ' + d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+  }
+})();
 
 console.log('✅ J.Residence Billing v4 loaded');
 </script>

@@ -8,15 +8,78 @@
  *  วิธีใช้:
  *  1. วางโค้ดนี้ใน Google Apps Script project เดียวกับ runAll()
  *  2. รัน runAll() ก่อน (ให้ PDFs ถูกบันทึกใน Drive แล้ว)
- *  3. เลือก "extractAll" → ▶ Run
- *  4. เปิด Execution Log → copy JSON → วางใน Dashboard "📥 Import JSON"
+ *  3. Deploy → Manage deployments → New → Web app
+ *     - Execute as: Me
+ *     - Who has access: Anyone
+ *  4. Copy Web App URL → วางใน Dashboard (ระบบ sync อัตโนมัติ)
  *
+ *  หรือรัน "extractAll" ด้วยมือเพื่อดู JSON ใน Log
  *  หรือรัน "extractToSheet" เพื่อ export เป็น Google Sheet
  * ════════════════════════════════════════════════════════════════
  */
 
 // ── Root folder name (ต้องตรงกับ ROOT_NAME ใน runAll script) ──
 var EXTRACT_ROOT_NAME = '📁 J.Residence — สาธารณูปโภค';
+
+// Cache expiry: 30 minutes (ไม่ต้อง OCR ใหม่ทุกครั้ง)
+var CACHE_KEY = 'jres_utility_extract_v1';
+var CACHE_TTL = 1800; // seconds
+
+// ══════════════════════════════════════════════════════════════
+//  WEB APP ENDPOINT — Dashboard เรียกผ่าน fetch()
+//  Deploy → Web app → Execute as: Me → Access: Anyone
+// ══════════════════════════════════════════════════════════════
+function doGet(e) {
+  var forceRefresh = e && e.parameter && e.parameter.refresh === '1';
+  var data;
+
+  if (!forceRefresh) {
+    // Try cache first
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(CACHE_KEY);
+    if (cached) {
+      try {
+        data = JSON.parse(cached);
+      } catch(ex) {
+        data = null;
+      }
+    }
+  }
+
+  if (!data) {
+    // Extract fresh data from PDFs
+    data = extractAll();
+    // Save to cache (split if > 100KB — CacheService limit)
+    try {
+      var json = JSON.stringify(data);
+      if (json.length < 100000) {
+        CacheService.getScriptCache().put(CACHE_KEY, json, CACHE_TTL);
+      }
+    } catch(ex) {
+      Logger.log('Cache save failed: ' + ex.message);
+    }
+  }
+
+  // Return JSON with CORS headers
+  var output = ContentService
+    .createTextOutput(JSON.stringify({
+      ok: true,
+      ts: new Date().toISOString(),
+      count: data ? Object.keys(data).length : 0,
+      data: data || {}
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+
+  return output;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Clear cache (run manually after adding new PDFs)
+// ══════════════════════════════════════════════════════════════
+function clearCache() {
+  CacheService.getScriptCache().remove(CACHE_KEY);
+  Logger.log('✅ Cache cleared — next doGet() will re-extract from PDFs');
+}
 
 // ══════════════════════════════════════════════════════════════
 //  MAIN — Extract all PDF data and output JSON
