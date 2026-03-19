@@ -5899,8 +5899,8 @@ async function loadResRooms(){
   }
   if(grid)grid.innerHTML=empty.map(function(r){
     const bedTxt=r.bed_type==='5ft'?'5ฟุต':r.bed_type==='twin'?'คู่':'6ฟุต';
-    return '<div class="ci-rcard ci-monthly" onclick="selectResRoom(''+r.room+'',this)" data-room="'+r.room+'" style="padding:8px 4px;border:1.5px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;">'+
-      '<div style="font-size:14px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">'+r.room+'</div>'+
+    return '<div class="ci-rcard ci-monthly" onclick="selectResRoom(\''+r.room+'\',this)" data-room="'+r.room+'" style="padding:8px 4px;border:1.5px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;">'+
+      '<div style="font-size:14px;font-weight:800;color:var(--success);font-family:JetBrains Mono,monospace;">'+r.room+'</div>'+
       '<div style="font-size:9px;color:var(--text3);margin-top:2px;">'+bedTxt+'</div>'+
     '</div>';
   }).join('');
