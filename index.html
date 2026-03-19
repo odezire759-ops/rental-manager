@@ -8342,9 +8342,14 @@ function _utInitMwaCharts() {
   window.showSec = function(id, btn) {
     if (_origShowSec) _origShowSec(id, btn);
     if (id === 'utility') {
+      // render tables immediately
       _utRenderMEA();
       _utRenderMWA();
-      setTimeout(_utInitMeaCharts, 60);
+      // delay chart init ให้ section display:block ก่อน (Chart.js ต้องการ visible canvas)
+      setTimeout(function(){
+        _utInitMeaCharts();
+        _utInitMwaCharts();
+      }, 120);
     }
   };
 })();
