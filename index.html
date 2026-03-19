@@ -9778,8 +9778,12 @@ function hrRender() {
   } else {
     if (grid) grid.innerHTML = recs.map(function(r) {
       var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
-      var wage = emp.daily_wage || r.daily_wage || 0;
-      var wageTotal = r.days * wage;
+      var empSupa2 = _hrEmployees.find(function(e){return e.uid===r.user_id;}) || {};
+      var attRec2 = _hrAttendance.find(function(a){return a.uid===r.user_id&&a.year_month===month;});
+      // ใช้ค่าแรงจาก attendance record ของเดือนนั้น (เก็บแยกตามเดือน)
+      // ถ้าไม่มีค่อย fallback ไป hr_employees
+      var wage = (attRec2 && attRec2.daily_wage) ? attRec2.daily_wage : (empSupa2.daily_wage || emp.daily_wage || r.daily_wage || 0);
+      var wageTotal = (attRec2 && attRec2.wage_total) ? attRec2.wage_total : (r.days * wage);
       var pct = Math.min(100, Math.round(r.days/26*100));
       var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
       var hoursDisplay = r.hours > 0 ? r.hours.toFixed(1)+' ชม.' : r.days+' วัน';
@@ -9814,10 +9818,11 @@ function hrRender() {
     tb.innerHTML = recs.map(function(r) {
       var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
       var empSupa = empLookupHr[r.user_id] || {};
-      var wage = empSupa.daily_wage || emp.daily_wage || r.daily_wage || 0;
       var attRec = _hrAttendance.find(function(a){return a.uid===r.user_id&&a.year_month===month;});
+      // ใช้ค่าแรงจาก attendance record ของเดือนนั้น ถ้าไม่มีค่อย fallback
+      var wage = (attRec && attRec.daily_wage) ? attRec.daily_wage : (empSupa.daily_wage || emp.daily_wage || r.daily_wage || 0);
       var bonus = attRec ? (attRec.bonus||0) : (empSupa.bonus||0);
-      var wageTotal = r.days * wage + bonus;
+      var wageTotal = (attRec && attRec.wage_total) ? attRec.wage_total : (r.days * wage + bonus);
       total_wage += wageTotal; total_days += r.days; total_bonus += bonus;
       var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
       return '<tr>'
@@ -10022,6 +10027,8 @@ async function saveEmployee(idx) {
     // highlight row briefly
     var row = document.getElementById('hr-emp-row-'+idx);
     if(row){row.style.background='#e8f5e9';setTimeout(function(){row.style.background='';},1200);}
+    // re-render เพื่ออัพเดตค่าแรงในตารางทันที
+    hrRender();
   } catch(e) {
     toast('บันทึกไม่สำเร็จ: '+e.message,'err');
   }
@@ -10102,8 +10109,8 @@ async function saveHrAttendance() {
 
     // อัพเดต local cache
     var local = _hrAttendance.find(function(r){return r.uid===uid&&r.year_month===month;});
-    if(local){local.days=days;local.hours=hours;local.bonus=bonus;local.note=note;}
-    else _hrAttendance.push({uid,year_month:month,days,hours,bonus,note});
+    if(local){local.days=days;local.hours=hours;local.bonus=bonus;local.note=note;local.daily_wage=emp.daily_wage;local.wage_total=total;}
+    else _hrAttendance.push({uid:uid,year_month:month,days:days,hours:hours,bonus:bonus,note:note,daily_wage:emp.daily_wage,wage_total:total});
 
     // อัพเดต _HR_DATA.records
     var lr = _HR_DATA.records.find(function(r){return r.user_id===uid&&r.year_month===month;});
