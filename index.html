@@ -9628,7 +9628,8 @@ function utSyncFromGAS(force) {
     })
     .then(function(resp) {
       console.log('[UT-SYNC] Response ok:', resp.ok, '| count:', resp.count, '| keys:', Object.keys(resp.data||{}).join(', '));
-      if (!resp.ok || !resp.data) throw new Error('Invalid response: ' + JSON.stringify(resp).substring(0,200));
+      if (!resp.ok) throw new Error(resp.error || 'Apps Script error');
+      if (!resp.data) throw new Error('Invalid response: no data');
 
       var incoming = resp.data;
       // Log first mea key for quick verification

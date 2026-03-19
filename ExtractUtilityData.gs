@@ -1,9 +1,9 @@
 /**
- * ════════════════════════════════════════════════════════════════
+ * ================================================================
  *  J.Residence — Extract MEA/MWA Data from PDFs in Google Drive
  *  อ่านข้อมูลจาก PDF ใบแจ้งหนี้/ใบเสร็จ แล้ว output เป็น JSON
  *  สำหรับ import เข้า Dashboard (sec-utility)
- * ════════════════════════════════════════════════════════════════
+ * ================================================================
  *
  *  วิธีใช้:
  *  1. วางโค้ดนี้ใน Google Apps Script project เดียวกับ runAll()
@@ -15,79 +15,492 @@
  *
  *  หรือรัน "extractAll" ด้วยมือเพื่อดู JSON ใน Log
  *  หรือรัน "extractToSheet" เพื่อ export เป็น Google Sheet
- * ════════════════════════════════════════════════════════════════
+ * ================================================================
  */
 
 // ── Root folder name (ต้องตรงกับ ROOT_NAME ใน runAll script) ──
 var EXTRACT_ROOT_NAME = '📁 J.Residence — สาธารณูปโภค';
+var MEA_FOLDER_NAME   = '⚡ MEA — การไฟฟ้านครหลวง (012076042)';
+var MWA_FOLDER_NAME   = '💧 MWA — การประปานครหลวง (74475021)';
 
 // Cache expiry: 30 minutes (ไม่ต้อง OCR ใหม่ทุกครั้ง)
 var CACHE_KEY = 'jres_utility_extract_v1';
 var CACHE_TTL = 1800; // seconds
 
-// ══════════════════════════════════════════════════════════════
-//  WEB APP ENDPOINT — Dashboard เรียกผ่าน fetch()
-//  Deploy → Web app → Execute as: Me → Access: Anyone
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
+//  DOWNLOAD FROM GMAIL → DRIVE
+//  แก้ปัญหา Gmail threading: วน ALL messages ใน ALL threads
+//  รัน downloadFromGmail() เพื่อดึง PDF ที่ขาดหายจาก Gmail
+// ==============================================================
+function downloadFromGmail() {
+  Logger.log('======================================');
+  Logger.log(' Download MEA/MWA PDFs: Gmail → Drive');
+  Logger.log(' (iterates ALL messages in ALL threads)');
+  Logger.log('======================================\n');
+
+  var rootFolder = getOrCreateFolder_(null, EXTRACT_ROOT_NAME);
+  var meaRoot    = getOrCreateFolder_(rootFolder, MEA_FOLDER_NAME);
+  var mwaRoot    = getOrCreateFolder_(rootFolder, MWA_FOLDER_NAME);
+
+  var stats = { saved: 0, skipped: 0, noDate: 0, err: 0 };
+
+  // ── Search configs ──────────────────────────────────────────
+  // จำกัดปี 2567-2569 (ค.ศ. 2024-01-01 ถึง 2027-01-01) เพื่อหลีกเลี่ยง timeout
+  var searches = [
+    { query: '012076042 has:attachment after:2023/12/31 before:2027/01/01', type: 'mea', root: meaRoot, label: 'MEA' },
+    { query: '74475021 has:attachment after:2023/12/31 before:2027/01/01',  type: 'mwa', root: mwaRoot, label: 'MWA' }
+  ];
+
+  var startTime = Date.now();
+  var MAX_MS = 5 * 60 * 1000; // หยุดก่อน 5 นาที (limit 6 นาที)
+
+  searches.forEach(function(cfg) {
+    Logger.log('🔍 Searching Gmail: "' + cfg.query + '"');
+    var threads = GmailApp.search(cfg.query, 0, 500);
+    Logger.log('   พบ ' + threads.length + ' threads\n');
+
+    threads.forEach(function(thread) {
+      // หยุดถ้าใกล้ timeout
+      if (Date.now() - startTime > MAX_MS) {
+        Logger.log('  ⏱ หยุดก่อน timeout — รัน downloadFromGmail() อีกครั้งเพื่อต่อ');
+        return;
+      }
+      // ── วน EVERY message ใน thread (แก้ปัญหา threading) ──
+      var messages = thread.getMessages();
+      messages.forEach(function(msg) {
+        var subject = msg.getSubject();
+        var msgDate = msg.getDate();
+
+        msg.getAttachments().forEach(function(att) {
+          // PDF เท่านั้น
+          if (att.getContentType().indexOf('pdf') === -1 &&
+              !att.getName().match(/\.pdf$/i)) return;
+
+          // Detect month/year จาก subject + filename + email date
+          var info = detectMonthFromGmail_(subject, att.getName(), msgDate);
+          if (!info) {
+            Logger.log('  ⚠ ไม่พบเดือน: ' + att.getName().substring(0,40)
+                       + ' | subject: ' + subject.substring(0,50));
+            stats.noDate++;
+            return;
+          }
+
+          // ตัดสินใจ Invoice vs Receipt
+          // MWA = Receipt เสมอ (subject มีคำ "Invoice" แต่จริงๆ คือ e-Receipt)
+          var fileType = (cfg.type === 'mwa') ? 'Receipt' : detectFileType_(subject, att.getName());
+
+          // สร้างชื่อไฟล์
+          var mo2 = info.month < 10 ? '0'+info.month : String(info.month);
+          var fileName = cfg.label + '_' + fileType + '_'
+                       + info.thShort.replace(/\./g,'') + '_' + info.year
+                       + '_' + mo2 + '.pdf';
+
+          // หาหรือสร้าง folder: root/year/MM_thShort
+          var yearFolder  = getOrCreateFolder_(cfg.root, String(info.year));
+          var moFolderName = mo2 + '_' + info.thShort;
+          var monthFolder  = getOrCreateFolder_(yearFolder, moFolderName);
+
+          // Skip ถ้ามีไฟล์ชื่อเดียวกันอยู่แล้ว
+          if (monthFolder.getFilesByName(fileName).hasNext()) {
+            stats.skipped++;
+            return;
+          }
+
+          // บันทึกลง Drive
+          try {
+            monthFolder.createFile(att.copyBlob().setName(fileName));
+            Logger.log('  ✅ [' + info.thShort + ' ' + info.year + '] ' + fileName);
+            stats.saved++;
+          } catch(e) {
+            Logger.log('  ❌ ' + fileName + ': ' + e.message);
+            stats.err++;
+          }
+        });
+      });
+    });
+    Logger.log('');
+  });
+
+  Logger.log('======================================');
+  Logger.log(' สรุป: บันทึก ' + stats.saved
+    + ' | ข้าม (มีอยู่แล้ว) ' + stats.skipped
+    + ' | ไม่พบเดือน ' + stats.noDate
+    + ' | ผิดพลาด ' + stats.err);
+  Logger.log('======================================');
+  Logger.log('\n▶ รัน extractAll() หรือ clearCache() + doGet เพื่ออัปเดต Dashboard');
+}
+
+// ── ตรวจจับเดือน/ปี จาก email subject + attachment filename + email date ──
+function detectMonthFromGmail_(subject, filename, msgDate) {
+  var TH_SHORT = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                      'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // Pattern 1: MWA subject "(วันที่ 15/10/2568)"
+  var m = subject.match(/วันที่\s+(\d{1,2})\/(\d{1,2})\/(25\d{2})/);
+  if (m) {
+    var mo = parseInt(m[2]), yr = parseInt(m[3]);
+    if (mo >= 1 && mo <= 12) return { month: mo, year: yr, thShort: TH_SHORT[mo] };
+  }
+
+  // Pattern 2: attachment filename "25681015_xxx.pdf" → YYYYMMDD
+  var fn = filename.match(/^(25\d{2})(\d{2})(\d{2})/);
+  if (fn) {
+    var yr = parseInt(fn[1]), mo = parseInt(fn[2]);
+    if (mo >= 1 && mo <= 12) return { month: mo, year: yr, thShort: TH_SHORT[mo] };
+  }
+
+  // Pattern 3: any DD/MM/YYYY (Buddhist) in subject
+  var m2 = subject.match(/(\d{1,2})\/(\d{1,2})\/(25\d{2})/);
+  if (m2) {
+    var mo = parseInt(m2[2]), yr = parseInt(m2[3]);
+    if (mo >= 1 && mo <= 12) return { month: mo, year: yr, thShort: TH_SHORT[mo] };
+  }
+
+  // Pattern 4: MEA subject "ประจำเดือน MM/YY" or "MM/2568"
+  var m3 = subject.match(/(\d{1,2})\/(25\d{2})/);
+  if (m3) {
+    var mo = parseInt(m3[1]), yr = parseInt(m3[2]);
+    if (mo >= 1 && mo <= 12) return { month: mo, year: yr, thShort: TH_SHORT[mo] };
+  }
+
+  // Fallback: ใช้ email date (แปลง ค.ศ. → พ.ศ.)
+  if (msgDate) {
+    var mo = msgDate.getMonth() + 1;
+    var yr = msgDate.getFullYear() + 543;
+    return { month: mo, year: yr, thShort: TH_SHORT[mo] };
+  }
+
+  return null;
+}
+
+// ── Invoice vs Receipt ──────────────────────────────────────────
+function detectFileType_(subject, filename) {
+  var txt = (subject + ' ' + filename).toLowerCase();
+  if (/invoice|ใบแจ้งหนี้|tax\s*invoice/.test(txt)) return 'Invoice';
+  return 'Receipt'; // MWA e-Tax = Receipt by default
+}
+
+// ── Get or create Drive folder ──────────────────────────────────
+function getOrCreateFolder_(parent, name) {
+  var iter = parent ? parent.getFoldersByName(name)
+                    : DriveApp.getFoldersByName(name);
+  if (iter.hasNext()) return iter.next();
+  return parent ? parent.createFolder(name) : DriveApp.createFolder(name);
+}
+
+// ==============================================================
+//  WEB APP ENDPOINT — อ่านจาก Drive JSON file (เร็ว, ไม่ run OCR)
+//  OCR ทำแยกต่างหากด้วย extractAndSave() แล้วเก็บไว้เป็นไฟล์
+// ==============================================================
+var DATA_FILE_NAME = 'jres_utility_data.json';
+
 function doGet(e) {
-  var forceRefresh = e && e.parameter && e.parameter.refresh === '1';
-  var data;
+  // 1. ลอง CacheService ก่อน (30 นาที)
+  var data = cacheLoad_();
 
-  if (!forceRefresh) {
-    // Try cache first
-    var cache = CacheService.getScriptCache();
-    var cached = cache.get(CACHE_KEY);
-    if (cached) {
-      try {
-        data = JSON.parse(cached);
-      } catch(ex) {
-        data = null;
-      }
-    }
-  }
-
+  // 2. ถ้าไม่มี cache → อ่าน Drive JSON file
   if (!data) {
-    // Extract fresh data from PDFs
-    data = extractAll();
-    // Save to cache (split if > 100KB — CacheService limit)
-    try {
-      var json = JSON.stringify(data);
-      if (json.length < 100000) {
-        CacheService.getScriptCache().put(CACHE_KEY, json, CACHE_TTL);
-      }
-    } catch(ex) {
-      Logger.log('Cache save failed: ' + ex.message);
-    }
+    data = loadFromDriveFile_();
+    if (data) cacheSave_(data); // warm up cache
   }
 
-  // Return JSON with CORS headers
-  var output = ContentService
+  // 3. ถ้ายังไม่มีเลย → แจ้งให้รัน extractAndSave()
+  if (!data) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        error: 'ยังไม่มีข้อมูล — รัน extractAndSave() ใน Apps Script ก่อน',
+        data: {}
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return ContentService
     .createTextOutput(JSON.stringify({
       ok: true,
       ts: new Date().toISOString(),
-      count: data ? Object.keys(data).length : 0,
-      data: data || {}
+      count: Object.keys(data).length,
+      data: data
     }))
     .setMimeType(ContentService.MimeType.JSON);
-
-  return output;
 }
 
-// ══════════════════════════════════════════════════════════════
-//  Clear cache (run manually after adding new PDFs)
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
+//  EXTRACT + SAVE — รัน manually หลังได้รับ PDF ใหม่
+//  OCR ทุกไฟล์แล้วบันทึกเป็น JSON ไว้ใน Drive
+//  (อาจใช้เวลานาน ถ้า timeout ให้รันซ้ำ — ผลลัพธ์สะสม)
+// ==============================================================
+function extractAndSave() {
+  Logger.log('== extractAndSave: start ==');
+
+  // โหลดข้อมูลเก่าจาก Drive ไว้ก่อน (เพื่อ merge ไม่ใช่ overwrite)
+  var existing = loadFromDriveFile_() || {};
+  var startTime = Date.now();
+  var MAX_MS = 5 * 60 * 1000; // หยุดก่อน timeout ที่ 5 นาที
+
+  var stats = { total: 0, success: 0, fail: 0, skipped: 0, timedOut: false };
+
+  var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+  if (!roots.hasNext()) {
+    Logger.log('ไม่พบ folder: ' + EXTRACT_ROOT_NAME);
+    return;
+  }
+  var rootFolder = roots.next();
+
+  var configs = [
+    { folderName: MEA_FOLDER_NAME, type: 'mea', label: 'MEA' }
+    // MWA: ปิดชั่วคราว รัน extractAndSaveMWA() แยกต่างหาก
+  ];
+
+  configs.forEach(function(cfg) {
+    var folders = rootFolder.getFoldersByName(cfg.folderName);
+    if (!folders.hasNext()) return;
+    var utilRoot = folders.next();
+    Logger.log('\nProcessing ' + cfg.label + '...');
+
+    var yearFolders = utilRoot.getFolders();
+    while (yearFolders.hasNext()) {
+      var yearFolder = yearFolders.next();
+      var monthFolders = yearFolder.getFolders();
+      while (monthFolders.hasNext()) {
+        var monthFolder = monthFolders.next();
+        var files = monthFolder.getFiles();
+        while (files.hasNext()) {
+          var file = files.next();
+          if (file.getMimeType() !== 'application/pdf') continue;
+
+          // หยุดถ้าใกล้ timeout
+          if (Date.now() - startTime > MAX_MS) {
+            Logger.log('\nหยุดก่อน timeout — บันทึกผลที่ได้แล้ว รันซ้ำเพื่อ process ไฟล์ที่เหลือ');
+            stats.timedOut = true;
+            break;
+          }
+
+          // Skip ถ้าเดือนนี้มี amount อยู่แล้ว (ไม่ต้อง OCR ซ้ำ)
+          var quickKey = detectMonthKey_(file.getName(), '', cfg.type);
+          if (quickKey && existing[quickKey] && existing[quickKey].amount) {
+            stats.skipped++;
+            continue;
+          }
+
+          stats.total++;
+          try {
+            var parsed = extractPdfData_(file, cfg.type);
+            if (parsed && parsed.key) {
+              if (parsed.values.offpeak && parsed.values.onpeak &&
+                  parsed.values.offpeak === parsed.values.onpeak) {
+                delete parsed.values.offpeak;
+                delete parsed.values.onpeak;
+                delete parsed.values.totalUnits;
+              }
+              var rec = existing[parsed.key] || {};
+              for (var k in parsed.values) {
+                if (parsed.values[k]) rec[k] = parsed.values[k];
+              }
+              existing[parsed.key] = rec;
+              stats.success++;
+              Logger.log('  OK ' + file.getName());
+            } else {
+              stats.fail++;
+              Logger.log('  SKIP (parse fail): ' + file.getName());
+            }
+          } catch(e) {
+            stats.fail++;
+            Logger.log('  ERR ' + file.getName() + ': ' + e.message);
+          }
+        }
+        if (stats.timedOut) break;
+      }
+      if (stats.timedOut) break;
+    }
+  });
+
+  // บันทึกลง Drive file + warm cache
+  saveToDriveFile_(existing);
+  cacheSave_(existing);
+
+  Logger.log('\n== extractAndSave: done ==');
+  Logger.log('success=' + stats.success + ' fail=' + stats.fail
+    + ' total=' + stats.total
+    + (stats.timedOut ? ' [PARTIAL — run again]' : ' [COMPLETE]'));
+}
+
+// ==============================================================
+//  EXTRACT MWA ONLY (รันแยก หลังจาก extractAndSave() MEA เสร็จ)
+// ==============================================================
+function extractAndSaveMWA() {
+  Logger.log('== extractAndSaveMWA: start ==');
+  var existing = loadFromDriveFile_() || {};
+  var startTime = Date.now();
+  var MAX_MS = 5 * 60 * 1000;
+  var stats = { total: 0, success: 0, fail: 0, timedOut: false };
+
+  var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+  if (!roots.hasNext()) { Logger.log('ไม่พบ root folder'); return; }
+  var rootFolder = roots.next();
+
+  var mwaFolders = rootFolder.getFoldersByName(MWA_FOLDER_NAME);
+  if (!mwaFolders.hasNext()) { Logger.log('ไม่พบ MWA folder'); return; }
+  var mwaRoot = mwaFolders.next();
+
+  var yearFolders = mwaRoot.getFolders();
+  while (yearFolders.hasNext()) {
+    var yearFolder = yearFolders.next();
+    var monthFolders = yearFolder.getFolders();
+    while (monthFolders.hasNext()) {
+      var monthFolder = monthFolders.next();
+      var files = monthFolder.getFiles();
+      while (files.hasNext()) {
+        var file = files.next();
+        if (file.getMimeType() !== 'application/pdf') continue;
+        if (Date.now() - startTime > MAX_MS) {
+          Logger.log('หยุดก่อน timeout — รันซ้ำ');
+          stats.timedOut = true;
+          break;
+        }
+        var qk = detectMonthKey_(file.getName(), '', 'mwa');
+        if (qk && existing[qk] && existing[qk].amount) { stats.skipped++; continue; }
+        stats.total++;
+        try {
+          var parsed = extractPdfData_(file, 'mwa');
+          if (parsed && parsed.key) {
+            var rec = existing[parsed.key] || {};
+            for (var k in parsed.values) {
+              if (parsed.values[k]) rec[k] = parsed.values[k];
+            }
+            existing[parsed.key] = rec;
+            stats.success++;
+            Logger.log('  OK ' + file.getName());
+          } else {
+            stats.fail++;
+            Logger.log('  SKIP: ' + file.getName());
+          }
+        } catch(e) {
+          stats.fail++;
+          Logger.log('  ERR ' + file.getName() + ': ' + e.message);
+        }
+      }
+      if (stats.timedOut) break;
+    }
+    if (stats.timedOut) break;
+  }
+
+  saveToDriveFile_(existing);
+  cacheSave_(existing);
+  Logger.log('== extractAndSaveMWA: done == success=' + stats.success
+    + ' fail=' + stats.fail + (stats.timedOut ? ' [PARTIAL]' : ' [COMPLETE]'));
+}
+
+// ==============================================================
+//  Drive JSON file helpers
+// ==============================================================
+function loadFromDriveFile_() {
+  try {
+    var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+    if (!roots.hasNext()) return null;
+    var folder = roots.next();
+    var files = folder.getFilesByName(DATA_FILE_NAME);
+    if (!files.hasNext()) return null;
+    var content = files.next().getBlob().getDataAsString();
+    return JSON.parse(content);
+  } catch(ex) {
+    return null;
+  }
+}
+
+function saveToDriveFile_(data) {
+  try {
+    var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+    if (!roots.hasNext()) return;
+    var folder = roots.next();
+    var json = JSON.stringify(data, null, 2);
+    // ลบไฟล์เก่าแล้วสร้างใหม่
+    var existing = folder.getFilesByName(DATA_FILE_NAME);
+    while (existing.hasNext()) existing.next().setTrashed(true);
+    folder.createFile(DATA_FILE_NAME, json, 'application/json');
+    Logger.log('Saved ' + DATA_FILE_NAME + ' (' + json.length + ' bytes)');
+  } catch(ex) {
+    Logger.log('saveToDriveFile_ failed: ' + ex.message);
+  }
+}
+
+// ── CacheService helpers (L1 cache, 30 min) ──────────────────
+var CACHE_CHUNK = 90000;
+var CACHE_META  = CACHE_KEY + '_meta';
+
+function cacheSave_(data) {
+  try {
+    var json = JSON.stringify(data);
+    var cache = CacheService.getScriptCache();
+    if (json.length <= CACHE_CHUNK) {
+      cache.put(CACHE_KEY, json, CACHE_TTL);
+      cache.remove(CACHE_META);
+    } else {
+      var chunks = [];
+      for (var i = 0; i < json.length; i += CACHE_CHUNK) {
+        chunks.push(json.substring(i, i + CACHE_CHUNK));
+      }
+      var puts = {};
+      chunks.forEach(function(c, idx) { puts[CACHE_KEY + '_' + idx] = c; });
+      puts[CACHE_META] = String(chunks.length);
+      cache.putAll(puts, CACHE_TTL);
+      cache.remove(CACHE_KEY);
+    }
+  } catch(ex) {}
+}
+
+function cacheLoad_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var meta = cache.get(CACHE_META);
+    if (meta) {
+      var n = parseInt(meta);
+      var keys = [];
+      for (var i = 0; i < n; i++) keys.push(CACHE_KEY + '_' + i);
+      var vals = cache.getAll(keys);
+      return JSON.parse(keys.map(function(k) { return vals[k]||''; }).join(''));
+    }
+    var single = cache.get(CACHE_KEY);
+    return single ? JSON.parse(single) : null;
+  } catch(ex) { return null; }
+}
+
+// ==============================================================
+//  Clear cache + Drive file (force re-extract next time)
+// ==============================================================
 function clearCache() {
-  CacheService.getScriptCache().remove(CACHE_KEY);
-  Logger.log('✅ Cache cleared — next doGet() will re-extract from PDFs');
+  var cache = CacheService.getScriptCache();
+  var meta = cache.get(CACHE_META);
+  if (meta) {
+    var n = parseInt(meta);
+    var keys = [CACHE_META];
+    for (var i = 0; i < n; i++) keys.push(CACHE_KEY + '_' + i);
+    cache.removeAll(keys);
+  }
+  cache.remove(CACHE_KEY);
+  Logger.log('Cache cleared');
 }
 
-// ══════════════════════════════════════════════════════════════
+function clearAll() {
+  clearCache();
+  try {
+    var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+    if (roots.hasNext()) {
+      var f = roots.next().getFilesByName(DATA_FILE_NAME);
+      while (f.hasNext()) f.next().setTrashed(true);
+      Logger.log('Drive file deleted');
+    }
+  } catch(ex) {}
+  Logger.log('clearAll done — run extractAndSave() to rebuild');
+}
+
+// ==============================================================
 //  MAIN — Extract all PDF data and output JSON
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function extractAll() {
-  Logger.log('══════════════════════════════════════');
+  Logger.log('======================================');
   Logger.log(' Extract MEA/MWA Data from PDFs');
-  Logger.log('══════════════════════════════════════\n');
+  Logger.log('======================================\n');
 
   var result = {};
   var stats = { total: 0, success: 0, fail: 0 };
@@ -118,22 +531,22 @@ function extractAll() {
   }
 
   // Output
-  Logger.log('\n══════════════════════════════════════');
+  Logger.log('\n======================================');
   Logger.log(' สรุป: สำเร็จ ' + stats.success + '/' + stats.total + ' ไฟล์');
-  Logger.log('══════════════════════════════════════');
+  Logger.log('======================================');
 
   var json = JSON.stringify(result, null, 2);
-  Logger.log('\n══════════════════════════════════════');
+  Logger.log('\n======================================');
   Logger.log(' JSON สำหรับ Import (copy ทั้งหมดด้านล่าง)');
-  Logger.log('══════════════════════════════════════');
+  Logger.log('======================================');
   Logger.log(json);
 
   return result;
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Process utility folder tree
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function processUtilityFolder_(utilityFolder, type, result, stats) {
   var yearFolders = utilityFolder.getFolders();
   while (yearFolders.hasNext()) {
@@ -180,9 +593,9 @@ function processUtilityFolder_(utilityFolder, type, result, stats) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Extract text from PDF via Drive OCR conversion
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function extractPdfText_(file) {
   // Convert PDF to Google Doc (OCR) temporarily
   var blob = file.getBlob();
@@ -207,9 +620,9 @@ function extractPdfText_(file) {
   return text;
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Extract data from PDF file
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function extractPdfData_(file, type) {
   var fileName = file.getName();
   var text = extractPdfText_(file);
@@ -248,9 +661,9 @@ function extractPdfData_(file, type) {
   };
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Parse MEA PDF text
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function parseMeaText_(text) {
   var data = {};
 
@@ -309,12 +722,14 @@ function parseMeaText_(text) {
   }
 
   // ── วันที่จดมิเตอร์ (Meter Reading Date) ──
-  // MEA PDF: "วันที่อ่านมิเตอร์ Meter Reading Date 31/01/69"
-  // หรือ header table: "วันที่อ่านมิเตอร์ล่าสุด Meter Reading Date 31/01/69"
+  // MEA OCR: column headers appear on one line, values on next line
+  // "Meter Reading Date Last Meter Reading ... ตัวคูณ\n20016690834 28/02/69 603749 ..."
+  // → ต้องใช้ [\s\S] เพื่อข้ามบรรทัด + invoice number (digits) ได้
   var mDatePatterns = [
-    /Meter\s*Reading\s*Date[^\d]{0,15}(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
-    /วันที่อ่านมิเตอร์[^\d]{0,30}(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
-    /วัน(?:ที่)?จดมิเตอร์[^\d]{0,20}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i
+    /Meter\s*Reading\s*Date[\s\S]{1,600}?(\d{1,2}\/\d{1,2}\/\d{2})\b/i,
+    /วันที่อ่านมิเตอร์[\s\S]{1,300}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /วัน(?:ที่)?จดมิเตอร์[\s\S]{1,200}?(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
+    /\b2\d{9,11}\s+(\d{1,2}\/\d{1,2}\/\d{2,4})/
   ];
   for (var i = 0; i < mDatePatterns.length; i++) {
     var m = text.match(mDatePatterns[i]);
@@ -358,9 +773,9 @@ function parseMeaText_(text) {
   return data;
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Parse MWA PDF text
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function parseMwaText_(text) {
   var data = {};
 
@@ -449,9 +864,9 @@ function parseMwaText_(text) {
   return data;
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  Detect month key from filename / text
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function detectMonthKey_(fileName, text, type) {
   var TH_SHORT = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
                       'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -512,9 +927,9 @@ function detectMonthKey_(fileName, text, type) {
   return null;
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  OPTIONAL: Extract to Google Sheet
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function extractToSheet() {
   var result = extractAll();
   if (!result) return;
@@ -550,10 +965,10 @@ function extractToSheet() {
   Logger.log('   ชื่อ: ' + ss.getName());
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  TEST: ทดสอบ OCR + parse กับ PDF ตัวแรกที่เจอ
 //  รัน function นี้แล้วดู Execution Log
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function testExtractSingle() {
   // หาไฟล์ PDF จาก Drive อัตโนมัติ (ไม่ต้องวาง File ID)
   var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
@@ -591,28 +1006,28 @@ function testExtractSingle() {
 
   var text = extractPdfText_(file);
 
-  Logger.log('═══════════════════════════════════════');
+  Logger.log('=======================================');
   Logger.log('  RAW OCR TEXT (' + text.length + ' chars)');
-  Logger.log('═══════════════════════════════════════');
+  Logger.log('=======================================');
   Logger.log(text);
 
-  Logger.log('\n═══════════════════════════════════════');
+  Logger.log('\n=======================================');
   Logger.log('  PARSED MEA RESULT');
-  Logger.log('═══════════════════════════════════════');
+  Logger.log('=======================================');
   var parsed = parseMeaText_(text);
   Logger.log(JSON.stringify(parsed, null, 2));
 
-  Logger.log('\n═══════════════════════════════════════');
+  Logger.log('\n=======================================');
   Logger.log('  MONTH DETECTION');
-  Logger.log('═══════════════════════════════════════');
+  Logger.log('=======================================');
   var monthKey = detectMonthKey_(file.getName(), text, 'mea');
   Logger.log('monthKey: ' + (monthKey || 'NULL — ไม่สามารถระบุเดือน'));
 }
 
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 //  OPTIONAL: Get all Drive File IDs for index.html
 //  (อัปเดต _UT_DRIVE_FILE_IDS ใน dashboard)
-// ══════════════════════════════════════════════════════════════
+// ==============================================================
 function getDriveFileIds() {
   var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
   if (!roots.hasNext()) { Logger.log('❌ ไม่พบ root folder'); return; }
@@ -631,10 +1046,10 @@ function getDriveFileIds() {
     scanFileIds_(mwaFolders.next(), 'MWA', ids);
   }
 
-  Logger.log('══════════════════════════════════════');
+  Logger.log('======================================');
   Logger.log(' Drive File IDs');
   Logger.log(' วาง JSON นี้ใน localStorage key: jres_utility_fids_v1');
-  Logger.log('══════════════════════════════════════');
+  Logger.log('======================================');
   Logger.log(JSON.stringify(ids, null, 2));
   return ids;
 }
