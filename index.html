@@ -393,6 +393,39 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .btn-rc-can{background:#eee;color:#333;}
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:12px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+
+/* ══ NINJA MODE ══ */
+.ninja-blur{filter:blur(7px)!important;user-select:none!important;transition:filter .25s;}
+body.ninja-mode .kval,
+body.ninja-mode #ds-rev-m,body.ninja-mode #ds-rev-d,body.ninja-mode #ds-occ,body.ninja-mode #ds-pend,
+body.ninja-mode #k-rev,body.ninja-mode #k-paid,body.ninja-mode #k-pend,body.ninja-mode #k-elec,body.ninja-mode #k-water,
+body.ninja-mode #dk-rev,body.ninja-mode #dk-nights,body.ninja-mode #dk-today,body.ninja-mode #dk-avg,
+body.ninja-mode #dk-topsrc-sub,
+body.ninja-mode #tx-income,body.ninja-mode #tx-expense,body.ninja-mode #tx-profit,
+body.ninja-mode #iv-unpaid-count,body.ninja-mode #iv-unpaid-amt,body.ninja-mode #iv-overdue-count,body.ninja-mode #iv-overdue-amt,
+body.ninja-mode #iv-paid-count,body.ninja-mode #iv-paid-amt,body.ninja-mode #iv-total-count,body.ninja-mode #iv-total-amt,
+body.ninja-mode #sl-total-amt,body.ninja-mode #vat-total,body.ninja-mode #net-output,body.ninja-mode #net-input,body.ninja-mode #net-result,
+body.ninja-mode .ramt,body.ninja-mode .gcard-price,body.ninja-mode .dprice,body.ninja-mode .ota-price,
+body.ninja-mode .totrow .val,body.ninja-mode .wi-total,
+body.ninja-mode #wi-total,body.ninja-mode #ci-total-price,body.ninja-mode #btotal,body.ninja-mode #etot{
+  filter:blur(7px)!important;user-select:none!important;transition:filter .25s;
+}
+body.ninja-mode .rname,
+body.ninja-mode .gcard-name,body.ninja-mode .drcard-guest,body.ninja-mode .ota-item .ota-name,
+body.ninja-mode .ota-item .ota-det,body.ninja-mode .floor-tag{
+  filter:blur(5px)!important;user-select:none!important;transition:filter .25s;
+}
+body.ninja-mode #mtbody td:nth-child(3),
+body.ninja-mode #mtbody td:nth-child(5),body.ninja-mode #mtbody td:nth-child(6),body.ninja-mode #mtbody td:nth-child(7),body.ninja-mode #mtbody td:nth-child(9),
+body.ninja-mode #ota-recent-tbody td:nth-child(3),
+body.ninja-mode #ota-recent-tbody td:nth-child(8),
+body.ninja-mode #iv-tbody td:nth-child(4),body.ninja-mode #iv-tbody td:nth-child(7),
+body.ninja-mode #iv-unpaid-tbody td:nth-child(2),body.ninja-mode #iv-unpaid-tbody td:nth-child(4),
+body.ninja-mode #btbody td:nth-child(2),body.ninja-mode #btbody td:nth-child(6),
+body.ninja-mode #ci-tbody td:nth-child(4),
+body.ninja-mode #st-tbody td:nth-child(1){
+  filter:blur(6px)!important;user-select:none!important;
+}
 </style>
 </head>
 <body>
@@ -417,7 +450,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
     <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
     <button class="nbtn" onclick="showSec('utility',this)">⚡ สาธารณูปโภค</button>
   </div>
-  <div class="hright"><span id="hdate"></span><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><div class="hbadge">● LIVE</div></div>
+  <div class="hright"><span id="hdate"></span><button id="ninjaBtn" onclick="toggleNinja()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;transition:all .2s;">🥷 Ninja Mode</button><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><div class="hbadge">● LIVE</div></div>
 </div>
 
 <!-- ══ KPI BAR ══ -->
@@ -8066,6 +8099,35 @@ function _utInitMwaCharts() {
     }
   };
 })();
+
+// ══ NINJA MODE ══
+var _ninjaOn = false;
+function toggleNinja(){
+  _ninjaOn = !_ninjaOn;
+  document.body.classList.toggle('ninja-mode', _ninjaOn);
+  var btn = document.getElementById('ninjaBtn');
+  if(btn){
+    btn.innerHTML = _ninjaOn ? '👁 แสดงข้อมูล' : '🥷 Ninja Mode';
+    btn.style.background = _ninjaOn ? 'rgba(212,160,23,.35)' : 'rgba(255,255,255,.12)';
+    btn.style.borderColor = _ninjaOn ? 'rgba(212,160,23,.7)' : 'rgba(255,255,255,.25)';
+    btn.style.color = _ninjaOn ? '#f0c040' : '#fff';
+  }
+  // ซ่อน/แสดงค่าใน KPI bar ด้วย
+  document.querySelectorAll('.kval,.ksub').forEach(function(el){
+    el.style.filter = _ninjaOn ? 'blur(7px)' : '';
+    el.style.userSelect = _ninjaOn ? 'none' : '';
+  });
+  // ซ่อน/แสดงยอดเงินใน floor stats
+  document.querySelectorAll('.floor-stats .fb').forEach(function(el){
+    el.style.filter = _ninjaOn ? 'blur(6px)' : '';
+    el.style.userSelect = _ninjaOn ? 'none' : '';
+  });
+  toast(_ninjaOn ? '🥷 Ninja Mode เปิดแล้ว — ข้อมูลถูกซ่อน' : '👁 แสดงข้อมูลทั้งหมด', 'ok');
+}
+// Shortcut: Ctrl+K / Cmd+K
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key==='k'){ e.preventDefault(); toggleNinja(); }
+});
 
 console.log('✅ J.Residence Billing v4 loaded');
 </script>
