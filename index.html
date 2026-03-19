@@ -400,7 +400,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .ci-type-card.daily:hover,.ci-type-card.daily.sel{border-color:var(--blue);background:#f0f7ff;}
 .ci-type-card.monthly:hover,.ci-type-card.monthly.sel{border-color:var(--success);background:#f0fdf4;}
 
-/* ══ TYPE CHOOSER (shared: แจ้งเข้าพัก + จองห้อง) ══ */
+/* ══ BOOKING TYPE CHOOSER ══ */
 .type-chooser{max-width:720px;margin:0 auto 20px;}
 .type-chooser-title{text-align:center;margin-bottom:16px;}
 .type-chooser-title h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;}
@@ -415,12 +415,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .type-card.daily:hover .tc-title,.type-card.daily.sel .tc-title{color:var(--blue);}
 .type-card.monthly:hover,.type-card.monthly.sel{border-color:var(--success);background:linear-gradient(135deg,#f0fdf4,#e6f9ee);}
 .type-card.monthly:hover .tc-title,.type-card.monthly.sel .tc-title{color:var(--success);}
-.type-card.daily::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:transparent;transition:background .2s;}
+.type-card.daily::before,.type-card.monthly::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:transparent;transition:background .2s;}
 .type-card.daily:hover::before,.type-card.daily.sel::before{background:var(--blue);}
-.type-card.monthly::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:transparent;transition:background .2s;}
 .type-card.monthly:hover::before,.type-card.monthly.sel::before{background:var(--success);}
-
-/* ── Panel header with back button ── */
 .panel-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border);}
 .panel-header .back-btn{padding:6px 14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);font-size:12px;cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .12s;display:flex;align-items:center;gap:4px;}
 .panel-header .back-btn:hover{background:var(--white);border-color:var(--gold);color:var(--gold2);}
@@ -428,19 +425,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .panel-header .panel-badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
 .panel-badge.daily{background:var(--blue-dim);color:var(--blue);}
 .panel-badge.monthly{background:var(--sbg);color:var(--success);}
-
-/* ── Booking room selector ── */
-.broom{padding:8px 4px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;}
-.broom:hover{box-shadow:var(--sh);transform:translateY(-1px);}
-.broom.booked{background:#f8f8f8;border-color:var(--border);color:var(--text3);cursor:not-allowed;opacity:.5;}
-.broom.selected{border:2px solid var(--blue);background:var(--blue-dim);color:var(--blue);font-weight:700;}
-.broom .bnum{font-size:14px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;}
-.broom .bstat{font-size:9px;color:var(--text3);margin-top:1px;}
-.broom.booked .bnum{color:var(--text3);}
-@media(max-width:768px){
-  .type-grid{grid-template-columns:1fr;}
-  .panel-header{flex-wrap:wrap;}
-}
+@media(max-width:768px){.type-grid{grid-template-columns:1fr;}.panel-header{flex-wrap:wrap;}}
 
 /* ══ NINJA MODE ══ */
 body.ninja-mode .kval,
@@ -1038,7 +1023,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 <!-- ═══ BOOKING SECTION — CARD CHOOSER ═══ -->
 <div id="sec-booking" class="sec">
 
-  <!-- STEP 0: เลือกประเภทการจอง (Card Chooser) -->
+  <!-- STEP 0: เลือกประเภท -->
   <div id="bk-chooser" class="type-chooser">
     <div class="type-chooser-title">
       <h3>🛎 เลือกประเภทการจอง</h3>
@@ -1048,20 +1033,12 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
       <div class="type-card daily" id="bk-card-daily" onclick="bkSetType('daily')">
         <span class="tc-icon">📅</span>
         <div class="tc-title">จองรายวัน</div>
-        <div class="tc-desc">
-          Walk-in · Agoda · Booking.com · Traveloka<br>
-          เลือกวันเข้า-ออก · เลือกห้อง · คำนวณราคาอัตโนมัติ<br>
-          เลือกแหล่งที่มา · กรอกชื่อแขก
-        </div>
+        <div class="tc-desc">Walk-in · Agoda · Booking.com · Traveloka<br>เลือกวันเข้า-ออก · เลือกห้อง · คำนวณราคาอัตโนมัติ</div>
       </div>
       <div class="type-card monthly" id="bk-card-monthly" onclick="bkSetType('monthly')">
         <span class="tc-icon">🏠</span>
         <div class="tc-title">จองรายเดือน</div>
-        <div class="tc-desc">
-          จองล่วงหน้าสำหรับผู้เช่ารายเดือน<br>
-          เลือกเดือน · เลือกห้องว่าง · ใส่ข้อมูลผู้เช่า<br>
-          ค่าเช่า · ค่ามัดจำ · ระยะสัญญา
-        </div>
+        <div class="tc-desc">จองล่วงหน้าสำหรับผู้เช่ารายเดือน<br>เลือกเดือน · ห้องว่าง · ค่าเช่า · มัดจำ</div>
       </div>
     </div>
   </div>
@@ -1071,7 +1048,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <div class="panel-header">
       <button class="back-btn" onclick="bkSetType(null)">← กลับ</button>
       <h3>📅 จองห้องพักรายวัน</h3>
-      <span class="panel-badge daily">Walk-in · Agoda · Booking.com · Traveloka</span>
+      <span class="panel-badge daily">Walk-in · OTA</span>
     </div>
     <div class="g2">
       <div class="card">
@@ -1096,8 +1073,8 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
             <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
           </div>
           <div class="fg">
-            <div class="fr"><label>เบอร์โทร</label><input type="tel" id="bphone" placeholder="08x-xxx-xxxx"></div>
-            <div class="fr"><label>หมายเหตุ</label><input type="text" id="bnote" placeholder="เช่น จอดรถ, สัตว์เลี้ยง"></div>
+            <div class="fr"><label>เบอร์โทร</label><input type="tel" placeholder="08x-xxx-xxxx"></div>
+            <div class="fr"><label>หมายเหตุ</label><input type="text" placeholder="เช่น จอดรถ, สัตว์เลี้ยง"></div>
           </div>
           <div class="totrow"><span class="lbl">ยอดรวม (<span id="bnights">1</span> คืน)</span><span class="val" id="btotal">฿ 750</span></div>
           <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;" onclick="submitBooking()">💾 บันทึกการจอง</button>
@@ -1123,7 +1100,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     </div>
     <div class="g2">
       <div class="card">
-        <div class="chdr"><span>🏠 ข้อมูลการจองรายเดือน</span></div>
+        <div class="chdr"><span>🏠 ข้อมูลการจอง</span></div>
         <div class="cbdy">
           <div class="fg">
             <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month"></select></div>
@@ -1148,18 +1125,14 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
             <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
           </div>
           <div class="fg"><div class="fr"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า"></div></div>
-          <div class="totrow"><span class="lbl">ยอดชำระแรกเข้า (มัดจำ)</span><span class="val">฿ 0</span></div>
-          <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;background:linear-gradient(135deg,var(--success),#27ae60);border-color:#27ae60;" onclick="submitReservation()">📝 บันทึกจองรายเดือน</button>
+          <button class="btn bp" style="width:100%;margin-top:10px;padding:10px;background:linear-gradient(135deg,var(--success),#27ae60);border-color:#27ae60;" onclick="submitReservation()">📝 บันทึกจองรายเดือน</button>
         </div>
       </div>
       <div class="card">
         <div class="chdr"><span>📊 สรุปก่อนบันทึก</span></div>
-        <div class="cbdy" id="bk-monthly-summary">
-          <div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div>
-        </div>
+        <div class="cbdy"><div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div></div>
       </div>
     </div>
-    <!-- ตารางจองรายเดือน -->
     <div class="card" style="margin-top:14px;">
       <div class="chdr"><span>📋 รายการจองรายเดือน</span><button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button></div>
       <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ผู้เช่า</th><th>เดือนเริ่ม</th><th>ค่าเช่า</th><th>มัดจำ</th><th>สถานะ</th><th></th></tr></thead><tbody id="res-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
@@ -8533,37 +8506,32 @@ function setCIType(type){
 }
 
 // ══ จองห้อง: Card Chooser ══
-function bkSetType(type) {
-  var chooser = document.getElementById('bk-chooser');
-  var panelD  = document.getElementById('bk-panel-daily');
-  var panelM  = document.getElementById('bk-panel-monthly');
-
-  document.querySelectorAll('#bk-chooser .type-card').forEach(function(c){ c.classList.remove('sel'); });
-
-  if (!type) {
-    chooser.style.display = '';
-    panelD.style.display = 'none';
-    panelM.style.display = 'none';
+function bkSetType(type){
+  var chooser=document.getElementById('bk-chooser');
+  var panelD=document.getElementById('bk-panel-daily');
+  var panelM=document.getElementById('bk-panel-monthly');
+  document.querySelectorAll('#bk-chooser .type-card').forEach(function(c){c.classList.remove('sel');});
+  if(!type){
+    chooser.style.display='';
+    panelD.style.display='none';
+    panelM.style.display='none';
     return;
   }
-
-  var card = document.getElementById('bk-card-' + type);
-  if (card) card.classList.add('sel');
-
-  chooser.style.display = 'none';
-  panelD.style.display  = type === 'daily'   ? '' : 'none';
-  panelM.style.display  = type === 'monthly' ? '' : 'none';
-
-  if (type === 'daily') {
-    var t = new Date().toISOString().split('T')[0];
-    var tm = new Date(Date.now()+86400000).toISOString().split('T')[0];
-    if (!document.getElementById('bci').value) document.getElementById('bci').value = t;
-    if (!document.getElementById('bco').value) document.getElementById('bco').value = tm;
+  var card=document.getElementById('bk-card-'+type);
+  if(card)card.classList.add('sel');
+  chooser.style.display='none';
+  panelD.style.display=type==='daily'?'':'none';
+  panelM.style.display=type==='monthly'?'':'none';
+  if(type==='daily'){
+    var t=new Date().toISOString().split('T')[0];
+    var tm=new Date(Date.now()+86400000).toISOString().split('T')[0];
+    if(!document.getElementById('bci').value)document.getElementById('bci').value=t;
+    if(!document.getElementById('bco').value)document.getElementById('bco').value=tm;
     refreshAvailRooms();
     loadBookings();
     calcBT();
   }
-  if (type === 'monthly') {
+  if(type==='monthly'){
     loadResMonths();
     loadReservations();
   }
