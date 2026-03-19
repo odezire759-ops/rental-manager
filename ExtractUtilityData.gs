@@ -551,22 +551,62 @@ function extractToSheet() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  OPTIONAL: Extract single file (for testing)
+//  TEST: ทดสอบ OCR + parse กับ PDF ตัวแรกที่เจอ
+//  รัน function นี้แล้วดู Execution Log
 // ══════════════════════════════════════════════════════════════
 function testExtractSingle() {
-  // เปลี่ยน fileId เป็น ID ของ PDF ที่ต้องการทดสอบ
-  var fileId = 'PASTE_FILE_ID_HERE';
-  var file = DriveApp.getFileById(fileId);
+  // หาไฟล์ PDF จาก Drive อัตโนมัติ (ไม่ต้องวาง File ID)
+  var roots = DriveApp.getFoldersByName(EXTRACT_ROOT_NAME);
+  if (!roots.hasNext()) { Logger.log('❌ ไม่พบ root folder'); return; }
+  var root = roots.next();
+
+  // หา MEA Invoice ตัวแรก
+  var file = null;
+  var meaFolders = root.getFoldersByName('⚡ MEA — การไฟฟ้านครหลวง (012076042)');
+  if (meaFolders.hasNext()) {
+    var meaRoot = meaFolders.next();
+    var yrs = meaRoot.getFolders();
+    while (yrs.hasNext() && !file) {
+      var yr = yrs.next();
+      var mos = yr.getFolders();
+      while (mos.hasNext() && !file) {
+        var mo = mos.next();
+        var fs = mo.getFiles();
+        while (fs.hasNext()) {
+          var f = fs.next();
+          if (f.getName().toLowerCase().indexOf('invoice') !== -1 && f.getMimeType() === 'application/pdf') {
+            file = f;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (!file) { Logger.log('❌ ไม่พบ MEA Invoice PDF'); return; }
+
+  Logger.log('📄 File: ' + file.getName());
+  Logger.log('   ID: ' + file.getId());
+  Logger.log('   Size: ' + file.getSize() + ' bytes\n');
+
   var text = extractPdfText_(file);
 
-  Logger.log('═══ Raw Text ═══');
+  Logger.log('═══════════════════════════════════════');
+  Logger.log('  RAW OCR TEXT (' + text.length + ' chars)');
+  Logger.log('═══════════════════════════════════════');
   Logger.log(text);
 
-  Logger.log('\n═══ Parsed MEA ═══');
-  Logger.log(JSON.stringify(parseMeaText_(text), null, 2));
+  Logger.log('\n═══════════════════════════════════════');
+  Logger.log('  PARSED MEA RESULT');
+  Logger.log('═══════════════════════════════════════');
+  var parsed = parseMeaText_(text);
+  Logger.log(JSON.stringify(parsed, null, 2));
 
-  Logger.log('\n═══ Parsed MWA ═══');
-  Logger.log(JSON.stringify(parseMwaText_(text), null, 2));
+  Logger.log('\n═══════════════════════════════════════');
+  Logger.log('  MONTH DETECTION');
+  Logger.log('═══════════════════════════════════════');
+  var monthKey = detectMonthKey_(file.getName(), text, 'mea');
+  Logger.log('monthKey: ' + (monthKey || 'NULL — ไม่สามารถระบุเดือน'));
 }
 
 // ══════════════════════════════════════════════════════════════
