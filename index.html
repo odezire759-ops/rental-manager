@@ -1289,27 +1289,70 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
       </div>
     </div>
 
-    <!-- พนักงาน Card Grid -->
-    <div id="hr-staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:14px;"></div>
+    <!-- Tab buttons -->
+    <div id="hr-tab-bar" style="display:flex;gap:0;border-bottom:1px solid #e9d5ff;padding:0 14px;background:#faf5ff;">
+      <button id="hr-tab-month-btn" onclick="hrSwitchView('month')" style="padding:8px 16px;border:none;border-bottom:3px solid #7b1fa2;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#7b1fa2;font-family:'Sarabun',sans-serif;">&#x1F4C5; รายเดือน</button>
+      <button id="hr-tab-history-btn" onclick="hrSwitchView('history')" style="padding:8px 16px;border:none;border-bottom:3px solid transparent;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#999;font-family:'Sarabun',sans-serif;">&#x1F4CA; ย้อนหลัง</button>
+      <button id="hr-tab-person-btn" onclick="hrSwitchView('person')" style="padding:8px 16px;border:none;border-bottom:3px solid transparent;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#999;font-family:'Sarabun',sans-serif;">&#x1F464; รายคน</button>
+    </div>
 
-    <!-- Monthly Detail Table -->
-    <div style="padding:0 14px 14px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">📊 ตารางสรุปรายเดือน</div>
-      <div style="overflow-x:auto;">
-        <table class="dtbl" id="hr-table">
-          <thead><tr>
-            <th>พนักงาน</th><th>สถานที่</th><th>วันที่เข้างาน</th><th>ชั่วโมงรวม</th><th>ค่าจ้าง/วัน</th><th>เบี้ยขยัน</th><th>ค่าจ้างรวม</th><th>เชื่อม LINE</th><th></th>
-          </tr></thead>
-          <tbody id="hr-tbody"></tbody>
-        </table>
+    <!-- VIEW: รายเดือน -->
+    <div id="hr-view-month">
+      <div id="hr-staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:14px;"></div>
+      <div style="padding:0 14px 14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">&#x1F4CA; ตารางสรุปรายเดือน</div>
+        <div style="overflow-x:auto;">
+          <table class="dtbl" id="hr-table">
+            <thead><tr>
+              <th>พนักงาน</th><th>สถานที่</th><th>วันที่เข้างาน</th><th>ชั่วโมงรวม</th><th>ค่าจ้าง/วัน</th><th>เบี้ยขยัน</th><th>ค่าจ้างรวม</th><th>เชื่อม LINE</th><th></th>
+            </tr></thead>
+            <tbody id="hr-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="padding:0 14px 14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">&#x1F4C8; ชั่วโมงทำงานรายเดือน (ทุกคน)</div>
+        <div style="position:relative;height:180px;"><canvas id="hr-trend-chart"></canvas></div>
       </div>
     </div>
 
-    <!-- Trend Chart -->
-    <div style="padding:0 14px 14px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">📈 ชั่วโมงทำงานรายเดือน (ทุกคน)</div>
-      <div style="position:relative;height:180px;"><canvas id="hr-trend-chart"></canvas></div>
+    <!-- VIEW: ย้อนหลังรายเดือน -->
+    <div id="hr-view-history" style="display:none;padding:14px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--text2);">ช่วงเดือน:</span>
+        <select id="hr-hist-from" onchange="hrRenderHistory()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
+        <span style="font-size:12px;color:var(--text3);">ถึง</span>
+        <select id="hr-hist-to" onchange="hrRenderHistory()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
+        <button onclick="hrExportHistory()" style="padding:6px 14px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">&#x2B07; Export Excel</button>
+        <span id="hr-hist-summary" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
+      </div>
+      <div style="overflow-x:auto;"><table class="dtbl">
+        <thead><tr id="hr-hist-header-row"></tr></thead>
+        <tbody id="hr-hist-tbody"></tbody>
+        <tfoot><tr id="hr-hist-footer-row"></tr></tfoot>
+      </table></div>
     </div>
+
+    <!-- VIEW: รายคน -->
+    <div id="hr-view-person" style="display:none;padding:14px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--text2);">พนักงาน:</span>
+        <select id="hr-person-sel" onchange="hrRenderPerson()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"><option value="">— เลือกพนักงาน —</option></select>
+        <span style="font-size:12px;font-weight:700;color:var(--text2);">ช่วงเดือน:</span>
+        <select id="hr-person-from" onchange="hrRenderPerson()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
+        <span style="font-size:12px;color:var(--text3);">ถึง</span>
+        <select id="hr-person-to" onchange="hrRenderPerson()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
+        <button onclick="hrExportPerson()" style="padding:6px 14px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">&#x2B07; Export</button>
+      </div>
+      <div id="hr-person-kpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;"></div>
+      <div style="margin-bottom:14px;position:relative;height:200px;"><canvas id="hr-person-chart"></canvas></div>
+      <div style="overflow-x:auto;"><table class="dtbl">
+        <thead><tr><th>เดือน</th><th>วันทำงาน</th><th>ชั่วโมง</th><th>ค่าจ้าง/วัน</th><th>เบี้ยขยัน</th><th>รวมค่าจ้าง</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="hr-person-tbody"></tbody>
+        <tfoot><tr id="hr-person-footer"></tr></tfoot>
+      </table></div>
+    </div>
+
   </div>
 
   <!-- Leave Requests -->
@@ -9980,18 +10023,21 @@ async function loadHrAttendance() {
     if(data && data.length > 0) {
       _hrAttendance = data.map(function(r) {
         return {uid:r.line_user_id, year_month:r.year_month, days:r.days||0,
-                hours:r.hours||0, bonus:r.attendance_bonus||0, note:r.note||''};
+                hours:r.hours||0, bonus:r.attendance_bonus||0, note:r.note||'',
+                daily_wage:r.daily_wage||0, wage_total:r.wage_total||0};
       });
     } else {
       _hrAttendance = _HR_DATA.records.map(function(r) {
         return {uid:r.user_id, year_month:r.year_month, days:r.days,
-                hours:r.hours||0, bonus:0, note:''};
+                hours:r.hours||0, bonus:0, note:'',
+                daily_wage:r.daily_wage||0, wage_total:r.wage_total||0};
       });
     }
     return _hrAttendance;
   } catch(e) {
     _hrAttendance = _HR_DATA.records.map(function(r) {
-      return {uid:r.user_id, year_month:r.year_month, days:r.days, hours:r.hours||0, bonus:0, note:''};
+      return {uid:r.user_id, year_month:r.year_month, days:r.days, hours:r.hours||0, bonus:0, note:'',
+              daily_wage:r.daily_wage||0, wage_total:r.wage_total||0};
     });
     return _hrAttendance;
   }
@@ -10475,6 +10521,287 @@ async function approveLeave(id, action){
   loadLeaveRequests();
 }
 // showSec hook unified above
+
+// ══════════════════════════════════════════════════════════════
+// HR VIEW SWITCHER
+// ══════════════════════════════════════════════════════════════
+var _hrCurrentView = 'month';
+var _hrPersonChart = null;
+
+function hrSwitchView(view) {
+  _hrCurrentView = view;
+  var views = ['month','history','person'];
+  views.forEach(function(v) {
+    var el = document.getElementById('hr-view-'+v);
+    var btn = document.getElementById('hr-tab-'+v+'-btn');
+    if (el) el.style.display = v===view ? '' : 'none';
+    if (btn) {
+      btn.style.borderBottomColor = v===view ? '#7b1fa2' : 'transparent';
+      btn.style.color = v===view ? '#7b1fa2' : '#999';
+    }
+  });
+  // show/hide month selector
+  var msel = document.getElementById('hr-month-sel');
+  if (msel) msel.style.display = view==='month' ? '' : 'none';
+
+  if (view==='history') { _hrFillRangeSels('hr-hist-from','hr-hist-to'); hrRenderHistory(); }
+  if (view==='person')  { _hrFillPersonSel(); _hrFillRangeSels('hr-person-from','hr-person-to'); hrRenderPerson(); }
+}
+
+function _hrMonthLabel2(m) {
+  var thM=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var p=m.split('-'); return thM[parseInt(p[1])-1]+' '+(parseInt(p[0])+543);
+}
+
+function _hrAllMonths() {
+  // get all unique months from attendance data
+  var months = [];
+  var seen = {};
+  _hrAttendance.forEach(function(r){
+    if (!seen[r.year_month]) { seen[r.year_month]=1; months.push(r.year_month); }
+  });
+  _HR_DATA.records.forEach(function(r){
+    if (!seen[r.year_month]) { seen[r.year_month]=1; months.push(r.year_month); }
+  });
+  return months.sort();
+}
+
+function _hrFillRangeSels(fromId, toId) {
+  var months = _hrAllMonths();
+  if (!months.length) return;
+  var fromSel = document.getElementById(fromId);
+  var toSel   = document.getElementById(toId);
+  if (!fromSel || !toSel) return;
+  var opts = months.map(function(m){ return '<option value="'+m+'">'+_hrMonthLabel2(m)+'</option>'; }).join('');
+  fromSel.innerHTML = opts;
+  toSel.innerHTML   = opts;
+  fromSel.value = months[0];
+  toSel.value   = months[months.length-1];
+}
+
+function _hrFillPersonSel() {
+  var sel = document.getElementById('hr-person-sel');
+  if (!sel) return;
+  var emps = _hrEmployees.length ? _hrEmployees : _HR_DATA.employees.map(function(e){return {uid:e.user_id,name:e.display_name};});
+  // dedupe
+  var seen = {}; var list = [];
+  emps.forEach(function(e){ if(!seen[e.uid]){seen[e.uid]=1;list.push(e);} });
+  sel.innerHTML = '<option value="">— เลือกพนักงาน —</option>'
+    + list.map(function(e){ return '<option value="'+e.uid+'">'+(e.name||e.display_name)+'</option>'; }).join('');
+}
+
+// ══ ย้อนหลัง: ตารางแนวนอน พนักงาน × เดือน ══
+function hrRenderHistory() {
+  var fromM = (document.getElementById('hr-hist-from')||{}).value || '';
+  var toM   = (document.getElementById('hr-hist-to')  ||{}).value || '';
+  if (!fromM || !toM) return;
+
+  // Get months in range
+  var months = _hrAllMonths().filter(function(m){ return m>=fromM && m<=toM; });
+  if (!months.length) { document.getElementById('hr-hist-tbody').innerHTML='<tr><td colspan="99" class="empty">ไม่มีข้อมูล</td></tr>'; return; }
+
+  // Get all employees with data in range
+  var empMap = {};
+  _HR_DATA.records.forEach(function(r){
+    if (months.indexOf(r.year_month)>=0) {
+      if (!empMap[r.user_id]) empMap[r.user_id] = {uid:r.user_id, name:r.display_name, site:r.site||'J.Residence'};
+    }
+  });
+
+  // Build header
+  var hrow = document.getElementById('hr-hist-header-row');
+  if (hrow) hrow.innerHTML = '<th>พนักงาน</th><th>สถานที่</th>'
+    + months.map(function(m){ return '<th style="text-align:center;min-width:70px;">'+_hrMonthLabel2(m)+'<br><span style="font-size:9px;color:#888;font-weight:400;">วัน / ฿</span></th>'; }).join('')
+    + '<th style="background:#f3e8ff;color:#6b21a8;">รวมวัน</th><th style="background:#f3e8ff;color:#6b21a8;">รวมค่าจ้าง</th>';
+
+  var totalDays=0, totalWage=0;
+  var footCols = months.map(function(){ return {days:0,wage:0}; });
+
+  var rows = Object.values(empMap).sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(emp) {
+    var empDays=0, empWage=0;
+    var cells = months.map(function(m, mi) {
+      // get record
+      var rec = _HR_DATA.records.find(function(r){return r.user_id===emp.uid&&r.year_month===m;});
+      var att = _hrAttendance.find(function(a){return a.uid===emp.uid&&a.year_month===m;});
+      var empInfo = _hrEmployees.find(function(e){return e.uid===emp.uid;}) || {daily_wage:0};
+      var days = att ? att.days : (rec ? rec.days : 0);
+      var wage = (att && att.daily_wage) ? att.daily_wage : (rec ? (rec.daily_wage||0) : (empInfo.daily_wage||0));
+      var bonus= att ? (att.bonus||0) : 0;
+      var total= days*wage + bonus;
+      empDays+=days; empWage+=total;
+      footCols[mi].days+=days; footCols[mi].wage+=total;
+      if (!days) return '<td style="text-align:center;color:#ddd;">—</td>';
+      return '<td style="text-align:center;">'
+        +'<div style="font-weight:700;color:#7b1fa2;">'+days+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);">฿'+total.toLocaleString()+'</div>'
+        +'</td>';
+    });
+    totalDays+=empDays; totalWage+=empWage;
+    return '<tr>'
+      +'<td style="font-weight:700;">'+emp.name+'</td>'
+      +'<td><span style="font-size:10px;padding:2px 6px;border-radius:8px;background:#e3f2fd;color:#1565c0;">'+emp.site+'</span></td>'
+      +cells.join('')
+      +'<td style="text-align:center;font-weight:800;color:#7b1fa2;background:#faf5ff;">'+empDays+'</td>'
+      +'<td style="text-align:right;font-weight:800;color:#7b1fa2;background:#faf5ff;">฿'+empWage.toLocaleString()+'</td>'
+      +'</tr>';
+  }).join('');
+
+  document.getElementById('hr-hist-tbody').innerHTML = rows || '<tr><td colspan="99" class="empty">ไม่มีข้อมูล</td></tr>';
+
+  // Footer totals
+  var frow = document.getElementById('hr-hist-footer-row');
+  if (frow) frow.innerHTML = '<td style="font-weight:800;background:#f3e8ff;color:#6b21a8;">รวม</td><td></td>'
+    + footCols.map(function(c){ return '<td style="text-align:center;font-weight:700;background:#f3e8ff;color:#7b1fa2;">'+(c.days?c.days+'<br><span style="font-size:10px;">฿'+c.wage.toLocaleString()+'</span>':'—')+'</td>'; }).join('')
+    + '<td style="font-weight:800;background:#ede9fe;color:#6b21a8;text-align:center;">'+totalDays+'</td>'
+    + '<td style="font-weight:800;background:#ede9fe;color:#6b21a8;text-align:right;">฿'+totalWage.toLocaleString()+'</td>';
+
+  var sumEl = document.getElementById('hr-hist-summary');
+  if (sumEl) sumEl.textContent = months.length+' เดือน · '+Object.keys(empMap).length+' คน · รวม ฿'+totalWage.toLocaleString();
+}
+
+// ══ รายคน: เลือกพนักงาน + ช่วงเดือน ══
+function hrRenderPerson() {
+  var uid    = (document.getElementById('hr-person-sel') ||{}).value || '';
+  var fromM  = (document.getElementById('hr-person-from')||{}).value || '';
+  var toM    = (document.getElementById('hr-person-to')  ||{}).value || '';
+  var kpiEl  = document.getElementById('hr-person-kpi');
+  var tbEl   = document.getElementById('hr-person-tbody');
+  var footEl = document.getElementById('hr-person-footer');
+  if (!uid) { if(kpiEl)kpiEl.innerHTML=''; if(tbEl)tbEl.innerHTML='<tr><td colspan="7" class="empty">เลือกพนักงาน</td></tr>'; return; }
+
+  var months = _hrAllMonths().filter(function(m){ return (!fromM||m>=fromM) && (!toM||m<=toM); });
+  var empInfo = _hrEmployees.find(function(e){return e.uid===uid;}) || {};
+  var empName = empInfo.name || uid;
+
+  var totalDays=0, totalWage=0, totalBonus=0, totalHours=0;
+  var chartLabels=[], chartDays=[], chartWage=[];
+
+  var rows = months.map(function(m) {
+    var rec = _HR_DATA.records.find(function(r){return r.user_id===uid&&r.year_month===m;});
+    var att = _hrAttendance.find(function(a){return a.uid===uid&&a.year_month===m;});
+    var days  = att ? att.days  : (rec ? rec.days  : 0);
+    var hours = att ? att.hours : (rec ? rec.hours||0 : 0);
+    var wage  = (att && att.daily_wage) ? att.daily_wage : (rec ? (rec.daily_wage||0) : (empInfo.daily_wage||0));
+    var bonus = att ? (att.bonus||0) : 0;
+    var total = days*wage + bonus;
+    var note  = att ? (att.note||'') : '';
+    totalDays+=days; totalWage+=total; totalBonus+=bonus; totalHours+=hours;
+    chartLabels.push(_hrMonthLabel2(m)); chartDays.push(days); chartWage.push(total);
+    if (!days && !total) return '';
+    return '<tr>'
+      +'<td style="font-weight:600;">'+_hrMonthLabel2(m)+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:#7b1fa2;">'+days+' วัน</td>'
+      +'<td style="text-align:center;">'+(hours?hours.toFixed(1)+' ชม.':'—')+'</td>'
+      +'<td style="text-align:right;font-family:JetBrains Mono,monospace;">'+(wage?'฿'+wage.toLocaleString():'—')+'</td>'
+      +'<td style="text-align:right;color:#e65100;">'+(bonus?'฿'+bonus.toLocaleString():'—')+'</td>'
+      +'<td style="text-align:right;font-weight:800;color:#7b1fa2;font-family:JetBrains Mono,monospace;">฿'+total.toLocaleString()+'</td>'
+      +'<td style="font-size:11px;color:var(--text3);">'+note+'</td>'
+      +'</tr>';
+  }).filter(Boolean).join('');
+
+  if (tbEl) tbEl.innerHTML = rows || '<tr><td colspan="7" class="empty">ไม่มีข้อมูลในช่วงนี้</td></tr>';
+  if (footEl) footEl.innerHTML = '<td style="font-weight:800;background:#f3e8ff;">รวม '+months.filter(function(m){var r=_hrAttendance.find(function(a){return a.uid===uid&&a.year_month===m;});return r&&r.days>0;}).length+' เดือน</td>'
+    +'<td style="text-align:center;font-weight:800;background:#f3e8ff;color:#7b1fa2;">'+totalDays+' วัน</td>'
+    +'<td style="text-align:center;background:#f3e8ff;">'+(totalHours?totalHours.toFixed(1)+' ชม.':'—')+'</td>'
+    +'<td style="background:#f3e8ff;"></td>'
+    +'<td style="text-align:right;font-weight:700;background:#f3e8ff;color:#e65100;">'+(totalBonus?'฿'+totalBonus.toLocaleString():'—')+'</td>'
+    +'<td style="text-align:right;font-weight:800;background:#ede9fe;color:#6b21a8;font-size:14px;">฿'+totalWage.toLocaleString()+'</td>'
+    +'<td style="background:#f3e8ff;"></td>';
+
+  // KPI cards
+  if (kpiEl) kpiEl.innerHTML = [
+    {l:'👤 พนักงาน',v:empName,c:'var(--purple)',s:''},
+    {l:'📅 วันทำงานรวม',v:totalDays+' วัน',c:'#7b1fa2',s:''},
+    {l:'💵 ค่าแรงรวม',v:'฿'+totalWage.toLocaleString(),c:'#7b1fa2',s:''},
+    {l:'🎁 เบี้ยขยันรวม',v:'฿'+totalBonus.toLocaleString(),c:'#e65100',s:''},
+    {l:'📊 เฉลี่ย/เดือน',v:'฿'+Math.round(totalWage/Math.max(chartWage.filter(function(w){return w>0;}).length,1)).toLocaleString(),c:'#1565c0',s:''}
+  ].map(function(k){
+    return '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:12px;border-top:3px solid '+k.c+';">'
+      +'<div style="font-size:10px;color:var(--text3);">'+k.l+'</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+k.c+';">'+k.v+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Chart
+  var c = document.getElementById('hr-person-chart');
+  if (c && window.Chart) {
+    if (_hrPersonChart) { try{_hrPersonChart.destroy();}catch(e){} }
+    _hrPersonChart = new Chart(c, {
+      type:'bar',
+      data:{labels:chartLabels,datasets:[
+        {label:'วันทำงาน',data:chartDays,backgroundColor:'rgba(123,31,162,0.6)',borderColor:'#7b1fa2',borderWidth:1,borderRadius:3,yAxisID:'y'},
+        {label:'ค่าจ้าง (฿)',data:chartWage,type:'line',borderColor:'#e65100',backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointBackgroundColor:'#e65100',tension:0.3,yAxisID:'y2'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:10}}}},
+        scales:{
+          x:{ticks:{font:{size:10}}},
+          y:{position:'left',ticks:{font:{size:10}},title:{display:true,text:'วัน',font:{size:10}}},
+          y2:{position:'right',grid:{display:false},ticks:{callback:function(v){return '฿'+(v/1000).toFixed(0)+'K';},font:{size:10}}}
+        }
+      }
+    });
+  }
+}
+
+// ══ Export Excel ══
+function hrExportHistory() {
+  var fromM = (document.getElementById('hr-hist-from')||{}).value||'';
+  var toM   = (document.getElementById('hr-hist-to')  ||{}).value||'';
+  var months = _hrAllMonths().filter(function(m){return m>=fromM&&m<=toM;});
+  var headers = ['พนักงาน','สถานที่'].concat(months.map(_hrMonthLabel2)).concat(['รวมวัน','รวมค่าจ้าง']);
+  var rows = [headers];
+  var empMap = {};
+  _HR_DATA.records.forEach(function(r){if(months.indexOf(r.year_month)>=0)empMap[r.user_id]={uid:r.user_id,name:r.display_name,site:r.site||'J.Residence'};});
+  Object.values(empMap).sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(emp){
+    var row=[emp.name,emp.site]; var totalD=0,totalW=0;
+    months.forEach(function(m){
+      var rec=_HR_DATA.records.find(function(r){return r.user_id===emp.uid&&r.year_month===m;});
+      var att=_hrAttendance.find(function(a){return a.uid===emp.uid&&a.year_month===m;});
+      var empI=_hrEmployees.find(function(e){return e.uid===emp.uid;})||{daily_wage:0};
+      var days=att?att.days:(rec?rec.days:0);
+      var wage=(att&&att.daily_wage)?att.daily_wage:(rec?(rec.daily_wage||0):(empI.daily_wage||0));
+      var bonus=att?(att.bonus||0):0;
+      var total=days*wage+bonus;
+      totalD+=days;totalW+=total;
+      row.push(days?days+' วัน / ฿'+total.toLocaleString():'');
+    });
+    row.push(totalD);row.push(totalW);
+    rows.push(row);
+  });
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=headers.map(function(_,i){return{wch:i<2?18:14};});
+  XLSX.utils.book_append_sheet(wb,ws,'HR ย้อนหลัง');
+  XLSX.writeFile(wb,'HR_History_'+fromM+'_to_'+toM+'.xlsx');
+  toast('Export สำเร็จ','ok');
+}
+
+function hrExportPerson() {
+  var uid   = (document.getElementById('hr-person-sel') ||{}).value||'';
+  var fromM = (document.getElementById('hr-person-from')||{}).value||'';
+  var toM   = (document.getElementById('hr-person-to')  ||{}).value||'';
+  if(!uid){toast('เลือกพนักงานก่อน','err');return;}
+  var empInfo=_hrEmployees.find(function(e){return e.uid===uid;})||{name:uid};
+  var months=_hrAllMonths().filter(function(m){return(!fromM||m>=fromM)&&(!toM||m<=toM);});
+  var rows=[['เดือน','วันทำงาน','ชั่วโมง','ค่าจ้าง/วัน','เบี้ยขยัน','รวมค่าจ้าง','หมายเหตุ']];
+  months.forEach(function(m){
+    var rec=_HR_DATA.records.find(function(r){return r.user_id===uid&&r.year_month===m;});
+    var att=_hrAttendance.find(function(a){return a.uid===uid&&a.year_month===m;});
+    var days=att?att.days:(rec?rec.days:0);
+    if(!days)return;
+    var hours=att?att.hours:(rec?rec.hours||0:0);
+    var wage=(att&&att.daily_wage)?att.daily_wage:(rec?(rec.daily_wage||0):(empInfo.daily_wage||0));
+    var bonus=att?(att.bonus||0):0;
+    rows.push([_hrMonthLabel2(m),days,hours||'',wage,bonus||'',days*wage+bonus,(att?att.note:'')||'']);
+  });
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:10},{wch:10},{wch:12},{wch:12},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,empInfo.name||'Employee');
+  XLSX.writeFile(wb,'HR_'+( empInfo.name||uid)+'_'+fromM+'_to_'+toM+'.xlsx');
+  toast('Export สำเร็จ','ok');
+}
 </script>
 </body>
 </html>
