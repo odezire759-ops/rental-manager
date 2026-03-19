@@ -1103,8 +1103,15 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <div class="chdr"><span>🏠 ข้อมูลการจอง</span></div>
         <div class="cbdy">
           <div class="fg">
-            <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month"></select></div>
-            <div class="fr"><label>ห้อง (เฉพาะห้องว่าง)</label><select id="res-room"><option value="">— เลือกเดือนก่อน —</option></select></div>
+            <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month" onchange="loadResRooms()"></select></div>
+            <div class="fr"><label>ห้องที่เลือก</label>
+              <div class="cdisp" id="res-room-display" style="font-weight:700;color:var(--success);">— ยังไม่ได้เลือก —</div>
+              <input type="hidden" id="res-room">
+            </div>
+          </div>
+          <div id="res-room-section" style="display:none;margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">เลือกห้องว่าง (รายเดือน) <span id="res-room-count" style="color:var(--text3);font-weight:500;"></span></div>
+            <div id="res-room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(75px,1fr));gap:5px;max-height:180px;overflow-y:auto;padding:6px;border:1px solid var(--border);border-radius:var(--rs);background:var(--shell);"></div>
           </div>
           <div class="fg">
             <div class="fr"><label>ชื่อผู้เช่า *</label><input type="text" id="res-name" placeholder="ชื่อ-นามสกุล"></div>
@@ -5865,16 +5872,47 @@ async function loadResMonths(){
   const sel=document.getElementById('res-month');
   if(!sel)return;
   sel.innerHTML='<option value="">— เลือกเดือน —</option>'+months.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('');
-  sel.onchange=loadResRooms;
+  // auto-select current month ถ้ามี
+  if(curMonth&&months.includes(curMonth)){
+    sel.value=curMonth;
+    loadResRooms();
+  }
 }
 async function loadResRooms(){
   const m=document.getElementById('res-month').value;
-  const sel=document.getElementById('res-room');
-  if(!m){sel.innerHTML='<option value="">— เลือกเดือนก่อน —</option>';return;}
-  const{data}=await sb.from('monthly_charges').select('room,tenant_name,room_type').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
-  const empty=(data||[]).filter(r=>(!r.tenant_name||r.tenant_name.trim()==='')&&r.room_type==='monthly');
-  if(!empty.length){sel.innerHTML='<option value="">ไม่มีห้องว่าง เดือน '+monthLabel(m)+'</option>';return;}
-  sel.innerHTML='<option value="">— เลือกห้อง ('+empty.length+' ว่าง) —</option>'+empty.map(r=>'<option value="'+r.room+'">ห้อง '+r.room+'</option>').join('');
+  const section=document.getElementById('res-room-section');
+  const grid=document.getElementById('res-room-grid');
+  const display=document.getElementById('res-room-display');
+  // reset
+  document.getElementById('res-room').value='';
+  if(display){display.textContent='— ยังไม่ได้เลือก —';display.style.color='var(--text3)';}
+  if(!m){if(section)section.style.display='none';return;}
+  if(grid)grid.innerHTML='<div class="loading" style="grid-column:1/-1;font-size:11px;">กำลังโหลด...</div>';
+  if(section)section.style.display='';
+  const{data}=await sb.from('monthly_charges').select('room,tenant_name,room_type,bed_type').eq('month',m).eq('building','เจเรสซิเดนซ์').order('room');
+  const empty=(data||[]).filter(r=>(!r.tenant_name||r.tenant_name.trim()==='')&&r.room_type!=='daily');
+  const countEl=document.getElementById('res-room-count');
+  if(countEl)countEl.textContent='('+empty.length+' ว่าง)';
+  if(!empty.length){
+    if(grid)grid.innerHTML='<div style="grid-column:1/-1;color:var(--text3);font-size:11px;padding:8px;">ไม่มีห้องว่างรายเดือน เดือน '+monthLabel(m)+'</div>';
+    return;
+  }
+  if(grid)grid.innerHTML=empty.map(function(r){
+    const bedTxt=r.bed_type==='5ft'?'5ฟุต':r.bed_type==='twin'?'คู่':'6ฟุต';
+    return '<div class="ci-rcard ci-monthly" onclick="selectResRoom(''+r.room+'',this)" data-room="'+r.room+'" style="padding:8px 4px;border:1.5px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;">'+
+      '<div style="font-size:14px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">'+r.room+'</div>'+
+      '<div style="font-size:9px;color:var(--text3);margin-top:2px;">'+bedTxt+'</div>'+
+    '</div>';
+  }).join('');
+}
+function selectResRoom(room,el){
+  document.getElementById('res-room').value=room;
+  const display=document.getElementById('res-room-display');
+  if(display){display.textContent='ห้อง '+room;display.style.color='var(--success)';}
+  document.querySelectorAll('#res-room-grid [data-room]').forEach(function(c){
+    c.style.borderColor='var(--border2)';c.style.background='var(--white)';
+  });
+  if(el){el.style.borderColor='var(--success)';el.style.background='#f0fdf4';}
 }
 async function submitReservation(){
   const m=document.getElementById('res-month').value;
@@ -5910,6 +5948,9 @@ async function submitReservation(){
   document.getElementById('res-note').value='';
   loadReservations();
   loadResRooms();
+  // reset display
+  var disp=document.getElementById('res-room-display');
+  if(disp){disp.textContent='— ยังไม่ได้เลือก —';disp.style.color='var(--text3)';}
 }
 async function loadReservations(){
   const{data}=await sb.from('monthly_reservations').select('*').eq('building','เจเรสซิเดนซ์').order('start_month').order('room');
@@ -8318,7 +8359,8 @@ function _utInitMeaCharts() {
   var labels = _UT_MEA_BASE.map(function(d){ return d.month; });
   var amounts = _UT_MEA_BASE.map(function(d){
     var k = _utKey('mea',d.month); var mc = stored[k]||{};
-    return mc.amount ? parseFloat(mc.amount) : null;
+    // ใช้ localStorage ก่อน ถ้าไม่มีใช้ base data (ยอดจาก K PLUS)
+    return mc.amount ? parseFloat(mc.amount) : (d.amount || null);
   });
   var offPeaks = _UT_MEA_BASE.map(function(d){
     var k = _utKey('mea',d.month); var m = stored[k]||{};
