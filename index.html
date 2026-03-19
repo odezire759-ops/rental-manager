@@ -1775,7 +1775,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   <div class="card" style="padding:12px 16px;border-left:4px solid var(--warn);">
     <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">⚡ สูงสุด 12 เดือน</div>
     <div style="font-size:22px;font-weight:800;color:var(--warn);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">75,305</div>
-    <div style="font-size:11px;color:var(--text3);">ก.ค. 2568</div>
+    <div style="font-size:11px;color:var(--text3);">มิ.ย. 2568</div>
   </div>
   <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);">
     <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">📋 บิลที่มีข้อมูลมิเตอร์</div>
@@ -8263,22 +8263,24 @@ var _UT_MWA_EMAILS = {
 };
 
 // ── Base billing data (amounts from K PLUS) ────────
+// amounts ตรงตามเดือนบนใบแจ้งหนี้ MEA (ประจำเดือน X)
+// K PLUS จ่ายเดือน X+1 แต่บิลเป็นของเดือน X
 var _UT_MEA_BASE = [
-  { month:'ธ.ค. 2567',  yr:'2567', mo:'12', paidDate:'02/12/2024', amount:56440.56 },
-  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'12/01/2025', amount:44574.64 },
-  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'07/02/2025', amount:39230.96 },
-  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'13/03/2025', amount:51746.42 },
-  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'15/04/2025', amount:68931.45 },
-  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'12/05/2025', amount:72644.43 },
-  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'13/06/2025', amount:71799.08 },
-  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'14/07/2025', amount:75304.81 },
-  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'12/08/2025', amount:59396.75 },
-  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'15/09/2025', amount:58866.97 },
+  { month:'ธ.ค. 2567',  yr:'2567', mo:'12', paidDate:'—', amount:44574.64 },
+  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'—', amount:39230.96 },
+  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'—', amount:51746.42 },
+  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'—', amount:68931.45 },
+  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'—', amount:72644.43 },
+  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'—', amount:71799.08 },
+  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'—', amount:75304.81 },
+  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'—', amount:59396.75 },
+  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'—', amount:58866.97 },
+  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'—', amount:null },
   { month:'ต.ค. 2568',  yr:'2568', mo:'10', paidDate:'—', amount:null },
   { month:'พ.ย. 2568',  yr:'2568', mo:'11', paidDate:'—', amount:null },
-  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'—', amount:null },
-  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'15/01/2026', amount:43958.45 },
-  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'12/02/2026', amount:40520.97 },
+  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'—', amount:43958.45 },
+  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'—', amount:40520.97 },
+  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'—', amount:null },
   { month:'มี.ค. 2569', yr:'2569', mo:'03', paidDate:'—', amount:null },
 ];
 
@@ -8647,9 +8649,9 @@ function _utInitMeaCharts() {
     data:{
       labels:['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
       datasets:[
-        {label:'2567',data:[null,null,null,null,null,null,null,null,null,null,null,56440.56],borderColor:'rgba(212,160,23,0.4)',borderDash:[4,4],pointBackgroundColor:'#d4a017',tension:0.3,pointRadius:3,backgroundColor:'transparent'},
-        {label:'2568',data:[44574.64,39230.96,51746.42,68931.45,72644.43,71799.08,75304.81,59396.75,58866.97,null,null,null],borderColor:'#d4a017',fill:true,backgroundColor:'rgba(212,160,23,0.07)',tension:0.3,pointRadius:3,pointBackgroundColor:'#d4a017'},
-        {label:'2569',data:[43958.45,40520.97,null,null,null,null,null,null,null,null,null,null],borderColor:'var(--blue)',tension:0.3,pointRadius:5,pointBackgroundColor:'var(--blue)',backgroundColor:'transparent'}
+        {label:'2567',data:[null,null,null,null,null,null,null,null,null,null,null,44574.64],borderColor:'rgba(212,160,23,0.4)',borderDash:[4,4],pointBackgroundColor:'#d4a017',tension:0.3,pointRadius:3,backgroundColor:'transparent'},
+        {label:'2568',data:[39230.96,51746.42,68931.45,72644.43,71799.08,75304.81,59396.75,58866.97,null,null,null,43958.45],borderColor:'#d4a017',fill:true,backgroundColor:'rgba(212,160,23,0.07)',tension:0.3,pointRadius:3,pointBackgroundColor:'#d4a017'},
+        {label:'2569',data:[40520.97,null,null,null,null,null,null,null,null,null,null,null],borderColor:'var(--blue)',tension:0.3,pointRadius:5,pointBackgroundColor:'var(--blue)',backgroundColor:'transparent'}
       ]
     },
     options:{
@@ -9308,38 +9310,40 @@ function _utParseMEA(text, filename, isReceipt) {
   var accMatch = text.match(/(?:หมายเลขผู้ใช้ไฟฟ้า|เลขที่ผู้ใช้ไฟฟ้า|CA\s*No\.?|Account)\s*[:\.]?\s*(\d{9,12})/i);
   if (accMatch) result.data.account = accMatch[1];
 
-  // Amount — ยอดรวม / จำนวนเงินรวม / Total
+  // Amount — ตรงตาม MEA PDF format
   var amtPatterns = [
-    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม|TOTAL\s*AMOUNT|รวมเงิน)[^\d]{0,20}([\d,]+\.?\d*)/i,
-    /(?:ยอดชำระ|AMOUNT\s*DUE|NET\s*AMOUNT)[^\d]{0,20}([\d,]+\.?\d*)/i,
-    /([\d,]+\.\d{2})\s*(?:บาท|BAHT|THB)/i
+    /(?:รวมเงินที่ต้องชำระทั้งสิ้น|Amount)[^\d]{0,20}([\d,]+\.\d{2})/i,
+    /(?:รวมค่าไฟฟ้าเดือนปัจจุบัน)[^\d]{0,20}([\d,]+\.\d{2})/i,
+    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม)[^\d]{0,20}([\d,]+\.\d{2})/i
   ];
   for (var ai = 0; ai < amtPatterns.length; ai++) {
     var amtM = text.match(amtPatterns[ai]);
-    if (amtM) { result.data.amount = amtM[1].replace(/,/g,''); break; }
+    if (amtM && parseFloat(amtM[1].replace(/,/g,'')) > 1000) {
+      result.data.amount = amtM[1].replace(/,/g,''); break;
+    }
   }
 
-  // Off Peak units
-  var offM = text.match(/(?:OFF[\s-]*PEAK|นอกช่วงความต้องการสูง)[^\d]{0,30}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)/i);
-  if (!offM) offM = text.match(/(?:OFF[\s-]*PEAK)[^\d]{0,5}([\d,]+)/i);
-  if (offM) result.data.offpeak = offM[1].replace(/,/g,'');
-
-  // On Peak units
-  var onM = text.match(/(?:ON[\s-]*PEAK|ช่วงความต้องการสูง)[^\d]{0,30}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)/i);
-  if (!onM) onM = text.match(/(?:ON[\s-]*PEAK)[^\d]{0,5}([\d,]+)/i);
+  // On/Off Peak units — ต้อง match "หน่วย" (ไม่ใช่ กิโลวัตต์/กิโลวาร์)
+  var onM = text.match(/จำนวน\s*On\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (!onM) onM = text.match(/On\s*Peak\s*([\d,]+)\s*หน่วย/i);
   if (onM) result.data.onpeak = onM[1].replace(/,/g,'');
 
+  var offM = text.match(/จำนวน\s*Off\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (!offM) offM = text.match(/Off\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (offM) result.data.offpeak = offM[1].replace(/,/g,'');
+
   // Meter reading date
-  var mDateM = text.match(/(?:วันที่จดมิเตอร์|วันจดมิเตอร์|METER\s*READ(?:ING)?\s*DATE|วันที่อ่าน)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  var mDateM = text.match(/Meter\s*Reading\s*Date[^\d]{0,15}(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (!mDateM) mDateM = text.match(/วันที่อ่านมิเตอร์[^\d]{0,30}(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (mDateM) result.data.meterDate = mDateM[1];
 
   // Billing period
-  var periodM = text.match(/(?:งวดที่|รอบการใช้|BILLING\s*PERIOD|รอบบิล)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–ถึง\s]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
-  if (periodM) result.data.period = periodM[1] + '–' + periodM[2];
+  var periodM = text.match(/บิล(?:ประจำ)?เดือน[^\d]{0,10}(\d{1,2}\/\d{2,4})/i);
+  if (periodM) result.data.period = periodM[1];
 
-  // Bill date / paid date
-  var billDateM = text.match(/(?:วันที่ออกบิล|วันที่พิมพ์|BILL\s*DATE|ISSUE\s*DATE|PRINT\s*DATE)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
-  if (billDateM) result.data.paidDate = billDateM[1];
+  // Payment Due Date
+  var dueM = text.match(/(?:Payment\s*Due\s*Date|โปรดชำระภายใน)[^\d]{0,20}(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (dueM) result.data.paidDate = dueM[1];
 
   // Receipt number
   if (isReceipt) {

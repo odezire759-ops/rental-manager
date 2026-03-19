@@ -209,14 +209,21 @@ function extractPdfText_(file) {
 function extractPdfData_(file, type) {
   var fileName = file.getName();
   var text = extractPdfText_(file);
-  if (!text || text.length < 50) return null;
+  if (!text || text.length < 50) {
+    Logger.log('    ⚠ OCR text too short (' + (text ? text.length : 0) + ' chars): ' + fileName);
+    return null;
+  }
 
   var isReceipt = /Receipt|ใบเสร็จ/i.test(fileName) ||
                   /ใบเสร็จรับเงิน|RECEIPT/i.test(text);
 
   // Detect month from filename (e.g., MEA_Invoice_ม.ค._2569_...)
   var monthKey = detectMonthKey_(fileName, text, type);
-  if (!monthKey) return null;
+  if (!monthKey) {
+    Logger.log('    ⚠ ไม่สามารถระบุเดือน: ' + fileName);
+    Logger.log('      OCR text (first 300 chars): ' + text.substring(0, 300));
+    return null;
+  }
 
   var values = {};
 
@@ -225,6 +232,10 @@ function extractPdfData_(file, type) {
   } else {
     values = parseMwaText_(text);
   }
+
+  // Log extracted values for verification
+  var fields = Object.keys(values).filter(function(k) { return values[k]; });
+  Logger.log('    → ' + monthKey + ': ' + fields.join(', '));
 
   return {
     key: monthKey,
@@ -240,83 +251,105 @@ function parseMeaText_(text) {
   var data = {};
 
   // ── ยอดเงิน (Amount) ──
-  // Pattern: จำนวนเงินรวม / ยอดเงินรวม / TOTAL
+  // MEA PDF: "รวมเงินที่ต้องชำระทั้งสิ้น (Amount) 40,520.97 บาท"
+  // หรือ "รวมค่าไฟฟ้าเดือนปัจจุบัน 40,520.97 บาท"
   var amtPatterns = [
-    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม(?:ทั้งสิ้น)?|จำนวนเงินที่ต้องชำระ|TOTAL\s*AMOUNT|NET\s*AMOUNT|AMOUNT\s*DUE)[^\d]{0,30}([\d,]+\.?\d*)/i,
-    /(?:รวมภาษีมูลค่าเพิ่ม|รวมเงิน|ยอดชำระ)[^\d]{0,20}([\d,]+\.\d{2})/i
+    /(?:รวมเงินที่ต้องชำระทั้งสิ้น|Amount)[^\d]{0,20}([\d,]+\.\d{2})/i,
+    /(?:รวมค่าไฟฟ้าเดือนปัจจุบัน)[^\d]{0,20}([\d,]+\.\d{2})/i,
+    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม(?:ทั้งสิ้น)?)[^\d]{0,30}([\d,]+\.\d{2})/i,
+    /(?:TOTAL\s*AMOUNT|NET\s*AMOUNT|AMOUNT\s*DUE)[^\d]{0,20}([\d,]+\.\d{2})/i
   ];
   for (var i = 0; i < amtPatterns.length; i++) {
     var m = text.match(amtPatterns[i]);
     if (m) {
       var amt = m[1].replace(/,/g, '');
-      if (parseFloat(amt) > 1000) { // MEA bills should be > 1000
+      if (parseFloat(amt) > 1000) {
         data.amount = amt;
         break;
       }
     }
   }
 
-  // ── Off Peak units ──
-  var offPatterns = [
-    /(?:OFF[\s\-]*PEAK|นอกช่วง(?:ความต้องการสูง|เวลาพีค))[^\d]{0,40}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)?/i,
-    /OFF[\s\-]*PEAK[^\d]{0,15}([\d,]+)/i
-  ];
-  for (var i = 0; i < offPatterns.length; i++) {
-    var m = text.match(offPatterns[i]);
-    if (m) { data.offpeak = m[1].replace(/,/g, ''); break; }
+  // ── On Peak / Off Peak units ──
+  // MEA PDF: "จำนวน On Peak 2,284 หน่วย" + "จำนวน Off Peak 7,120 หน่วย"
+  // ต้อง match "หน่วย" เพื่อไม่จับ demand (กิโลวัตต์/กิโลวาร์)
+  // Pattern 1: "จำนวน On/Off Peak XXX หน่วย" (from the right side box)
+  var onM = text.match(/จำนวน\s*On\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (!onM) onM = text.match(/On\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (onM) data.onpeak = onM[1].replace(/,/g, '');
+
+  var offM = text.match(/จำนวน\s*Off\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (!offM) offM = text.match(/Off\s*Peak\s*([\d,]+)\s*หน่วย/i);
+  if (offM) data.offpeak = offM[1].replace(/,/g, '');
+
+  // Fallback: "On Peak 2,284 หน่วย 9,889.03 บาท" (from detail table)
+  if (!data.onpeak) {
+    var onF = text.match(/On\s*Peak\s*([\d,]+)\s*หน่วย\s*([\d,]+\.\d{2})\s*บาท/i);
+    if (onF) data.onpeak = onF[1].replace(/,/g, '');
+  }
+  if (!data.offpeak) {
+    var offF = text.match(/Off\s*Peak\s*([\d,]+)\s*หน่วย\s*([\d,]+\.\d{2})\s*บาท/i);
+    if (offF) data.offpeak = offF[1].replace(/,/g, '');
   }
 
-  // ── On Peak units ──
-  var onPatterns = [
-    /(?:ON[\s\-]*PEAK|ช่วง(?:ความต้องการสูง|เวลาพีค))[^\d]{0,40}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)?/i,
-    /ON[\s\-]*PEAK[^\d]{0,15}([\d,]+)/i
-  ];
-  for (var i = 0; i < onPatterns.length; i++) {
-    var m = text.match(onPatterns[i]);
-    if (m) { data.onpeak = m[1].replace(/,/g, ''); break; }
-  }
-
-  // ── Total units (auto-calc if off+on available) ──
+  // ── Total units (auto-calc) ──
   if (data.offpeak && data.onpeak) {
     data.totalUnits = String(parseFloat(data.offpeak) + parseFloat(data.onpeak));
   }
 
-  // ── วันที่จดมิเตอร์ ──
+  // ── จำนวนหน่วย (kWh) — from header table ──
+  // MEA PDF header: "จำนวนหน่วย kWh 9,404"
+  if (!data.totalUnits) {
+    var kwhM = text.match(/(?:จำนวนหน่วย|kWh)[^\d]{0,10}([\d,]+)/i);
+    if (kwhM) data.totalUnits = kwhM[1].replace(/,/g, '');
+  }
+
+  // ── วันที่จดมิเตอร์ (Meter Reading Date) ──
+  // MEA PDF: "วันที่อ่านมิเตอร์ Meter Reading Date 31/01/69"
+  // หรือ header table: "วันที่อ่านมิเตอร์ล่าสุด Meter Reading Date 31/01/69"
   var mDatePatterns = [
-    /(?:วัน(?:ที่)?จดมิเตอร์|วันที่อ่าน(?:มิเตอร์)?|METER\s*READ(?:ING)?\s*DATE)[^\d]{0,20}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
-    /(?:วันที่อ่าน)[^\d]{0,10}(\d{1,2}\s*[\/\-\.]\s*\d{1,2}\s*[\/\-\.]\s*\d{2,4})/i
+    /Meter\s*Reading\s*Date[^\d]{0,15}(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /วันที่อ่านมิเตอร์[^\d]{0,30}(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /วัน(?:ที่)?จดมิเตอร์[^\d]{0,20}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i
   ];
   for (var i = 0; i < mDatePatterns.length; i++) {
     var m = text.match(mDatePatterns[i]);
-    if (m) { data.meterDate = m[1].replace(/\s/g, ''); break; }
+    if (m) { data.meterDate = m[1]; break; }
   }
 
   // ── รอบบิล (Billing period) ──
-  var periodPatterns = [
-    /(?:งวดที่|รอบ(?:การ)?(?:ใช้|บิล)|BILLING\s*PERIOD)[^\d]{0,20}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–ถึง\s]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
-    /(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–]\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/
-  ];
-  for (var i = 0; i < periodPatterns.length; i++) {
-    var m = text.match(periodPatterns[i]);
-    if (m) { data.period = m[1] + '–' + m[2]; break; }
+  // MEA PDF: "บิลประจำเดือน 01/69"
+  var billMonthM = text.match(/บิล(?:ประจำ)?เดือน[^\d]{0,10}(\d{1,2}\/\d{2,4})/i);
+  if (billMonthM) data.period = billMonthM[1];
+  // Or full period range
+  if (!data.period) {
+    var periodM = text.match(/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–ถึง\s]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/);
+    if (periodM) data.period = periodM[1] + '–' + periodM[2];
   }
 
-  // ── วันที่ออกบิล ──
-  var billPatterns = [
-    /(?:วันที่(?:ออก)?บิล|วันที่(?:ออก|พิมพ์)|BILL\s*DATE|ISSUE\s*DATE|PRINT\s*DATE)[^\d]{0,20}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i
-  ];
-  for (var i = 0; i < billPatterns.length; i++) {
-    var m = text.match(billPatterns[i]);
-    if (m) { data.paidDate = m[1]; break; }
-  }
+  // ── วันครบกำหนดชำระ (Payment Due Date) ──
+  // MEA PDF: "โปรดชำระภายในวันที่ Payment Due Date 16/02/69"
+  var dueM = text.match(/(?:Payment\s*Due\s*Date|โปรดชำระภายใน(?:วันที่)?)[^\d]{0,20}(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (dueM) data.paidDate = dueM[1];
 
-  // ── เลขมิเตอร์เก่า/ใหม่ (demand) ──
+  // ── Demand (kW) ──
   var demandM = text.match(/(?:DEMAND|ดีมานด์|กำลังไฟสูงสุด)[^\d]{0,15}([\d,]+(?:\.\d+)?)\s*(?:kW)?/i);
   if (demandM) data.demand = demandM[1].replace(/,/g, '');
 
   // ── Power Factor ──
-  var pfM = text.match(/(?:POWER\s*FACTOR|ตัวประกอบกำลัง|PF)[^\d]{0,15}([\d.]+)\s*%?/i);
+  var pfM = text.match(/(?:POWER\s*FACTOR|ตัวประกอบกำลัง|PF|Pf)[^\d]{0,15}([\d.]+)/i);
   if (pfM) data.powerFactor = pfM[1];
+
+  // ── Multiplier ──
+  var multM = text.match(/(?:Multiplier|ตัวคูณ)[^\d]{0,10}(\d+)/i);
+  if (multM) data.multiplier = multM[1];
+
+  // ── เลขมิเตอร์ ──
+  // MEA PDF header: "เลขอ่านก่อน Previous Meter Reading 594345"
+  var prevM = text.match(/(?:Previous\s*Meter\s*Reading|เลขอ่านก่อน)[^\d]{0,15}([\d,]+)/i);
+  if (prevM) data.meterOld = prevM[1].replace(/,/g, '');
+  var lastM = text.match(/(?:Last\s*Meter\s*Reading|เลขอ่านล่าสุด|เลขอ่านครั้งหลัง)[^\d]{0,15}([\d,]+)/i);
+  if (lastM) data.meterNew = lastM[1].replace(/,/g, '');
 
   return data;
 }
