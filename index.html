@@ -995,79 +995,221 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 
 <!-- ═══ BOOKING SECTION ═══ -->
 <div id="sec-booking" class="sec">
-  <div class="g2">
-    <div class="card">
-      <div class="chdr">🛎 จองห้องพัก</div>
-      <div class="cbdy">
-        <div class="fg" style="margin-bottom:12px;">
-          <div class="fr"><label>วันที่เข้าพัก</label><input type="date" id="bci" onchange="refreshAvailRooms()"></div>
-          <div class="fr"><label>วันที่ออก</label><input type="date" id="bco" onchange="refreshAvailRooms()"></div>
-        </div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">เลือกห้อง (คลิกห้องที่ว่าง)</div>
-        <div class="bform-rooms" id="brooms"><div class="loading">กำลังโหลด...</div></div>
-        <div class="fg">
-          <div class="fr"><label>แหล่งที่มา</label>
-            <select id="bsrc"><option value="W">🟢 Walk-in</option><option value="A">🔴 Agoda</option><option value="B">🔵 Booking.com</option><option value="T">🔵 Traveloka</option><option value="O">⚫ OTA อื่นๆ</option></select>
-          </div>
-          <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="bprice" value="750" oninput="calcBT()"></div>
-        </div>
-        <div class="fg">
-          <div class="fr"><label>ประเภทเตียง</label>
-            <select id="bbed"><option value="6ft">🛏 เตียง 6 ฟุต</option><option value="5ft">🛏 เตียง 5 ฟุต</option><option value="twin">🛏🛏 เตียงคู่</option></select>
-          </div>
-          <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
-        </div>
-        <div class="totrow"><span class="lbl">ยอดรวม (<span id="bnights">1</span> คืน)</span><span class="val" id="btotal">฿ 750</span></div>
-        <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;" onclick="submitBooking()">บันทึกการจอง</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="chdr"><span>🗓 ห้องในช่วงวันที่เลือก</span><span id="avail-date-range" style="font-size:11px;color:var(--text3);"></span></div>
-      <div class="cbdy" id="avail-rooms-status"></div>
-    </div>
-  </div>
-  <div class="card" style="margin-top:14px;">
-    <div class="chdr">📋 รายการจองล่าสุด</div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>แขก</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>แหล่งที่มา</th><th>ราคา</th></tr></thead><tbody id="btbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
+
+  <!-- ── TAB SWITCHER ─────────────────────────────── -->
+  <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border2);">
+    <button id="bk-tab-daily-btn" onclick="bkSwitchTab('daily')"
+      style="padding:9px 22px;border:none;border-bottom:3px solid var(--gold);font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--gold2);font-family:'Sarabun',sans-serif;margin-bottom:-2px;">
+      📅 จองรายวัน
+    </button>
+    <button id="bk-tab-monthly-btn" onclick="bkSwitchTab('monthly')"
+      style="padding:9px 22px;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);font-family:'Sarabun',sans-serif;margin-bottom:-2px;">
+      🏠 จองรายเดือน
+    </button>
   </div>
 
-  <!-- จองห้องรายเดือน -->
-  <div class="card" style="margin-top:14px;">
-    <div class="chdr"><span>🏠 จองห้องรายเดือน (ผู้เช่าใหม่)</span></div>
-    <div class="cbdy">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">จองห้องว่างสำหรับผู้เช่ารายเดือนใหม่ — เลือกเดือนที่จะเข้าอยู่ แล้วกรอกข้อมูล</div>
-      <div class="fg">
-        <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month"></select></div>
-        <div class="fr"><label>ห้อง (เฉพาะห้องว่าง)</label><select id="res-room"><option value="">— เลือกเดือนก่อน —</option></select></div>
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- PANEL: รายวัน (Walk-in / OTA)                -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="bk-panel-daily">
+    <div class="g2">
+      <div class="card">
+        <div class="chdr">
+          <span>📅 จองห้องพักรายวัน</span>
+          <span style="font-size:10px;color:var(--text3);">Walk-in · Agoda · Booking.com · Traveloka</span>
+        </div>
+        <div class="cbdy">
+          <!-- วันที่ -->
+          <div class="fg" style="margin-bottom:12px;">
+            <div class="fr"><label>วันที่เข้าพัก</label><input type="date" id="bci" onchange="refreshAvailRooms()"></div>
+            <div class="fr"><label>วันที่ออก</label><input type="date" id="bco" onchange="refreshAvailRooms()"></div>
+          </div>
+          <!-- เลือกห้อง -->
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">เลือกห้อง (คลิกห้องที่ว่าง)</div>
+          <div class="bform-rooms" id="brooms"><div class="loading">กำลังโหลด...</div></div>
+          <!-- แหล่งที่มา + ราคา -->
+          <div class="fg">
+            <div class="fr"><label>แหล่งที่มา</label>
+              <select id="bsrc">
+                <option value="W">🟢 Walk-in</option>
+                <option value="A">🔴 Agoda</option>
+                <option value="B">🔵 Booking.com</option>
+                <option value="T">🔵 Traveloka</option>
+                <option value="O">⚫ OTA อื่นๆ</option>
+              </select>
+            </div>
+            <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="bprice" value="750" oninput="calcBT()"></div>
+          </div>
+          <!-- ประเภทเตียง + ชื่อแขก -->
+          <div class="fg">
+            <div class="fr"><label>ประเภทเตียง</label>
+              <select id="bbed">
+                <option value="6ft">🛏 เตียง 6 ฟุต</option>
+                <option value="5ft">🛏 เตียง 5 ฟุต</option>
+                <option value="twin">🛏🛏 เตียงคู่</option>
+              </select>
+            </div>
+            <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest" placeholder="ชื่อผู้เข้าพัก"></div>
+          </div>
+          <!-- เบอร์โทร + สัญชาติ -->
+          <div class="fg">
+            <div class="fr"><label>เบอร์โทร</label><input type="tel" id="bphone" placeholder="08x-xxx-xxxx"></div>
+            <div class="fr"><label>สัญชาติ</label>
+              <select id="bnation">
+                <option value="TH">🇹🇭 ไทย</option>
+                <option value="CN">🇨🇳 จีน</option>
+                <option value="JP">🇯🇵 ญี่ปุ่น</option>
+                <option value="KR">🇰🇷 เกาหลี</option>
+                <option value="US">🇺🇸 อเมริกา</option>
+                <option value="GB">🇬🇧 อังกฤษ</option>
+                <option value="OTHER">🌍 อื่นๆ</option>
+              </select>
+            </div>
+          </div>
+          <!-- เลขบัตร -->
+          <div class="fg">
+            <div class="fr"><label>เลขบัตรประชาชน / Passport</label><input type="text" id="bpassport" placeholder="เลขบัตร / Passport No."></div>
+            <div class="fr"><label>หมายเหตุ</label><input type="text" id="bnote" placeholder="เช่น จอดรถ, สัตว์เลี้ยง"></div>
+          </div>
+          <!-- ยอดรวม -->
+          <div class="totrow"><span class="lbl">ยอดรวม (<span id="bnights">1</span> คืน)</span><span class="val" id="btotal">฿ 750</span></div>
+          <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;" onclick="submitBooking()">💾 บันทึกการจอง</button>
+        </div>
       </div>
-      <div class="fg">
-        <div class="fr"><label>ชื่อผู้เช่า</label><input type="text" id="res-name" placeholder="ชื่อ-นามสกุล"></div>
-        <div class="fr"><label>เบอร์โทร</label><input type="tel" id="res-phone" placeholder="08x-xxx-xxxx"></div>
-      </div>
-      <div class="fg">
-        <div class="fr"><label>ค่าเช่า (฿/เดือน)</label><input type="number" id="res-rent" value="4500"></div>
-        <div class="fr"><label>ค่ามัดจำ (฿)</label><input type="number" id="res-deposit" value="0"></div>
-      </div>
-      <div class="fg">
-        <div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="res-contract" value="12"></div>
-        <div class="fr"><label>ประเภทเตียง</label><select id="res-bed"><option value="6ft">🛏 6 ฟุต</option><option value="5ft">🛏 5 ฟุต</option><option value="twin">🛏🛏 คู่</option></select></div>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;">
-        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-tv"> 📺 ทีวี</label>
-        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-fridge"> 🧊 ตู้เย็น</label>
-        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-car"> 🚗 จอดรถยนต์</label>
-        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
-      </div>
-      <div class="fg"><div class="fr"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า"></div></div>
-      <button class="btn bp" style="width:100%;margin-top:10px;padding:10px;" onclick="submitReservation()">📝 บันทึกจองห้อง</button>
-    </div>
-  </div>
 
-  <!-- ตารางจองรายเดือน -->
-  <div class="card" style="margin-top:14px;">
-    <div class="chdr"><span>📋 รายการจองรายเดือน</span><button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button></div>
-    <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ผู้เช่า</th><th>เดือนเริ่ม</th><th>ค่าเช่า</th><th>มัดจำ</th><th>สถานะ</th><th></th></tr></thead><tbody id="res-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
-  </div>
+      <!-- ห้องว่างในช่วงวัน -->
+      <div class="card">
+        <div class="chdr">
+          <span>🗓 ห้องในช่วงวันที่เลือก</span>
+          <span id="avail-date-range" style="font-size:11px;color:var(--text3);"></span>
+        </div>
+        <div class="cbdy" id="avail-rooms-status"></div>
+      </div>
+    </div>
+
+    <!-- รายการจองรายวันล่าสุด -->
+    <div class="card" style="margin-top:14px;">
+      <div class="chdr">
+        <span>📋 รายการจองรายวันล่าสุด</span>
+        <button class="tbtn" onclick="loadBookings()" style="font-size:10px;">🔄</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="dtbl">
+          <thead>
+            <tr>
+              <th>ห้อง</th><th>แขก</th><th>เบอร์</th>
+              <th>วันที่เข้า</th><th>วันที่ออก</th><th>คืน</th>
+              <th>แหล่งที่มา</th><th>ราคา/คืน</th><th>รวม</th>
+            </tr>
+          </thead>
+          <tbody id="btbody"><tr><td colspan="9" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /bk-panel-daily -->
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- PANEL: รายเดือน (ผู้เช่ารายเดือน)            -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="bk-panel-monthly" style="display:none;">
+    <div class="g2">
+      <div class="card">
+        <div class="chdr">
+          <span>🏠 จองห้องรายเดือน</span>
+          <span style="font-size:10px;color:var(--text3);">ผู้เช่าใหม่ — กรอกข้อมูลแล้วกดบันทึก</span>
+        </div>
+        <div class="cbdy">
+          <!-- เดือนเริ่ม + ห้อง -->
+          <div class="fg">
+            <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month" onchange="loadResMonths()"></select></div>
+            <div class="fr"><label>ห้อง (เฉพาะห้องว่าง)</label><select id="res-room"><option value="">— เลือกเดือนก่อน —</option></select></div>
+          </div>
+          <!-- ชื่อ + เบอร์ -->
+          <div class="fg">
+            <div class="fr"><label>ชื่อผู้เช่า *</label><input type="text" id="res-name" placeholder="ชื่อ-นามสกุล"></div>
+            <div class="fr"><label>เบอร์โทร *</label><input type="tel" id="res-phone" placeholder="08x-xxx-xxxx"></div>
+          </div>
+          <!-- เลขบัตร + สัญชาติ -->
+          <div class="fg">
+            <div class="fr"><label>เลขบัตรประชาชน (13 หลัก)</label><input type="text" id="res-idcard" maxlength="13" placeholder="1234567890123"></div>
+            <div class="fr"><label>LINE ID / อีเมล</label><input type="text" id="res-contact" placeholder="@lineid / email@..."></div>
+          </div>
+          <!-- ค่าเช่า + มัดจำ -->
+          <div class="fg">
+            <div class="fr"><label>ค่าเช่า (฿/เดือน)</label><input type="number" id="res-rent" value="4500" oninput="calcResTotal()"></div>
+            <div class="fr"><label>ค่ามัดจำ (฿)</label><input type="number" id="res-deposit" value="4500" oninput="calcResTotal()"></div>
+          </div>
+          <!-- ค่าแรกเข้า + วันเริ่มสัญญา -->
+          <div class="fg">
+            <div class="fr"><label>ค่าแรกเข้า (฿)</label><input type="number" id="res-entry" value="0" oninput="calcResTotal()"></div>
+            <div class="fr"><label>วันที่เริ่มสัญญา</label><input type="date" id="res-startdate"></div>
+          </div>
+          <!-- ระยะสัญญา + ประเภทเตียง -->
+          <div class="fg">
+            <div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="res-contract" value="12"></div>
+            <div class="fr"><label>ประเภทเตียง</label>
+              <select id="res-bed">
+                <option value="6ft">🛏 6 ฟุต</option>
+                <option value="5ft">🛏 5 ฟุต</option>
+                <option value="twin">🛏🛏 เตียงคู่</option>
+              </select>
+            </div>
+          </div>
+          <!-- สิ่งอำนวยความสะดวก -->
+          <div style="background:var(--shell);border-radius:8px;padding:10px 12px;margin:8px 0;">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">สิ่งอำนวยความสะดวก / รายการเพิ่มเติม</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-tv"> 📺 ทีวี</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-fridge"> 🧊 ตู้เย็น</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-ac"> ❄️ แอร์</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-car"> 🚗 จอดรถยนต์</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-wifi"> 📶 WiFi</label>
+            </div>
+          </div>
+          <!-- หมายเหตุ -->
+          <div class="fg">
+            <div class="fr" style="flex:2;"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า, สัตว์เลี้ยง"></div>
+          </div>
+          <!-- ยอดที่ต้องชำระแรกเข้า -->
+          <div class="totrow" style="margin-top:10px;">
+            <span class="lbl">ยอดชำระแรกเข้า (มัดจำ + ค่าแรกเข้า)</span>
+            <span class="val" id="res-total-display">฿ 4,500</span>
+          </div>
+          <button class="btn bp" style="width:100%;margin-top:10px;padding:10px;" onclick="submitReservation()">📝 บันทึกจองรายเดือน</button>
+        </div>
+      </div>
+
+      <!-- สรุปข้อมูลก่อนบันทึก -->
+      <div class="card">
+        <div class="chdr"><span>📊 สรุปก่อนบันทึก</span></div>
+        <div class="cbdy" id="res-preview">
+          <div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- รายการจองรายเดือน -->
+    <div class="card" style="margin-top:14px;">
+      <div class="chdr">
+        <span>📋 รายการจองรายเดือน</span>
+        <button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="dtbl">
+          <thead>
+            <tr>
+              <th>ห้อง</th><th>ผู้เช่า</th><th>เบอร์</th>
+              <th>เดือนเริ่ม</th><th>วันเริ่มสัญญา</th><th>ค่าเช่า</th>
+              <th>มัดจำ</th><th>สัญญา</th><th>สถานะ</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="res-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /bk-panel-monthly -->
+
 </div>
 </div>
 
@@ -4450,7 +4592,7 @@ function showSec(id,btn){
   renderKPIBar();
   if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
-  if(id==='booking'){loadBookings();refreshAvailRooms();loadResMonths();loadReservations();}
+  if(id==='booking'){bkSwitchTab('daily');loadBookings();refreshAvailRooms();loadResMonths();loadReservations();}
   if(id==='slips'){
     const slMonth=document.getElementById('sl-month');
     if(slMonth&&!slMonth.value)slMonth.value=new Date().toISOString().slice(0,7);
@@ -8068,7 +8210,7 @@ function _utRenderMEA() {
       + '<td style="text-align:right;">' + amtCell + '</td>'
       + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + (d.paidDate||'&#8212;') + '</td>'
       + '<td style="white-space:nowrap;">' + pdfLinks + '</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry(&apos;mea&apos;,&apos;'+d.month+'&apos;)" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry('mea',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8116,7 +8258,7 @@ function _utRenderMWA() {
       + '<td style="text-align:right;">' + amtCell + '</td>'
       + '<td>' + period + '</td>'
       + '<td style="text-align:center;">' + pdfLinks + '</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry(&apos;mwa&apos;,&apos;'+d.month+'&apos;)" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry('mwa',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8344,10 +8486,7 @@ function _utInitMwaCharts() {
     if (id === 'utility') {
       _utRenderMEA();
       _utRenderMWA();
-      setTimeout(function(){
-        _utInitMeaCharts();
-        _utInitMwaCharts();
-      }, 150);
+      setTimeout(_utInitMeaCharts, 60);
     }
   };
 })();
@@ -8807,7 +8946,88 @@ function utDoImport() {
   }
 }
 
-console.log('✅ J.Residence Billing v4 loaded');
+// ── Booking Section Tab Switch ────────────────────
+function bkSwitchTab(tab) {
+  var isDaily = tab === 'daily';
+  document.getElementById('bk-panel-daily').style.display   = isDaily ? '' : 'none';
+  document.getElementById('bk-panel-monthly').style.display = isDaily ? 'none' : '';
+  var dBtn = document.getElementById('bk-tab-daily-btn');
+  var mBtn = document.getElementById('bk-tab-monthly-btn');
+  if (dBtn) {
+    dBtn.style.color       = isDaily ? 'var(--gold2)' : 'var(--text3)';
+    dBtn.style.borderBottom= isDaily ? '3px solid var(--gold)' : '3px solid transparent';
+  }
+  if (mBtn) {
+    mBtn.style.color       = isDaily ? 'var(--text3)' : 'var(--blue)';
+    mBtn.style.borderBottom= isDaily ? '3px solid transparent' : '3px solid var(--blue)';
+  }
+  if (!isDaily) { calcResTotal(); }
+}
+
+// ── Monthly booking: calc first-payment total ──────
+function calcResTotal() {
+  var deposit = parseFloat(document.getElementById('res-deposit')&&document.getElementById('res-deposit').value) || 0;
+  var entry   = parseFloat(document.getElementById('res-entry')&&document.getElementById('res-entry').value) || 0;
+  var rent    = parseFloat(document.getElementById('res-rent')&&document.getElementById('res-rent').value) || 0;
+  var total   = deposit + entry;
+  var disp = document.getElementById('res-total-display');
+  if (disp) disp.textContent = '฿ ' + total.toLocaleString('th-TH');
+  // update preview panel
+  updateResPreview();
+}
+
+function updateResPreview() {
+  var prev = document.getElementById('res-preview');
+  if (!prev) return;
+  var g = function(id){ var el=document.getElementById(id); return el ? el.value : ''; };
+  var room     = g('res-room');
+  var name     = g('res-name');
+  var phone    = g('res-phone');
+  var rent     = parseFloat(g('res-rent')) || 0;
+  var deposit  = parseFloat(g('res-deposit')) || 0;
+  var entry    = parseFloat(g('res-entry')) || 0;
+  var contract = g('res-contract');
+  var startdate= g('res-startdate');
+  var note     = g('res-note');
+  if (!room && !name) {
+    prev.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div>';
+    return;
+  }
+  var fmt = function(n){ return n.toLocaleString('th-TH',{minimumFractionDigits:0}); };
+  prev.innerHTML =
+    '<div style="display:grid;gap:8px;font-size:12px;">'
+    + _prevRow('🚪 ห้อง', room || '—', 'var(--gold2)', true)
+    + _prevRow('👤 ผู้เช่า', name || '—')
+    + _prevRow('📞 เบอร์', phone || '—')
+    + _prevRow('💰 ค่าเช่า/เดือน', '฿ ' + fmt(rent), 'var(--blue)')
+    + _prevRow('🔒 มัดจำ', '฿ ' + fmt(deposit))
+    + (entry > 0 ? _prevRow('🏷 ค่าแรกเข้า', '฿ ' + fmt(entry)) : '')
+    + _prevRow('📋 ระยะสัญญา', contract + ' เดือน')
+    + (startdate ? _prevRow('📅 วันเริ่มสัญญา', startdate) : '')
+    + (note ? _prevRow('📝 หมายเหตุ', note) : '')
+    + '<div style="border-top:1.5px solid var(--border2);padding-top:10px;margin-top:4px;">'
+    + '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px;">'
+    + '<span>💳 ยอดชำระแรกเข้า</span>'
+    + '<span style="color:var(--gold2);font-family:JetBrains Mono,monospace;">฿ ' + fmt(deposit+entry) + '</span>'
+    + '</div></div>'
+    + '</div>';
+}
+function _prevRow(label, val, color, bold) {
+  return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">'
+    + '<span style="color:var(--text2);">' + label + '</span>'
+    + '<span style="font-weight:'+(bold?'700':'500')+';color:'+(color||'var(--text)')+';font-family:JetBrains Mono,monospace;">' + val + '</span>'
+    + '</div>';
+}
+
+// Auto-update preview when monthly fields change
+document.addEventListener('input', function(e) {
+  var ids = ['res-rent','res-deposit','res-entry','res-name','res-phone','res-room','res-contract','res-startdate','res-note'];
+  if (ids.indexOf(e.target.id) !== -1) { calcResTotal(); }
+});
+document.addEventListener('change', function(e) {
+  var ids = ['res-room','res-month','res-bed'];
+  if (ids.indexOf(e.target.id) !== -1) { updateResPreview(); }
+});
 </script>
 
 </body>
