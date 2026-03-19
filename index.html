@@ -400,6 +400,48 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .ci-type-card.daily:hover,.ci-type-card.daily.sel{border-color:var(--blue);background:#f0f7ff;}
 .ci-type-card.monthly:hover,.ci-type-card.monthly.sel{border-color:var(--success);background:#f0fdf4;}
 
+/* ══ TYPE CHOOSER (shared: แจ้งเข้าพัก + จองห้อง) ══ */
+.type-chooser{max-width:720px;margin:0 auto 20px;}
+.type-chooser-title{text-align:center;margin-bottom:16px;}
+.type-chooser-title h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.type-chooser-title p{font-size:12px;color:var(--text3);}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.type-card{border:2px solid var(--border2);border-radius:var(--r);padding:24px 20px;cursor:pointer;text-align:center;transition:all .2s;background:var(--white);position:relative;overflow:hidden;}
+.type-card:hover{transform:translateY(-3px);box-shadow:var(--sh2);}
+.type-card .tc-icon{font-size:40px;margin-bottom:10px;display:block;}
+.type-card .tc-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.type-card .tc-desc{font-size:11px;color:var(--text3);line-height:1.7;}
+.type-card.daily:hover,.type-card.daily.sel{border-color:var(--blue);background:linear-gradient(135deg,#f0f7ff,#e8f4fd);}
+.type-card.daily:hover .tc-title,.type-card.daily.sel .tc-title{color:var(--blue);}
+.type-card.monthly:hover,.type-card.monthly.sel{border-color:var(--success);background:linear-gradient(135deg,#f0fdf4,#e6f9ee);}
+.type-card.monthly:hover .tc-title,.type-card.monthly.sel .tc-title{color:var(--success);}
+.type-card.daily::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:transparent;transition:background .2s;}
+.type-card.daily:hover::before,.type-card.daily.sel::before{background:var(--blue);}
+.type-card.monthly::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:transparent;transition:background .2s;}
+.type-card.monthly:hover::before,.type-card.monthly.sel::before{background:var(--success);}
+
+/* ── Panel header with back button ── */
+.panel-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border);}
+.panel-header .back-btn{padding:6px 14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);font-size:12px;cursor:pointer;color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .12s;display:flex;align-items:center;gap:4px;}
+.panel-header .back-btn:hover{background:var(--white);border-color:var(--gold);color:var(--gold2);}
+.panel-header h3{font-size:15px;font-weight:700;flex:1;}
+.panel-header .panel-badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
+.panel-badge.daily{background:var(--blue-dim);color:var(--blue);}
+.panel-badge.monthly{background:var(--sbg);color:var(--success);}
+
+/* ── Booking room selector ── */
+.broom{padding:8px 4px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;}
+.broom:hover{box-shadow:var(--sh);transform:translateY(-1px);}
+.broom.booked{background:#f8f8f8;border-color:var(--border);color:var(--text3);cursor:not-allowed;opacity:.5;}
+.broom.selected{border:2px solid var(--blue);background:var(--blue-dim);color:var(--blue);font-weight:700;}
+.broom .bnum{font-size:14px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;}
+.broom .bstat{font-size:9px;color:var(--text3);margin-top:1px;}
+.broom.booked .bnum{color:var(--text3);}
+@media(max-width:768px){
+  .type-grid{grid-template-columns:1fr;}
+  .panel-header{flex-wrap:wrap;}
+}
+
 /* ══ NINJA MODE ══ */
 body.ninja-mode .kval,
 body.ninja-mode #ds-rev-m,body.ninja-mode #ds-rev-d,body.ninja-mode #ds-occ,body.ninja-mode #ds-pend,
@@ -993,222 +1035,136 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   </div>
 </div>
 
-<!-- ═══ BOOKING SECTION ═══ -->
+<!-- ═══ BOOKING SECTION — CARD CHOOSER ═══ -->
 <div id="sec-booking" class="sec">
 
-  <!-- ── TAB SWITCHER ─────────────────────────────── -->
-  <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border2);">
-    <button id="bk-tab-daily-btn" onclick="bkSwitchTab('daily')"
-      style="padding:9px 22px;border:none;border-bottom:3px solid var(--gold);font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--gold2);font-family:'Sarabun',sans-serif;margin-bottom:-2px;">
-      📅 จองรายวัน
-    </button>
-    <button id="bk-tab-monthly-btn" onclick="bkSwitchTab('monthly')"
-      style="padding:9px 22px;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);font-family:'Sarabun',sans-serif;margin-bottom:-2px;">
-      🏠 จองรายเดือน
-    </button>
+  <!-- STEP 0: เลือกประเภทการจอง (Card Chooser) -->
+  <div id="bk-chooser" class="type-chooser">
+    <div class="type-chooser-title">
+      <h3>🛎 เลือกประเภทการจอง</h3>
+      <p>เลือกประเภทห้องพักที่ต้องการจอง</p>
+    </div>
+    <div class="type-grid">
+      <div class="type-card daily" id="bk-card-daily" onclick="bkSetType('daily')">
+        <span class="tc-icon">📅</span>
+        <div class="tc-title">จองรายวัน</div>
+        <div class="tc-desc">
+          Walk-in · Agoda · Booking.com · Traveloka<br>
+          เลือกวันเข้า-ออก · เลือกห้อง · คำนวณราคาอัตโนมัติ<br>
+          เลือกแหล่งที่มา · กรอกชื่อแขก
+        </div>
+      </div>
+      <div class="type-card monthly" id="bk-card-monthly" onclick="bkSetType('monthly')">
+        <span class="tc-icon">🏠</span>
+        <div class="tc-title">จองรายเดือน</div>
+        <div class="tc-desc">
+          จองล่วงหน้าสำหรับผู้เช่ารายเดือน<br>
+          เลือกเดือน · เลือกห้องว่าง · ใส่ข้อมูลผู้เช่า<br>
+          ค่าเช่า · ค่ามัดจำ · ระยะสัญญา
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════ -->
-  <!-- PANEL: รายวัน (Walk-in / OTA)                -->
-  <!-- ══════════════════════════════════════════════ -->
-  <div id="bk-panel-daily">
+  <!-- PANEL: จองรายวัน -->
+  <div id="bk-panel-daily" style="display:none;">
+    <div class="panel-header">
+      <button class="back-btn" onclick="bkSetType(null)">← กลับ</button>
+      <h3>📅 จองห้องพักรายวัน</h3>
+      <span class="panel-badge daily">Walk-in · Agoda · Booking.com · Traveloka</span>
+    </div>
     <div class="g2">
       <div class="card">
-        <div class="chdr">
-          <span>📅 จองห้องพักรายวัน</span>
-          <span style="font-size:10px;color:var(--text3);">Walk-in · Agoda · Booking.com · Traveloka</span>
-        </div>
+        <div class="chdr"><span>📅 ข้อมูลการจอง</span></div>
         <div class="cbdy">
-          <!-- วันที่ -->
           <div class="fg" style="margin-bottom:12px;">
             <div class="fr"><label>วันที่เข้าพัก</label><input type="date" id="bci" onchange="refreshAvailRooms()"></div>
             <div class="fr"><label>วันที่ออก</label><input type="date" id="bco" onchange="refreshAvailRooms()"></div>
           </div>
-          <!-- เลือกห้อง -->
           <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">เลือกห้อง (คลิกห้องที่ว่าง)</div>
           <div class="bform-rooms" id="brooms"><div class="loading">กำลังโหลด...</div></div>
-          <!-- แหล่งที่มา + ราคา -->
           <div class="fg">
             <div class="fr"><label>แหล่งที่มา</label>
-              <select id="bsrc">
-                <option value="W">🟢 Walk-in</option>
-                <option value="A">🔴 Agoda</option>
-                <option value="B">🔵 Booking.com</option>
-                <option value="T">🔵 Traveloka</option>
-                <option value="O">⚫ OTA อื่นๆ</option>
-              </select>
+              <select id="bsrc"><option value="W">🟢 Walk-in</option><option value="A">🔴 Agoda</option><option value="B">🔵 Booking.com</option><option value="T">🔵 Traveloka</option><option value="O">⚫ OTA อื่นๆ</option></select>
             </div>
             <div class="fr"><label>ราคา/คืน (฿)</label><input type="number" id="bprice" value="750" oninput="calcBT()"></div>
           </div>
-          <!-- ประเภทเตียง + ชื่อแขก -->
           <div class="fg">
             <div class="fr"><label>ประเภทเตียง</label>
-              <select id="bbed">
-                <option value="6ft">🛏 เตียง 6 ฟุต</option>
-                <option value="5ft">🛏 เตียง 5 ฟุต</option>
-                <option value="twin">🛏🛏 เตียงคู่</option>
-              </select>
+              <select id="bbed"><option value="6ft">🛏 เตียง 6 ฟุต</option><option value="5ft">🛏 เตียง 5 ฟุต</option><option value="twin">🛏🛏 เตียงคู่</option></select>
             </div>
-            <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest" placeholder="ชื่อผู้เข้าพัก"></div>
+            <div class="fr"><label>ชื่อแขก</label><input type="text" id="bguest"></div>
           </div>
-          <!-- เบอร์โทร + สัญชาติ -->
           <div class="fg">
             <div class="fr"><label>เบอร์โทร</label><input type="tel" id="bphone" placeholder="08x-xxx-xxxx"></div>
-            <div class="fr"><label>สัญชาติ</label>
-              <select id="bnation">
-                <option value="TH">🇹🇭 ไทย</option>
-                <option value="CN">🇨🇳 จีน</option>
-                <option value="JP">🇯🇵 ญี่ปุ่น</option>
-                <option value="KR">🇰🇷 เกาหลี</option>
-                <option value="US">🇺🇸 อเมริกา</option>
-                <option value="GB">🇬🇧 อังกฤษ</option>
-                <option value="OTHER">🌍 อื่นๆ</option>
-              </select>
-            </div>
-          </div>
-          <!-- เลขบัตร -->
-          <div class="fg">
-            <div class="fr"><label>เลขบัตรประชาชน / Passport</label><input type="text" id="bpassport" placeholder="เลขบัตร / Passport No."></div>
             <div class="fr"><label>หมายเหตุ</label><input type="text" id="bnote" placeholder="เช่น จอดรถ, สัตว์เลี้ยง"></div>
           </div>
-          <!-- ยอดรวม -->
           <div class="totrow"><span class="lbl">ยอดรวม (<span id="bnights">1</span> คืน)</span><span class="val" id="btotal">฿ 750</span></div>
           <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;" onclick="submitBooking()">💾 บันทึกการจอง</button>
         </div>
       </div>
-
-      <!-- ห้องว่างในช่วงวัน -->
       <div class="card">
-        <div class="chdr">
-          <span>🗓 ห้องในช่วงวันที่เลือก</span>
-          <span id="avail-date-range" style="font-size:11px;color:var(--text3);"></span>
-        </div>
+        <div class="chdr"><span>🗓 ห้องในช่วงวันที่เลือก</span><span id="avail-date-range" style="font-size:11px;color:var(--text3);"></span></div>
         <div class="cbdy" id="avail-rooms-status"></div>
       </div>
     </div>
-
-    <!-- รายการจองรายวันล่าสุด -->
     <div class="card" style="margin-top:14px;">
-      <div class="chdr">
-        <span>📋 รายการจองรายวันล่าสุด</span>
-        <button class="tbtn" onclick="loadBookings()" style="font-size:10px;">🔄</button>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="dtbl">
-          <thead>
-            <tr>
-              <th>ห้อง</th><th>แขก</th><th>เบอร์</th>
-              <th>วันที่เข้า</th><th>วันที่ออก</th><th>คืน</th>
-              <th>แหล่งที่มา</th><th>ราคา/คืน</th><th>รวม</th>
-            </tr>
-          </thead>
-          <tbody id="btbody"><tr><td colspan="9" class="loading">กำลังโหลด...</td></tr></tbody>
-        </table>
-      </div>
+      <div class="chdr">📋 รายการจองรายวันล่าสุด</div>
+      <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>แขก</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>แหล่งที่มา</th><th>ราคา</th></tr></thead><tbody id="btbody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
     </div>
-  </div><!-- /bk-panel-daily -->
+  </div>
 
-  <!-- ══════════════════════════════════════════════ -->
-  <!-- PANEL: รายเดือน (ผู้เช่ารายเดือน)            -->
-  <!-- ══════════════════════════════════════════════ -->
+  <!-- PANEL: จองรายเดือน -->
   <div id="bk-panel-monthly" style="display:none;">
+    <div class="panel-header">
+      <button class="back-btn" onclick="bkSetType(null)">← กลับ</button>
+      <h3>🏠 จองห้องรายเดือน</h3>
+      <span class="panel-badge monthly">🏠 ผู้เช่ารายเดือน</span>
+    </div>
     <div class="g2">
       <div class="card">
-        <div class="chdr">
-          <span>🏠 จองห้องรายเดือน</span>
-          <span style="font-size:10px;color:var(--text3);">ผู้เช่าใหม่ — กรอกข้อมูลแล้วกดบันทึก</span>
-        </div>
+        <div class="chdr"><span>🏠 ข้อมูลการจองรายเดือน</span></div>
         <div class="cbdy">
-          <!-- เดือนเริ่ม + ห้อง -->
           <div class="fg">
-            <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month" onchange="loadResMonths()"></select></div>
+            <div class="fr"><label>เดือนเริ่มเข้าอยู่</label><select id="res-month"></select></div>
             <div class="fr"><label>ห้อง (เฉพาะห้องว่าง)</label><select id="res-room"><option value="">— เลือกเดือนก่อน —</option></select></div>
           </div>
-          <!-- ชื่อ + เบอร์ -->
           <div class="fg">
             <div class="fr"><label>ชื่อผู้เช่า *</label><input type="text" id="res-name" placeholder="ชื่อ-นามสกุล"></div>
             <div class="fr"><label>เบอร์โทร *</label><input type="tel" id="res-phone" placeholder="08x-xxx-xxxx"></div>
           </div>
-          <!-- เลขบัตร + สัญชาติ -->
           <div class="fg">
-            <div class="fr"><label>เลขบัตรประชาชน (13 หลัก)</label><input type="text" id="res-idcard" maxlength="13" placeholder="1234567890123"></div>
-            <div class="fr"><label>LINE ID / อีเมล</label><input type="text" id="res-contact" placeholder="@lineid / email@..."></div>
+            <div class="fr"><label>ค่าเช่า (฿/เดือน)</label><input type="number" id="res-rent" value="4500"></div>
+            <div class="fr"><label>ค่ามัดจำ (฿)</label><input type="number" id="res-deposit" value="0"></div>
           </div>
-          <!-- ค่าเช่า + มัดจำ -->
-          <div class="fg">
-            <div class="fr"><label>ค่าเช่า (฿/เดือน)</label><input type="number" id="res-rent" value="4500" oninput="calcResTotal()"></div>
-            <div class="fr"><label>ค่ามัดจำ (฿)</label><input type="number" id="res-deposit" value="4500" oninput="calcResTotal()"></div>
-          </div>
-          <!-- ค่าแรกเข้า + วันเริ่มสัญญา -->
-          <div class="fg">
-            <div class="fr"><label>ค่าแรกเข้า (฿)</label><input type="number" id="res-entry" value="0" oninput="calcResTotal()"></div>
-            <div class="fr"><label>วันที่เริ่มสัญญา</label><input type="date" id="res-startdate"></div>
-          </div>
-          <!-- ระยะสัญญา + ประเภทเตียง -->
           <div class="fg">
             <div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="res-contract" value="12"></div>
-            <div class="fr"><label>ประเภทเตียง</label>
-              <select id="res-bed">
-                <option value="6ft">🛏 6 ฟุต</option>
-                <option value="5ft">🛏 5 ฟุต</option>
-                <option value="twin">🛏🛏 เตียงคู่</option>
-              </select>
-            </div>
+            <div class="fr"><label>ประเภทเตียง</label><select id="res-bed"><option value="6ft">🛏 6 ฟุต</option><option value="5ft">🛏 5 ฟุต</option><option value="twin">🛏🛏 คู่</option></select></div>
           </div>
-          <!-- สิ่งอำนวยความสะดวก -->
-          <div style="background:var(--shell);border-radius:8px;padding:10px 12px;margin:8px 0;">
-            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">สิ่งอำนวยความสะดวก / รายการเพิ่มเติม</div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;">
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-tv"> 📺 ทีวี</label>
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-fridge"> 🧊 ตู้เย็น</label>
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-ac"> ❄️ แอร์</label>
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-car"> 🚗 จอดรถยนต์</label>
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
-              <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-wifi"> 📶 WiFi</label>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;">
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-tv"> 📺 ทีวี</label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-fridge"> 🧊 ตู้เย็น</label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-car"> 🚗 จอดรถยนต์</label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="res-moto"> 🏍 มอเตอร์ไซค์</label>
           </div>
-          <!-- หมายเหตุ -->
-          <div class="fg">
-            <div class="fr" style="flex:2;"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า, สัตว์เลี้ยง"></div>
-          </div>
-          <!-- ยอดที่ต้องชำระแรกเข้า -->
-          <div class="totrow" style="margin-top:10px;">
-            <span class="lbl">ยอดชำระแรกเข้า (มัดจำ + ค่าแรกเข้า)</span>
-            <span class="val" id="res-total-display">฿ 4,500</span>
-          </div>
-          <button class="btn bp" style="width:100%;margin-top:10px;padding:10px;" onclick="submitReservation()">📝 บันทึกจองรายเดือน</button>
+          <div class="fg"><div class="fr"><label>หมายเหตุ</label><input type="text" id="res-note" placeholder="เช่น แนะนำโดยลูกค้าเก่า"></div></div>
+          <div class="totrow"><span class="lbl">ยอดชำระแรกเข้า (มัดจำ)</span><span class="val">฿ 0</span></div>
+          <button class="btn bp" style="width:100%;margin-top:12px;padding:10px;background:linear-gradient(135deg,var(--success),#27ae60);border-color:#27ae60;" onclick="submitReservation()">📝 บันทึกจองรายเดือน</button>
         </div>
       </div>
-
-      <!-- สรุปข้อมูลก่อนบันทึก -->
       <div class="card">
         <div class="chdr"><span>📊 สรุปก่อนบันทึก</span></div>
-        <div class="cbdy" id="res-preview">
+        <div class="cbdy" id="bk-monthly-summary">
           <div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div>
         </div>
       </div>
     </div>
-
-    <!-- รายการจองรายเดือน -->
+    <!-- ตารางจองรายเดือน -->
     <div class="card" style="margin-top:14px;">
-      <div class="chdr">
-        <span>📋 รายการจองรายเดือน</span>
-        <button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="dtbl">
-          <thead>
-            <tr>
-              <th>ห้อง</th><th>ผู้เช่า</th><th>เบอร์</th>
-              <th>เดือนเริ่ม</th><th>วันเริ่มสัญญา</th><th>ค่าเช่า</th>
-              <th>มัดจำ</th><th>สัญญา</th><th>สถานะ</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="res-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody>
-        </table>
-      </div>
+      <div class="chdr"><span>📋 รายการจองรายเดือน</span><button class="tbtn" onclick="loadReservations()" style="font-size:10px;">🔄</button></div>
+      <div style="overflow-x:auto;"><table class="dtbl"><thead><tr><th>ห้อง</th><th>ผู้เช่า</th><th>เดือนเริ่ม</th><th>ค่าเช่า</th><th>มัดจำ</th><th>สถานะ</th><th></th></tr></thead><tbody id="res-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table></div>
     </div>
-  </div><!-- /bk-panel-monthly -->
+  </div>
 
 </div>
 </div>
@@ -1735,12 +1691,12 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;" id="ut-kpi-strip">
   <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);">
     <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">⚡ ค่าไฟล่าสุด</div>
-    <div id="ut-kpi-mea" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">40,521</div>
+    <div id="ut-kpi-mea" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">—</div>
     <div id="ut-kpi-mea-sub" style="font-size:11px;color:var(--text3);">ก.พ. 2569</div>
   </div>
   <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);">
     <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">💧 ค่าน้ำล่าสุด</div>
-    <div id="ut-kpi-mwa" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">6,462</div>
+    <div id="ut-kpi-mwa" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:3px 0 1px;">—</div>
     <div id="ut-kpi-mwa-sub" style="font-size:11px;color:var(--text3);">ก.พ. 2569</div>
   </div>
   <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);">
@@ -1810,8 +1766,8 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
             <th style="min-width:70px;text-align:right;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
             <th style="min-width:70px;text-align:right;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
             <th style="min-width:70px;text-align:right;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:100px;text-align:right;">ยอดชำระ (฿)</th>
-            <th style="min-width:70px;">วันชำระ</th>
+            <th style="min-width:100px;text-align:right;">ยอดรวม (฿)</th>
+            <th style="min-width:78px;">วันออกบิล</th>
             <th style="text-align:center;min-width:180px;">เอกสาร PDF</th>
             <th style="text-align:center;width:42px;">แก้ไข</th>
           </tr>
@@ -1819,7 +1775,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <tbody id="ut-mea-tbody"></tbody>
       </table>
     </div>
-    <div style="padding:6px 14px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);text-align:center;">ข้อมูลยอดชำระจาก K PLUS · ข้อมูลมิเตอร์เก็บใน localStorage · กดลิงก์เปิด Gmail เพื่อดู PDF ต้นฉบับ</div>
+    <div style="padding:6px 14px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);text-align:center;">ข้อมูลทั้งหมดอ่านจาก PDF ใบแจ้งหนี้/ใบเสร็จ ใน Gmail · เก็บใน localStorage · กด Import มิเตอร์เพื่อโหลดข้อมูล</div>
   </div>
 </div><!-- /ut-panel-mea -->
 
@@ -1850,8 +1806,8 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
             <th style="min-width:80px;text-align:left;">วันจดมิเตอร์</th>
             <th style="min-width:70px;text-align:right;">หน่วย (ลบ.ม.)</th>            <th style="min-width:70px;text-align:right;">มิเตอร์เก่า</th>
             <th style="min-width:70px;text-align:right;">มิเตอร์ใหม่</th>
-            <th style="min-width:100px;text-align:right;">ยอดชำระ (฿)</th>
-            <th style="min-width:78px;">รอบ (จาก PDF)</th>
+            <th style="min-width:100px;text-align:right;">ยอดรวม (฿)</th>
+            <th style="min-width:78px;">รอบบิล (PDF)</th>
             <th style="text-align:center;min-width:140px;">เอกสาร PDF</th>
             <th style="text-align:center;width:42px;">แก้ไข</th>
           </tr>
@@ -1859,7 +1815,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <tbody id="ut-mwa-tbody"></tbody>
       </table>
     </div>
-    <div style="padding:6px 14px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);text-align:center;">ข้อมูลยอดชำระจาก K PLUS · ข้อมูลมิเตอร์เก็บใน localStorage · กดลิงก์เปิด Gmail เพื่อดู PDF ต้นฉบับ</div>
+    <div style="padding:6px 14px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);text-align:center;">ข้อมูลทั้งหมดอ่านจาก PDF ใบแจ้งหนี้/ใบเสร็จ ใน Gmail · เก็บใน localStorage · กด Import มิเตอร์เพื่อโหลดข้อมูล</div>
   </div>
 </div><!-- /ut-panel-mwa -->
 
@@ -4592,7 +4548,7 @@ function showSec(id,btn){
   renderKPIBar();
   if(id==='dashboard'){renderDashboard();}
   if(id==='daily'){buildDateStrip();renderDaily();}
-  if(id==='booking'){bkSwitchTab('daily');loadBookings();refreshAvailRooms();loadResMonths();loadReservations();}
+  if(id==='booking'){bkSetType(null);}
   if(id==='slips'){
     const slMonth=document.getElementById('sl-month');
     if(slMonth&&!slMonth.value)slMonth.value=new Date().toISOString().slice(0,7);
@@ -8076,21 +8032,21 @@ var _UT_MEA_BASE = [
 ];
 
 var _UT_MWA_BASE = [
-  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'13/01/2025', amount:null },
-  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'16/02/2025', amount:null },
-  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'13/03/2025', amount:null },
-  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'15/04/2025', amount:null },
-  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'12/05/2025', amount:null },
-  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'13/06/2025', amount:null },
-  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'14/07/2025', amount:null },
-  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'13/08/2025', amount:null },
-  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'15/09/2025', amount:null },
-  { month:'ต.ค. 2568',  yr:'2568', mo:'10', paidDate:'15/10/2025', amount:null },
-  { month:'พ.ย. 2568',  yr:'2568', mo:'11', paidDate:'22/11/2025', amount:4867.54 },
-  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'17/12/2025', amount:4133.30 },
-  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'15/01/2026', amount:5993.18 },
-  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'19/02/2026', amount:6461.84 },
-  { month:'มี.ค. 2569', yr:'2569', mo:'03', paidDate:'15/03/2026', amount:null },
+  { month:'ม.ค. 2568',  yr:'2568', mo:'01' },
+  { month:'ก.พ. 2568',  yr:'2568', mo:'02' },
+  { month:'มี.ค. 2568', yr:'2568', mo:'03' },
+  { month:'เม.ย. 2568', yr:'2568', mo:'04' },
+  { month:'พ.ค. 2568',  yr:'2568', mo:'05' },
+  { month:'มิ.ย. 2568', yr:'2568', mo:'06' },
+  { month:'ก.ค. 2568',  yr:'2568', mo:'07' },
+  { month:'ส.ค. 2568',  yr:'2568', mo:'08' },
+  { month:'ก.ย. 2568',  yr:'2568', mo:'09' },
+  { month:'ต.ค. 2568',  yr:'2568', mo:'10' },
+  { month:'พ.ย. 2568',  yr:'2568', mo:'11' },
+  { month:'ธ.ค. 2568',  yr:'2568', mo:'12' },
+  { month:'ม.ค. 2569',  yr:'2569', mo:'01' },
+  { month:'ก.พ. 2569',  yr:'2569', mo:'02' },
+  { month:'มี.ค. 2569', yr:'2569', mo:'03' },
 ];
 
 // ── localStorage helpers ────────────────────────────
@@ -8176,17 +8132,19 @@ function _utRenderMEA() {
     var m = stored[key] || {};
     var hasData = m.offpeak || m.onpeak || m.meterDate;
     if (hasData) filledCount++;
-    var prev = i > 0 ? _UT_MEA_BASE[i-1].amount : null;
+    var prevM = i > 0 ? (stored[_utKey('mea', _UT_MEA_BASE[i-1].month)] || {}) : {};
+    var prevAmt = prevM.amount ? parseFloat(prevM.amount) : null;
+    var curAmt  = m.amount    ? parseFloat(m.amount)    : null;
     var trend = '';
-    if (d.amount && prev) {
-      var pct = ((d.amount-prev)/prev*100).toFixed(1);
+    if (curAmt && prevAmt) {
+      var pct = ((curAmt-prevAmt)/prevAmt*100).toFixed(1);
       trend = parseFloat(pct) > 0
         ? ' <span style="color:var(--warn);font-size:10px;">&#9650;'+pct+'%</span>'
         : ' <span style="color:var(--success);font-size:10px;">&#9660;'+Math.abs(pct)+'%</span>';
     }
-    var amtCell = d.amount === null
-      ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trend;
+    var amtCell = !curAmt
+      ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--text3);">—</span>'
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(curAmt) + '</span>' + trend;
     var offpeak = m.offpeak ? '<b style="color:var(--success);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.offpeak) + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
     var onpeak  = m.onpeak  ? '<b style="color:var(--warn);font-family:JetBrains Mono,monospace;">'   + _utFmtN(m.onpeak)  + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
     var totU = (m.offpeak && m.onpeak) ? (+m.offpeak)+(+m.onpeak) : (m.totalUnits || '');
@@ -8208,7 +8166,7 @@ function _utRenderMEA() {
       + '<td style="text-align:right;">' + onpeak + '</td>'
       + '<td style="text-align:right;">' + total + '</td>'
       + '<td style="text-align:right;">' + amtCell + '</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + (d.paidDate||'&#8212;') + '</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + (m.paidDate||'&#8212;') + '</td>'
       + '<td style="white-space:nowrap;">' + pdfLinks + '</td>'
       + '<td style="text-align:center;"><button onclick="utEditEntry('mea',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
@@ -8226,23 +8184,25 @@ function _utRenderMWA() {
   var rows = _UT_MWA_BASE.map(function(d, i) {
     var key = _utKey('mwa', d.month);
     var m = stored[key] || {};
-    var prev = i > 0 ? _UT_MWA_BASE[i-1].amount : null;
+    var prevMw = i > 0 ? (stored[_utKey('mwa', _UT_MWA_BASE[i-1].month)] || {}) : {};
+    var prevAmtW = prevMw.amount ? parseFloat(prevMw.amount) : null;
+    var curAmtW  = m.amount     ? parseFloat(m.amount)     : null;
     var trend = '';
-    if (d.amount && prev) {
-      var pct = ((d.amount-prev)/prev*100).toFixed(1);
+    if (curAmtW && prevAmtW) {
+      var pct = ((curAmtW-prevAmtW)/prevAmtW*100).toFixed(1);
       trend = parseFloat(pct) > 0
         ? ' <span style="color:var(--warn);font-size:10px;">&#9650;'+pct+'%</span>'
         : ' <span style="color:var(--success);font-size:10px;">&#9660;'+Math.abs(pct)+'%</span>';
     }
-    var amtCell = d.amount === null
-      ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trend;
+    var amtCell = !curAmtW
+      ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--text3);">—</span>'
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(curAmtW) + '</span>' + trend;
     var units = m.units    ? '<b style="color:var(--blue);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.units)    + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
     var mOld  = m.meterOld ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterOld + '</span>'     : '<span style="color:var(--text3);">&#8212;</span>';
     var mNew  = m.meterNew ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterNew + '</span>'     : '<span style="color:var(--text3);">&#8212;</span>';
     var mDate = m.meterDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterDate + '</span>'   : '<span style="color:var(--text3);">&#8212;</span>';
     var period= m.period    ? '<span style="font-size:10px;color:var(--text2);">' + m.period + '</span>'                        : '<span style="color:var(--text3);">&#8212;</span>';
-    var recDt = (d.paidDate && d.paidDate !== '—') ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + d.paidDate + '</span>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var recDt = m.paidDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.paidDate + '</span>' : '<span style="color:var(--text3);">&#8212;</span>';
     var mwaUrl = _utDriveLink('MWA', d.yr, d.mo, 'rec');
     var pdfLinks = mwaUrl
       ? '<a href="'+mwaUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">&#129518; Receipt</a>'
@@ -8262,6 +8222,13 @@ function _utRenderMWA() {
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
+}
+
+// Auto-update MWA KPI from stored
+function _utUpdateMwaKpi(stored) {
+  var mwaKpiEl = document.getElementById('ut-kpi-mwa');
+  var mwaLastKey = _utKey('mwa','ก.พ. 2569'); var mwaLast = stored[mwaLastKey]||{};
+  if (mwaKpiEl && mwaLast.amount) mwaKpiEl.textContent = _utFmt(parseFloat(mwaLast.amount));
 }
 
 // ── Edit modal ───────────────────────────────────────
@@ -8288,20 +8255,24 @@ function utEditEntry(type, month) {
 
   if (type === 'mea') {
     html += '<div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      + _utField('ut-ef-period','รอบบิล (เช่น 01/01/2025-31/01/2025)',m.period,'text','ut-ef-period')
-      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์',m.meterDate,'text','ut-ef-meterDate')
+      + _utField('ut-ef-period','รอบบิล (เช่น 01/01/25–31/01/25)',m.period,'text','ut-ef-period')
+      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์ (DD/MM/YY)',m.meterDate,'text','ut-ef-meterDate')
       + _utField('ut-ef-offpeak','หน่วย Off Peak',m.offpeak,'number','ut-ef-offpeak')
       + _utField('ut-ef-onpeak','หน่วย On Peak',m.onpeak,'number','ut-ef-onpeak')
-      + _utField('ut-ef-totalUnits','หน่วยรวม (กรอกถ้าไม่มี on/off)',m.totalUnits,'number','ut-ef-totalUnits')
+      + _utField('ut-ef-totalUnits','หน่วยรวม (คำนวณอัตโนมัติ / กรอกเอง)',m.totalUnits,'number','ut-ef-totalUnits')
+      + _utField('ut-ef-amount','ยอดรวม (฿) จากใบแจ้งหนี้',m.amount,'number','ut-ef-amount')
+      + _utField('ut-ef-paidDate','วันที่ออกบิล (DD/MM/YY)',m.paidDate,'text','ut-ef-paidDate')
       + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text','ut-ef-notes')
       + '</div>';
   } else {
     html += '<div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      + _utField('ut-ef-period','รอบบิล',m.period,'text','ut-ef-period')
-      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์',m.meterDate,'text','ut-ef-meterDate')
-      + _utField('ut-ef-meterOld','เลขมิเตอร์เก่า (ลบ.ม.)',m.meterOld,'number','ut-ef-meterOld')
-      + _utField('ut-ef-meterNew','เลขมิเตอร์ใหม่ (ลบ.ม.)',m.meterNew,'number','ut-ef-meterNew')
-      + _utField('ut-ef-units','หน่วยที่ใช้ (ลบ.ม.)',m.units,'number','ut-ef-units')
+      + _utField('ut-ef-period','รอบบิล (เช่น 13/01/25–13/02/25)',m.period,'text','ut-ef-period')
+      + _utField('ut-ef-meterDate','วันที่จดมิเตอร์ (DD/MM/YY)',m.meterDate,'text','ut-ef-meterDate')
+      + _utField('ut-ef-meterOld','มิเตอร์เก่า (ลบ.ม.)',m.meterOld,'number','ut-ef-meterOld')
+      + _utField('ut-ef-meterNew','มิเตอร์ใหม่ (ลบ.ม.)',m.meterNew,'number','ut-ef-meterNew')
+      + _utField('ut-ef-units','หน่วยที่ใช้ (คำนวณอัตโนมัติ)',m.units,'number','ut-ef-units')
+      + _utField('ut-ef-amount','ยอดรวม (฿) จากใบเสร็จ',m.amount,'number','ut-ef-amount')
+      + _utField('ut-ef-paidDate','วันที่ออกใบเสร็จ (DD/MM/YY)',m.paidDate,'text','ut-ef-paidDate')
       + _utField('ut-ef-notes','หมายเหตุ',m.notes,'text','ut-ef-notes')
       + '</div>';
   }
@@ -8333,10 +8304,12 @@ function utSaveEntry() {
   var data = { period:g('ut-ef-period'), meterDate:g('ut-ef-meterDate'), notes:g('ut-ef-notes') };
   if (isMEA) {
     data.offpeak = g('ut-ef-offpeak'); data.onpeak = g('ut-ef-onpeak');
+    data.amount = g('ut-ef-amount'); data.paidDate = g('ut-ef-paidDate');
     var off2=parseFloat(data.offpeak)||0, on2=parseFloat(data.onpeak)||0;
     if (off2+on2 > 0) data.totalUnits = off2+on2;
   } else {
     data.meterOld = g('ut-ef-meterOld'); data.meterNew = g('ut-ef-meterNew'); data.units = g('ut-ef-units');
+    data.amount = g('ut-ef-amount'); data.paidDate = g('ut-ef-paidDate');
     var mo2=parseFloat(data.meterOld)||0, mn2=parseFloat(data.meterNew)||0;
     if (mn2 > mo2 && !data.units) data.units = mn2-mo2;
   }
@@ -8370,7 +8343,10 @@ function _utInitMeaCharts() {
   var stored = _utLoad();
   // Main chart — amount + units
   var labels = _UT_MEA_BASE.map(function(d){ return d.month; });
-  var amounts = _UT_MEA_BASE.map(function(d){ return d.amount; });
+  var amounts = _UT_MEA_BASE.map(function(d){
+    var k = _utKey('mea',d.month); var mc = stored[k]||{};
+    return mc.amount ? parseFloat(mc.amount) : null;
+  });
   var offPeaks = _UT_MEA_BASE.map(function(d){
     var k = _utKey('mea',d.month); var m = stored[k]||{};
     return m.offpeak ? +m.offpeak : null;
@@ -8422,11 +8398,14 @@ function _utInitMeaCharts() {
     }
   });
   // Update KPI
-  var lastAmt = document.getElementById('ut-kpi-mea');
-  var lastKey = _utKey('mea','ก.พ. 2569'); var lm = stored[lastKey]||{};
-  if (lm.offpeak && lm.onpeak) {
+  // Update MEA KPI from latest stored data
+  var meaKpiEl = document.getElementById('ut-kpi-mea');
+  var meaLastKey = _utKey('mea','ก.พ. 2569'); var meaLast = stored[meaLastKey]||{};
+  if (meaLastKey && meaLast.amount && meaKpiEl)
+    meaKpiEl.textContent = _utFmt(parseFloat(meaLast.amount));
+  if (meaLast.offpeak && meaLast.onpeak) {
     var u = document.getElementById('ut-kpi-units');
-    if (u) u.textContent = ((+lm.offpeak)+(+lm.onpeak)).toLocaleString('th-TH');
+    if (u) u.textContent = ((+meaLast.offpeak)+(+meaLast.onpeak)).toLocaleString('th-TH');
   }
 }
 
@@ -8436,15 +8415,20 @@ function _utInitMwaCharts() {
     if (_utCharts[id]) { try{_utCharts[id].destroy();}catch(e){} }
   });
   var stored = _utLoad();
-  var mwaWithAmt = _UT_MWA_BASE.filter(function(d){ return d.amount !== null; });
+  var mwaWithAmt = _UT_MWA_BASE.filter(function(d){
+    var k=_utKey('mwa',d.month); return !!(stored[k]||{}).amount;
+  });
   var c1 = document.getElementById('ut-mwa-main-chart');
   if (c1) _utCharts['ut-mwa-main-chart'] = new Chart(c1, {
     type:'bar',
     data:{
       labels:_UT_MWA_BASE.map(function(d){ return d.month; }),
       datasets:[{
-        label:'ยอดชำระ (฿)',
-        data:_UT_MWA_BASE.map(function(d){ return d.amount; }),
+        label:'ยอดรวม (฿)',
+        data:_UT_MWA_BASE.map(function(d){
+          var k=_utKey('mwa',d.month); var mc=stored[k]||{};
+          return mc.amount ? parseFloat(mc.amount) : null;
+        }),
         backgroundColor:'rgba(26,115,232,0.7)',borderColor:'var(--blue)',borderWidth:1,borderRadius:3
       }]
     },
@@ -8545,6 +8529,43 @@ function setCIType(type){
         if(o.value)mNat.appendChild(o.cloneNode(true));
       });
     }
+  }
+}
+
+// ══ จองห้อง: Card Chooser ══
+function bkSetType(type) {
+  var chooser = document.getElementById('bk-chooser');
+  var panelD  = document.getElementById('bk-panel-daily');
+  var panelM  = document.getElementById('bk-panel-monthly');
+
+  document.querySelectorAll('#bk-chooser .type-card').forEach(function(c){ c.classList.remove('sel'); });
+
+  if (!type) {
+    chooser.style.display = '';
+    panelD.style.display = 'none';
+    panelM.style.display = 'none';
+    return;
+  }
+
+  var card = document.getElementById('bk-card-' + type);
+  if (card) card.classList.add('sel');
+
+  chooser.style.display = 'none';
+  panelD.style.display  = type === 'daily'   ? '' : 'none';
+  panelM.style.display  = type === 'monthly' ? '' : 'none';
+
+  if (type === 'daily') {
+    var t = new Date().toISOString().split('T')[0];
+    var tm = new Date(Date.now()+86400000).toISOString().split('T')[0];
+    if (!document.getElementById('bci').value) document.getElementById('bci').value = t;
+    if (!document.getElementById('bco').value) document.getElementById('bco').value = tm;
+    refreshAvailRooms();
+    loadBookings();
+    calcBT();
+  }
+  if (type === 'monthly') {
+    loadResMonths();
+    loadReservations();
   }
 }
 
@@ -8946,88 +8967,7 @@ function utDoImport() {
   }
 }
 
-// ── Booking Section Tab Switch ────────────────────
-function bkSwitchTab(tab) {
-  var isDaily = tab === 'daily';
-  document.getElementById('bk-panel-daily').style.display   = isDaily ? '' : 'none';
-  document.getElementById('bk-panel-monthly').style.display = isDaily ? 'none' : '';
-  var dBtn = document.getElementById('bk-tab-daily-btn');
-  var mBtn = document.getElementById('bk-tab-monthly-btn');
-  if (dBtn) {
-    dBtn.style.color       = isDaily ? 'var(--gold2)' : 'var(--text3)';
-    dBtn.style.borderBottom= isDaily ? '3px solid var(--gold)' : '3px solid transparent';
-  }
-  if (mBtn) {
-    mBtn.style.color       = isDaily ? 'var(--text3)' : 'var(--blue)';
-    mBtn.style.borderBottom= isDaily ? '3px solid transparent' : '3px solid var(--blue)';
-  }
-  if (!isDaily) { calcResTotal(); }
-}
-
-// ── Monthly booking: calc first-payment total ──────
-function calcResTotal() {
-  var deposit = parseFloat(document.getElementById('res-deposit')&&document.getElementById('res-deposit').value) || 0;
-  var entry   = parseFloat(document.getElementById('res-entry')&&document.getElementById('res-entry').value) || 0;
-  var rent    = parseFloat(document.getElementById('res-rent')&&document.getElementById('res-rent').value) || 0;
-  var total   = deposit + entry;
-  var disp = document.getElementById('res-total-display');
-  if (disp) disp.textContent = '฿ ' + total.toLocaleString('th-TH');
-  // update preview panel
-  updateResPreview();
-}
-
-function updateResPreview() {
-  var prev = document.getElementById('res-preview');
-  if (!prev) return;
-  var g = function(id){ var el=document.getElementById(id); return el ? el.value : ''; };
-  var room     = g('res-room');
-  var name     = g('res-name');
-  var phone    = g('res-phone');
-  var rent     = parseFloat(g('res-rent')) || 0;
-  var deposit  = parseFloat(g('res-deposit')) || 0;
-  var entry    = parseFloat(g('res-entry')) || 0;
-  var contract = g('res-contract');
-  var startdate= g('res-startdate');
-  var note     = g('res-note');
-  if (!room && !name) {
-    prev.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">กรอกข้อมูลเพื่อดูสรุป</div>';
-    return;
-  }
-  var fmt = function(n){ return n.toLocaleString('th-TH',{minimumFractionDigits:0}); };
-  prev.innerHTML =
-    '<div style="display:grid;gap:8px;font-size:12px;">'
-    + _prevRow('🚪 ห้อง', room || '—', 'var(--gold2)', true)
-    + _prevRow('👤 ผู้เช่า', name || '—')
-    + _prevRow('📞 เบอร์', phone || '—')
-    + _prevRow('💰 ค่าเช่า/เดือน', '฿ ' + fmt(rent), 'var(--blue)')
-    + _prevRow('🔒 มัดจำ', '฿ ' + fmt(deposit))
-    + (entry > 0 ? _prevRow('🏷 ค่าแรกเข้า', '฿ ' + fmt(entry)) : '')
-    + _prevRow('📋 ระยะสัญญา', contract + ' เดือน')
-    + (startdate ? _prevRow('📅 วันเริ่มสัญญา', startdate) : '')
-    + (note ? _prevRow('📝 หมายเหตุ', note) : '')
-    + '<div style="border-top:1.5px solid var(--border2);padding-top:10px;margin-top:4px;">'
-    + '<div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px;">'
-    + '<span>💳 ยอดชำระแรกเข้า</span>'
-    + '<span style="color:var(--gold2);font-family:JetBrains Mono,monospace;">฿ ' + fmt(deposit+entry) + '</span>'
-    + '</div></div>'
-    + '</div>';
-}
-function _prevRow(label, val, color, bold) {
-  return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">'
-    + '<span style="color:var(--text2);">' + label + '</span>'
-    + '<span style="font-weight:'+(bold?'700':'500')+';color:'+(color||'var(--text)')+';font-family:JetBrains Mono,monospace;">' + val + '</span>'
-    + '</div>';
-}
-
-// Auto-update preview when monthly fields change
-document.addEventListener('input', function(e) {
-  var ids = ['res-rent','res-deposit','res-entry','res-name','res-phone','res-room','res-contract','res-startdate','res-note'];
-  if (ids.indexOf(e.target.id) !== -1) { calcResTotal(); }
-});
-document.addEventListener('change', function(e) {
-  var ids = ['res-room','res-month','res-bed'];
-  if (ids.indexOf(e.target.id) !== -1) { updateResPreview(); }
-});
+console.log('✅ J.Residence Billing v4 loaded');
 </script>
 
 </body>
