@@ -1276,9 +1276,14 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   <div class="card" style="margin-top:14px;border-top:4px solid #7b1fa2;">
     <div class="chdr" style="background:#f9f0ff;">
       <span style="color:#7b1fa2;font-weight:700;">⏱ ข้อมูลเข้า-ออกพนักงาน (HR Attendance)</span>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="hr-month-sel" onchange="hrRender()" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
-        <span style="font-size:10px;color:var(--text3);">ข้อมูลจาก LINE Bot</span>
+        <label class="tbtn" style="cursor:pointer;background:#e8f5e9;color:#2e7d32;border-color:#81c784;font-size:11px;" title="อัพโหลด .xlsx เพื่อ sync ข้อมูล HR ทั้งหมดเข้า Supabase">
+          &#x1F4C2; Import xlsx
+          <input type="file" id="hr-xlsx-file" accept=".xlsx,.xlsm" onchange="importHrXlsx(this)" style="display:none;">
+        </label>
+        <button class="tbtn" onclick="openHrEmployeeManager()" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;font-size:11px;">&#x270F;&#xFE0F; แก้ไขพนักงาน</button>
+        <div id="hr-sync-status" style="font-size:10px;color:var(--text3);"></div>
       </div>
     </div>
 
@@ -1291,7 +1296,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
       <div style="overflow-x:auto;">
         <table class="dtbl" id="hr-table">
           <thead><tr>
-            <th>พนักงาน</th><th>สถานที่</th><th>วันที่เข้างาน</th><th>ชั่วโมงรวม</th><th>ค่าจ้าง/วัน</th><th>ค่าจ้างรวม</th><th>เชื่อม LINE</th>
+            <th>พนักงาน</th><th>สถานที่</th><th>วันที่เข้างาน</th><th>ชั่วโมงรวม</th><th>ค่าจ้าง/วัน</th><th>เบี้ยขยัน</th><th>ค่าจ้างรวม</th><th>เชื่อม LINE</th><th></th>
           </tr></thead>
           <tbody id="hr-tbody"></tbody>
         </table>
@@ -1958,6 +1963,61 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 </div>
 
 <!-- QUICK WALK-IN MODAL -->
+<!-- HR EMPLOYEE MANAGER MODAL -->
+<div class="moverlay" id="hr-emp-modal">
+  <div class="modal" style="max-width:700px;max-height:90vh;overflow-y:auto;">
+    <div class="mhdr"><span class="mtitle">&#x270F;&#xFE0F; จัดการข้อมูลพนักงาน</span><button class="mclose" onclick="closeM('hr-emp-modal')">&#x00D7;</button></div>
+    <div class="mbdy">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;background:#f0f4ff;padding:8px 12px;border-radius:var(--rs);border-left:3px solid var(--blue);">
+        &#x1F4DD; แก้ไขข้อมูลที่นี่จะบันทึกลง Supabase (hr_employees table) — ข้อมูลใน Dashboard จะอัพเดตทันที
+      </div>
+      <table class="dtbl" style="font-size:12px;">
+        <thead><tr>
+          <th>พนักงาน</th><th>ค่าแรง/วัน (฿)</th><th>เบี้ยขยัน/เดือน (฿)</th><th>วันทำงาน/เดือน</th><th>สถานที่</th><th>หมายเหตุ</th><th></th>
+        </tr></thead>
+        <tbody id="hr-emp-tbody"></tbody>
+      </table>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border2);">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px;color:var(--text2);">&#x2795; เพิ่มพนักงานใหม่</div>
+        <div class="fg" style="gap:8px;">
+          <div class="fr"><label>ชื่อ</label><input type="text" id="new-emp-name" placeholder="ชื่อพนักงาน"></div>
+          <div class="fr"><label>LINE user_id</label><input type="text" id="new-emp-uid" placeholder="U..."></div>
+          <div class="fr"><label>ค่าแรง/วัน</label><input type="number" id="new-emp-wage" value="500" min="0"></div>
+          <div class="fr"><label>เบี้ยขยัน</label><input type="number" id="new-emp-bonus" value="0" min="0"></div>
+          <div class="fr"><label>สถานที่</label>
+            <select id="new-emp-site">
+              <option>J.Residence</option><option>S.House</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn bp" onclick="addNewEmployee()" style="margin-top:8px;font-size:12px;">&#x2795; เพิ่มพนักงาน</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HR EDIT ATTENDANCE MODAL (แก้ไขวันทำงานรายเดือน) -->
+<div class="moverlay" id="hr-att-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="mhdr"><span class="mtitle" id="hr-att-modal-title">&#x1F4C5; แก้ไขข้อมูลการเข้างาน</span><button class="mclose" onclick="closeM('hr-att-modal')">&#x00D7;</button></div>
+    <div class="mbdy">
+      <div id="hr-att-emp-info" style="font-size:12px;color:var(--text3);margin-bottom:12px;"></div>
+      <div class="fg">
+        <div class="fr"><label>เดือน</label><input type="text" id="hr-att-month" placeholder="2026-03" readonly></div>
+        <div class="fr"><label>วันทำงาน</label><input type="number" id="hr-att-days" min="0" max="31"></div>
+      </div>
+      <div class="fg">
+        <div class="fr"><label>ชั่วโมงรวม</label><input type="number" id="hr-att-hours" min="0" step="0.5"></div>
+        <div class="fr"><label>เบี้ยขยัน (฿)</label><input type="number" id="hr-att-bonus" min="0"></div>
+      </div>
+      <div class="fr"><label>หมายเหตุ</label><input type="text" id="hr-att-note" placeholder="เช่น ลาป่วย 2 วัน"></div>
+      <div id="hr-att-wage-preview" style="margin-top:12px;background:#f3e5f5;border-radius:var(--rs);padding:10px;font-size:12px;"></div>
+      <button class="btn bp" style="width:100%;margin-top:12px;" onclick="saveHrAttendance()">&#x1F4BE; บันทึก</button>
+      <input type="hidden" id="hr-att-uid">
+    </div>
+  </div>
+</div>
+
 <!-- LEAVE REQUEST MODAL -->
 <div class="moverlay" id="leave-modal">
   <div class="modal" style="max-width:500px;">
@@ -9145,7 +9205,9 @@ function hrInit() {
   _hrCurrentMonth = months[months.length-1];
   sel.value = _hrCurrentMonth;
   // โหลด LINE sessions แล้วค่อย render
-  loadHrLineLink().then(function(){
+  loadHrLineLink().then(async function(){
+    await loadHrEmployees();
+    await loadHrAttendance();
     hrRender();
     hrUpdateKPI();
   });
@@ -9211,21 +9273,25 @@ function hrRender() {
   // ── Table ──
   var tb = document.getElementById('hr-tbody');
   if (tb) {
-    var total_wage = 0, total_days = 0;
+    var total_wage = 0, total_days = 0, total_bonus = 0;
+    var empLookupHr = {};
+    _hrEmployees.forEach(function(e){empLookupHr[e.uid]=e;});
     tb.innerHTML = recs.map(function(r) {
       var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
-      var wage = emp.daily_wage || r.daily_wage || 0;
-      var wageTotal = r.days * wage;
-      total_wage += wageTotal; total_days += r.days;
+      var empSupa = empLookupHr[r.user_id] || {};
+      var wage = empSupa.daily_wage || emp.daily_wage || r.daily_wage || 0;
+      var attRec = _hrAttendance.find(function(a){return a.uid===r.user_id&&a.year_month===month;});
+      var bonus = attRec ? (attRec.bonus||0) : (empSupa.bonus||0);
+      var wageTotal = r.days * wage + bonus;
+      total_wage += wageTotal; total_days += r.days; total_bonus += bonus;
       var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
-      // check if linked to LINE
-      var linked = '—';
       return '<tr>'
         +'<td style="font-weight:700;">'+r.display_name+'</td>'
         +'<td><span style="background:'+siteColor+'20;color:'+siteColor+';padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+r.site+'</span></td>'
         +'<td class="mono" style="text-align:center;font-weight:700;color:#7b1fa2;">'+r.days+' วัน</td>'
         +'<td class="mono" style="text-align:center;">'+(r.hours>0?r.hours.toFixed(1)+' ชม.':'—')+'</td>'
         +'<td class="mono" style="text-align:right;">'+(wage>0?'฿'+wage.toLocaleString():'—')+'</td>'
+        +'<td class="mono" style="text-align:right;color:#e65100;">'+(bonus>0?'฿'+bonus.toLocaleString():'—')+'</td>'
         +'<td class="mono" style="text-align:right;font-weight:700;color:#7b1fa2;">'+(wageTotal>0?'฿'+wageTotal.toLocaleString():'—')+'</td>'
         +'<td style="text-align:center;font-size:10px;">'
         +(_hrLineUsers[r.user_id]
@@ -9234,9 +9300,10 @@ function hrRender() {
             +'">✅ LINE</span>'
           : '<span style="background:#f5f5f5;color:#999;padding:2px 8px;border-radius:8px;font-size:10px;">— ไม่ได้เชื่อม</span>')
         +'</td>'
+        +'<td style="text-align:center;"><button onclick="openEditAttModal(\''+r.user_id+'\',\''+r.display_name+'\',\''+month+'\')" style="padding:3px 8px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:4px;font-size:10px;cursor:pointer;">✏️</button></td>'
         +'</tr>';
     }).join('')
-    + (recs.length > 0 ? '<tr style="background:#f3e8ff;font-weight:700;"><td>รวม '+recs.length+' คน</td><td></td><td class="mono" style="text-align:center;color:#7b1fa2;">'+total_days+' วัน</td><td></td><td></td><td class="mono" style="text-align:right;color:#7b1fa2;font-size:14px;">฿'+total_wage.toLocaleString()+'</td><td></td></tr>' : '');
+    + (recs.length > 0 ? '<tr style="background:#f3e8ff;font-weight:700;"><td>รวม '+recs.length+' คน</td><td></td><td class="mono" style="text-align:center;color:#7b1fa2;">'+total_days+' วัน</td><td></td><td></td><td class="mono" style="text-align:right;color:#e65100;">฿'+total_bonus.toLocaleString()+'</td><td class="mono" style="text-align:right;color:#7b1fa2;font-size:14px;">฿'+total_wage.toLocaleString()+'</td><td></td><td></td></tr>' : '');
   }
 
   // ── Trend Chart ──
@@ -9305,6 +9372,313 @@ function hrUpdateKPI() {
   s('hr-kpi-month', _hrMonthLabel(month));
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// HR EMPLOYEE MANAGEMENT — Supabase hr_employees + hr_attendance
+// ══════════════════════════════════════════════════════════════
+
+// ── Local cache โหลดจาก Supabase (หรือ fallback _HR_DATA) ──
+var _hrEmployees = []; // [{uid, name, daily_wage, bonus, site, std_days, note}]
+var _hrAttendance = []; // [{uid, year_month, days, hours, bonus, note}]
+
+// โหลด hr_employees จาก Supabase (fallback: _HR_DATA.employees)
+async function loadHrEmployees() {
+  try {
+    var{data,error} = await sb.from('hr_employees').select('*').order('display_name');
+    if(error) throw error;
+    if(data && data.length > 0) {
+      _hrEmployees = data.map(function(r) {
+        return {uid:r.line_user_id, name:r.display_name, daily_wage:r.daily_wage||500,
+                bonus:r.attendance_bonus||0, site:r.site||'J.Residence',
+                std_days:r.std_days||26, note:r.note||''};
+      });
+    } else {
+      _hrEmployees = _HR_DATA.employees.map(function(e) {
+        return {uid:e.user_id, name:e.display_name, daily_wage:e.daily_wage, bonus:0, site:'J.Residence', std_days:26, note:''};
+      });
+    }
+    return _hrEmployees;
+  } catch(e) {
+    _hrEmployees = _HR_DATA.employees.map(function(e) {
+      return {uid:e.user_id, name:e.display_name, daily_wage:e.daily_wage, bonus:0, site:'J.Residence', std_days:26, note:''};
+    });
+    return _hrEmployees;
+  }
+}
+
+// โหลด hr_attendance จาก Supabase (fallback: _HR_DATA.records)
+async function loadHrAttendance() {
+  try {
+    var{data,error} = await sb.from('hr_attendance').select('*').order('year_month');
+    if(error) throw error;
+    if(data && data.length > 0) {
+      _hrAttendance = data.map(function(r) {
+        return {uid:r.line_user_id, year_month:r.year_month, days:r.days||0,
+                hours:r.hours||0, bonus:r.attendance_bonus||0, note:r.note||''};
+      });
+    } else {
+      _hrAttendance = _HR_DATA.records.map(function(r) {
+        return {uid:r.user_id, year_month:r.year_month, days:r.days,
+                hours:r.hours||0, bonus:0, note:''};
+      });
+    }
+    return _hrAttendance;
+  } catch(e) {
+    _hrAttendance = _HR_DATA.records.map(function(r) {
+      return {uid:r.user_id, year_month:r.year_month, days:r.days, hours:r.hours||0, bonus:0, note:''};
+    });
+    return _hrAttendance;
+  }
+}
+
+// เปิด modal จัดการพนักงาน
+async function openHrEmployeeManager() {
+  await loadHrEmployees();
+  renderHrEmpTable();
+  document.getElementById('hr-emp-modal').classList.add('open');
+}
+
+function renderHrEmpTable() {
+  var tb = document.getElementById('hr-emp-tbody');
+  if(!tb) return;
+  tb.innerHTML = _hrEmployees.map(function(emp, i) {
+    return '<tr id="hr-emp-row-'+i+'">'
+      +'<td style="font-weight:700;">'+emp.name+'</td>'
+      +'<td><input type="number" value="'+emp.daily_wage+'" min="0" style="width:70px;padding:4px;border:1px solid var(--border2);border-radius:4px;font-size:12px;font-family:\'Sarabun\',sans-serif;" onchange="updateEmpField('+i+',\'daily_wage\',this.value)"></td>'
+      +'<td><input type="number" value="'+emp.bonus+'" min="0" style="width:70px;padding:4px;border:1px solid var(--border2);border-radius:4px;font-size:12px;font-family:\'Sarabun\',sans-serif;" onchange="updateEmpField('+i+',\'bonus\',this.value)"></td>'
+      +'<td><input type="number" value="'+emp.std_days+'" min="1" max="31" style="width:50px;padding:4px;border:1px solid var(--border2);border-radius:4px;font-size:12px;" onchange="updateEmpField('+i+',\'std_days\',this.value)"></td>'
+      +'<td><select style="padding:4px;border:1px solid var(--border2);border-radius:4px;font-size:11px;" onchange="updateEmpField('+i+',\'site\',this.value)">'
+        +'<option'+(emp.site==='J.Residence'?' selected':'')+'>J.Residence</option>'
+        +'<option'+(emp.site==='S.House'?' selected':'')+'>S.House</option>'
+      +'</select></td>'
+      +'<td><input type="text" value="'+(emp.note||'')+'" placeholder="-" style="width:90px;padding:4px;border:1px solid var(--border2);border-radius:4px;font-size:11px;" onchange="updateEmpField('+i+',\'note\',this.value)"></td>'
+      +'<td><button onclick="saveEmployee('+i+')" style="padding:4px 10px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:4px;font-size:11px;cursor:pointer;">'
+        +'&#x1F4BE; Save</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function updateEmpField(idx, field, value) {
+  if(!_hrEmployees[idx]) return;
+  _hrEmployees[idx][field] = isNaN(value) ? value : Number(value);
+}
+
+async function saveEmployee(idx) {
+  var emp = _hrEmployees[idx];
+  if(!emp) return;
+  try {
+    var{error} = await sb.from('hr_employees').upsert({
+      line_user_id: emp.uid,
+      display_name: emp.name,
+      daily_wage: emp.daily_wage,
+      attendance_bonus: emp.bonus,
+      std_days: emp.std_days,
+      site: emp.site,
+      note: emp.note||null,
+      updated_at: new Date().toISOString()
+    },{onConflict:'line_user_id'});
+    if(error) throw error;
+
+    // update local _HR_DATA ด้วย (สำหรับ hrRender)
+    var dLocal = _HR_DATA.employees.find(function(e){return e.user_id===emp.uid;});
+    if(dLocal) dLocal.daily_wage = emp.daily_wage;
+
+    toast(emp.name+' บันทึกแล้ว','ok');
+    // highlight row briefly
+    var row = document.getElementById('hr-emp-row-'+idx);
+    if(row){row.style.background='#e8f5e9';setTimeout(function(){row.style.background='';},1200);}
+  } catch(e) {
+    toast('บันทึกไม่สำเร็จ: '+e.message,'err');
+  }
+}
+
+async function addNewEmployee() {
+  var name = (document.getElementById('new-emp-name')||{}).value||'';
+  var uid = (document.getElementById('new-emp-uid')||{}).value||'';
+  var wage = Number((document.getElementById('new-emp-wage')||{}).value||500);
+  var bonus = Number((document.getElementById('new-emp-bonus')||{}).value||0);
+  var site = (document.getElementById('new-emp-site')||{}).value||'J.Residence';
+  if(!name||!uid){toast('กรุณากรอกชื่อและ LINE ID','err');return;}
+  var{error} = await sb.from('hr_employees').upsert({
+    line_user_id:uid, display_name:name, daily_wage:wage, attendance_bonus:bonus,
+    site:site, std_days:26, updated_at:new Date().toISOString()
+  },{onConflict:'line_user_id'});
+  if(error){toast('เพิ่มไม่สำเร็จ: '+error.message,'err');return;}
+  toast(name+' เพิ่มแล้ว!','ok');
+  await loadHrEmployees();
+  renderHrEmpTable();
+  // clear form
+  ['new-emp-name','new-emp-uid'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+}
+
+// ─── แก้ไข attendance รายเดือน (เปิดจากปุ่มในตาราง) ───────────
+function openEditAttModal(uid, name, month) {
+  var rec = _hrAttendance.find(function(r){return r.uid===uid&&r.year_month===month;});
+  var emp = _hrEmployees.find(function(e){return e.uid===uid;}) || {daily_wage:500};
+  document.getElementById('hr-att-modal-title').textContent = '\u{1F4C5} ' + name + ' — ' + month;
+  var info = document.getElementById('hr-att-emp-info');
+  if(info) info.textContent = '\u0e04\u0e48\u0e32\u0e41\u0e23\u0e07: \u0e3f'+emp.daily_wage+'/\u0e27\u0e31\u0e19  |\u0e40\u0e1a\u0e35\u0e49\u0e22\u0e02\u0e22\u0e31\u0e19: \u0e3f'+emp.bonus;
+  _setVal('hr-att-month', month);
+  _setVal('hr-att-days', rec?rec.days:0);
+  _setVal('hr-att-hours', rec?rec.hours:0);
+  _setVal('hr-att-bonus', rec?rec.bonus:emp.bonus);
+  _setVal('hr-att-note', rec?rec.note:'');
+  _setVal('hr-att-uid', uid);
+  updateAttPreview(emp);
+  document.getElementById('hr-att-modal').classList.add('open');
+}
+
+function _setVal(id, v) { var el=document.getElementById(id); if(el) el.value=v; }
+
+function updateAttPreview(emp) {
+  var days = Number((document.getElementById('hr-att-days')||{}).value||0);
+  var bonus = Number((document.getElementById('hr-att-bonus')||{}).value||0);
+  var wage = emp ? emp.daily_wage : 500;
+  var total = days*wage + bonus;
+  var prev = document.getElementById('hr-att-wage-preview');
+  if(prev) prev.innerHTML = '<b>\u{1F4B0} \u0e04\u0e33\u0e19\u0e27\u0e13\u0e04\u0e48\u0e32\u0e08\u0e49\u0e32\u0e07:</b><br>'
+    +days+' \u0e27\u0e31\u0e19 × \u0e3f'+wage+' = \u0e3f'+(days*wage).toLocaleString()
+    +'<br>+ \u0e40\u0e1a\u0e35\u0e49\u0e22\u0e02\u0e22\u0e31\u0e19 \u0e3f'+bonus.toLocaleString()
+    +'<br><b style="color:#7b1fa2;font-size:14px;">\u0e23\u0e27\u0e21 \u0e3f'+total.toLocaleString()+'</b>';
+}
+
+async function saveHrAttendance() {
+  var uid = (document.getElementById('hr-att-uid')||{}).value||'';
+  var month = (document.getElementById('hr-att-month')||{}).value||'';
+  var days = Number((document.getElementById('hr-att-days')||{}).value||0);
+  var hours = Number((document.getElementById('hr-att-hours')||{}).value||0);
+  var bonus = Number((document.getElementById('hr-att-bonus')||{}).value||0);
+  var note = ((document.getElementById('hr-att-note')||{}).value||'').trim();
+  var emp = _hrEmployees.find(function(e){return e.uid===uid;}) || {daily_wage:500};
+  var total = days*emp.daily_wage + bonus;
+
+  try {
+    var{error} = await sb.from('hr_attendance').upsert({
+      line_user_id: uid,
+      year_month: month,
+      days: days, hours: hours,
+      daily_wage: emp.daily_wage,
+      attendance_bonus: bonus,
+      wage_total: total,
+      note: note||null,
+      updated_at: new Date().toISOString()
+    },{onConflict:'line_user_id,year_month'});
+    if(error) throw error;
+
+    // อัพเดต local cache
+    var local = _hrAttendance.find(function(r){return r.uid===uid&&r.year_month===month;});
+    if(local){local.days=days;local.hours=hours;local.bonus=bonus;local.note=note;}
+    else _hrAttendance.push({uid,year_month:month,days,hours,bonus,note});
+
+    // อัพเดต _HR_DATA.records
+    var lr = _HR_DATA.records.find(function(r){return r.user_id===uid&&r.year_month===month;});
+    if(lr){lr.days=days;lr.hours=hours;lr.wage_total=total;}
+    else _HR_DATA.records.push({user_id:uid,year_month:month,days,hours,wage_total:total,
+                                display_name:emp.name,daily_wage:emp.daily_wage,site:emp.site||'J.Residence'});
+
+    toast('\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01 '+month+' \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08','ok');
+    closeM('hr-att-modal');
+    hrRender();
+  } catch(e) {
+    toast('\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08: '+e.message,'err');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// IMPORT HR XLSX → SUPABASE (batch upsert)
+// ══════════════════════════════════════════════════════════════
+async function importHrXlsx(input) {
+  var file = input.files[0];
+  if(!file) return;
+  var status = document.getElementById('hr-sync-status');
+  if(status) status.innerHTML = '<span style="color:var(--blue);">&#x23F3; \u0e2d\u0e48\u0e32\u0e19\u0e44\u0e1f\u0e25\u0e4c...</span>';
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array'});
+
+      // หา sheet Hr (หรือ sheet แรก)
+      var sheetName = wb.SheetNames.find(function(n){return n==='Hr'||n==='HR'||n==='hr';}) || wb.SheetNames[0];
+      var ws = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!rows.length){toast('\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25','err');return;}
+
+      // ── detect columns ───────────────────────────────────────────
+      var sample = rows[0];
+      var keys = Object.keys(sample);
+      var colUid   = keys.find(function(k){return /user_id/i.test(k)}) || keys[0];
+      var colName  = keys.find(function(k){return /name|display/i.test(k)});
+      var colYm    = keys.find(function(k){return /year_month|month|ym/i.test(k)});
+      var colDays  = keys.find(function(k){return /^days$|วัน/i.test(k)});
+      var colHours = keys.find(function(k){return /hours|ชั่วโมง/i.test(k)});
+      var colWage  = keys.find(function(k){return /wage|ค่าแรง/i.test(k)});
+
+      // ── group by user+month → hr_attendance ─────────────────────
+      var attMap = {};
+      var empMap = {};
+      rows.forEach(function(r) {
+        var uid  = String(r[colUid]||'').trim();
+        var name = colName ? String(r[colName]||'').trim() : uid;
+        var ym   = colYm   ? String(r[colYm]||'').trim() : '';
+        var days = colDays ? Number(r[colDays])||0 : 0;
+        var hrs  = colHours? Number(r[colHours])||0 : 0;
+        var wage = colWage ? Number(r[colWage])||0 : 0;
+        if(!uid||uid.length<5) return;
+        if(name&&!empMap[uid]) empMap[uid]={uid,name,wage};
+        if(ym) {
+          var k=uid+'|'+ym;
+          if(!attMap[k]) attMap[k]={uid,ym,days:0,hours:0,wage};
+          attMap[k].days+=days; attMap[k].hours+=hrs;
+        }
+      });
+
+      var attRows = Object.values(attMap).filter(function(r){return r.uid;});
+      var empRows = Object.values(empMap);
+
+      if(status) status.innerHTML='<span style="color:var(--blue);">&#x23F3; \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01 '+attRows.length+' records...</span>';
+
+      // ── upsert hr_attendance ─────────────────────────────────────
+      var chunk=50, attOk=0, attFail=0;
+      for(var i=0;i<attRows.length;i+=chunk){
+        var slice=attRows.slice(i,i+chunk);
+        var{error:e2}=await sb.from('hr_attendance').upsert(
+          slice.map(function(r){
+            return {line_user_id:r.uid, year_month:r.ym, days:r.days,
+                    hours:r.hours, daily_wage:r.wage, wage_total:r.days*r.wage,
+                    updated_at:new Date().toISOString()};
+          }),{onConflict:'line_user_id,year_month'});
+        if(e2) attFail+=slice.length; else attOk+=slice.length;
+      }
+
+      // ── upsert hr_employees ──────────────────────────────────────
+      var empOk=0;
+      for(var j=0;j<empRows.length;j++){
+        var em=empRows[j];
+        var{error:e3}=await sb.from('hr_employees').upsert({
+          line_user_id:em.uid, display_name:em.name, daily_wage:em.wage||500,
+          updated_at:new Date().toISOString()
+        },{onConflict:'line_user_id',ignoreDuplicates:false});
+        if(!e3) empOk++;
+      }
+
+      // ── reload local data ─────────────────────────────────────────
+      await loadHrAttendance();
+      await loadHrEmployees();
+      hrRender();
+
+      if(status) status.innerHTML='<span style="color:var(--success);">\u2705 import \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08: '+attOk+' records</span>';
+      toast('\u{1F4C2} Import xlsx \u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08: '+attOk+' records, '+empOk+' \u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19','ok');
+
+    } catch(err) {
+      if(status) status.innerHTML='<span style="color:var(--danger);">\u274c '+err.message+'</span>';
+      toast('Import \u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14: '+err.message,'err');
+    }
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ══════════════════════════════════════════════════════════════
 // BULK PROMOTE HR STAFF TO role='staff'
