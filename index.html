@@ -1663,14 +1663,15 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <thead>
           <tr>
             <th style="min-width:90px;">รอบบิล</th>
-            <th style="min-width:80px;">วันจดมิเตอร์</th>
-            <th style="min-width:70px;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:70px;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:70px;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
-            <th style="min-width:90px;">ยอดชำระ (฿)</th>
+            <th style="min-width:110px;">รอบ (จาก PDF)</th>
+            <th style="min-width:80px;text-align:left;">วันจดมิเตอร์</th>
+            <th style="min-width:70px;text-align:right;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:70px;text-align:right;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:70px;text-align:right;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>
+            <th style="min-width:100px;text-align:right;">ยอดชำระ (฿)</th>
             <th style="min-width:70px;">วันชำระ</th>
             <th style="text-align:center;min-width:180px;">เอกสาร PDF</th>
-            <th style="text-align:center;">แก้ไข</th>
+            <th style="text-align:center;width:42px;">แก้ไข</th>
           </tr>
         </thead>
         <tbody id="ut-mea-tbody"></tbody>
@@ -1703,14 +1704,14 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
         <thead>
           <tr>
             <th style="min-width:90px;">รอบบิล</th>
-            <th style="min-width:80px;">วันจดมิเตอร์</th>
-            <th style="min-width:70px;">หน่วยที่ใช้<br><span style="font-size:9px;font-weight:400;">(ลบ.ม.)</span></th>
-            <th style="min-width:70px;">มิเตอร์เก่า</th>
-            <th style="min-width:70px;">มิเตอร์ใหม่</th>
-            <th style="min-width:90px;">ยอดชำระ (฿)</th>
-            <th style="min-width:70px;">วันชำระ</th>
+            <th style="min-width:85px;">วันออกใบเสร็จ</th>
+            <th style="min-width:80px;text-align:left;">วันจดมิเตอร์</th>
+            <th style="min-width:70px;text-align:right;">หน่วย (ลบ.ม.)</th>            <th style="min-width:70px;text-align:right;">มิเตอร์เก่า</th>
+            <th style="min-width:70px;text-align:right;">มิเตอร์ใหม่</th>
+            <th style="min-width:100px;text-align:right;">ยอดชำระ (฿)</th>
+            <th style="min-width:78px;">รอบ (จาก PDF)</th>
             <th style="text-align:center;min-width:140px;">เอกสาร PDF</th>
-            <th style="text-align:center;">แก้ไข</th>
+            <th style="text-align:center;width:42px;">แก้ไข</th>
           </tr>
         </thead>
         <tbody id="ut-mwa-tbody"></tbody>
@@ -8028,37 +8029,46 @@ function _utRenderMEA() {
   var tb = document.getElementById('ut-mea-tbody');
   if (!tb) return;
   var filledCount = 0;
-  var rows = _UT_MEA_BASE.map(function(d) {
+  var rows = _UT_MEA_BASE.map(function(d, i) {
     var key = _utKey('mea', d.month);
     var m = stored[key] || {};
     var hasData = m.offpeak || m.onpeak || m.meterDate;
     if (hasData) filledCount++;
-    var emails = _UT_MEA_EMAILS[d.month] || {};
+    var prev = i > 0 ? _UT_MEA_BASE[i-1].amount : null;
+    var trend = '';
+    if (d.amount && prev) {
+      var pct = ((d.amount-prev)/prev*100).toFixed(1);
+      trend = parseFloat(pct) > 0
+        ? ' <span style="color:var(--warn);font-size:10px;">&#9650;'+pct+'%</span>'
+        : ' <span style="color:var(--success);font-size:10px;">&#9660;'+Math.abs(pct)+'%</span>';
+    }
     var amtCell = d.amount === null
       ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(d.amount) + '</span>';
-    var offpeak = hasData && m.offpeak ? '<span style="color:var(--success);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.offpeak) + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var onpeak = hasData && m.onpeak ? '<span style="color:var(--warn);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.onpeak) + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var total = (hasData && m.offpeak && m.onpeak) ? '<span style="font-family:JetBrains Mono,monospace;font-weight:700;">' + _utFmtN((+m.offpeak)+(+m.onpeak)) + '</span>' : (hasData && m.totalUnits ? '<span style="font-family:JetBrains Mono,monospace;font-weight:700;">' + _utFmtN(m.totalUnits) + '</span>' : '<span style="color:var(--text3);">—</span>');
-    var meterDate = m.meterDate || '<span style="color:var(--text3);">—</span>';
-    var billingPeriod = m.period || '<span style="color:var(--text3);">—</span>';
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--gold2);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trend;
+    var offpeak = m.offpeak ? '<b style="color:var(--success);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.offpeak) + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var onpeak  = m.onpeak  ? '<b style="color:var(--warn);font-family:JetBrains Mono,monospace;">'   + _utFmtN(m.onpeak)  + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var totU = (m.offpeak && m.onpeak) ? (+m.offpeak)+(+m.onpeak) : (m.totalUnits || '');
+    var total = totU ? '<b style="font-family:JetBrains Mono,monospace;">' + _utFmtN(totU) + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var mDate  = m.meterDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterDate + '</span>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var period = m.period    ? '<span style="font-size:10px;color:var(--text2);">'                    + m.period    + '</span>' : '<span style="color:var(--text3);">&#8212;</span>';
     var invUrl = _utDriveLink('MEA', d.yr, d.mo, 'inv');
     var recUrl = _utDriveLink('MEA', d.yr, d.mo, 'rec');
     var pdfLinks = '';
-    if (invUrl) pdfLinks += '<a href="'+invUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;margin-right:3px;">📋 Invoice</a>';
-    if (recUrl) pdfLinks += '<a href="'+recUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>';
-    if (!pdfLinks) pdfLinks = '<span style="color:var(--text3);font-size:10px;">—</span>';
-    return '<tr>'
-      + '<td style="font-weight:700;">'+d.month+'</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+billingPeriod+'</td>'
-      + '<td style="font-size:11px;">'+meterDate+'</td>'
-      + '<td style="text-align:right;">'+offpeak+'</td>'
-      + '<td style="text-align:right;">'+onpeak+'</td>'
-      + '<td style="text-align:right;">'+total+'</td>'
-      + '<td style="text-align:right;">'+amtCell+'</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+d.paidDate+'</td>'
-      + '<td style="white-space:nowrap;">'+pdfLinks+'</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry(\'mea\',\''+d.month+'\')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">✏️</button></td>'
+    if (invUrl) pdfLinks += '<a href="'+invUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--gold-light);color:var(--gold2);border:1px solid var(--gold);border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;margin-right:3px;">&#128203; Invoice</a>';
+    if (recUrl) pdfLinks += '<a href="'+recUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">&#129518; Receipt</a>';
+    if (!pdfLinks) pdfLinks = '<span style="color:var(--text3);font-size:10px;">&#8212;</span>';
+    var rb = !hasData ? 'background:var(--shell);' : '';
+    return '<tr style="'+rb+'">'
+      + '<td style="font-weight:700;">' + d.month + '</td>'
+      + '<td>' + period + '</td>'
+      + '<td>' + mDate + '</td>'
+      + '<td style="text-align:right;">' + offpeak + '</td>'
+      + '<td style="text-align:right;">' + onpeak + '</td>'
+      + '<td style="text-align:right;">' + total + '</td>'
+      + '<td style="text-align:right;">' + amtCell + '</td>'
+      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + (d.paidDate||'&#8212;') + '</td>'
+      + '<td style="white-space:nowrap;">' + pdfLinks + '</td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry('mea',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8071,33 +8081,42 @@ function _utRenderMWA() {
   var stored = _utLoad();
   var tb = document.getElementById('ut-mwa-tbody');
   if (!tb) return;
-  var rows = _UT_MWA_BASE.map(function(d) {
+  var rows = _UT_MWA_BASE.map(function(d, i) {
     var key = _utKey('mwa', d.month);
     var m = stored[key] || {};
-    var emails = _UT_MWA_EMAILS[d.month] || {};
+    var prev = i > 0 ? _UT_MWA_BASE[i-1].amount : null;
+    var trend = '';
+    if (d.amount && prev) {
+      var pct = ((d.amount-prev)/prev*100).toFixed(1);
+      trend = parseFloat(pct) > 0
+        ? ' <span style="color:var(--warn);font-size:10px;">&#9650;'+pct+'%</span>'
+        : ' <span style="color:var(--success);font-size:10px;">&#9660;'+Math.abs(pct)+'%</span>';
+    }
     var amtCell = d.amount === null
       ? '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--dbg);color:var(--danger);">ไม่มีข้อมูล</span>'
-      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(d.amount) + '</span>';
-    var units = m.units ? '<span style="color:var(--blue);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.units) + '</span>' : '<span style="color:var(--text3);">—</span>';
-    var mOld = m.meterOld ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">'+m.meterOld+'</span>' : '<span style="color:var(--text3);">—</span>';
-    var mNew = m.meterNew ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">'+m.meterNew+'</span>' : '<span style="color:var(--text3);">—</span>';
-    var meterDate = m.meterDate || '<span style="color:var(--text3);">—</span>';
-    var billingPeriod = m.period || '<span style="color:var(--text3);">—</span>';
-    var mwaRecUrl = _utDriveLink('MWA', d.yr, d.mo, 'rec');
-    var pdfLinks = mwaRecUrl
-      ? '<a href="'+mwaRecUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">🧾 Receipt</a>'
-      : '<span style="color:var(--text3);font-size:10px;">—</span>';
-    return '<tr>'
-      + '<td style="font-weight:700;">'+d.month+'</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+billingPeriod+'</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+meterDate+'</td>'
-      + '<td style="text-align:right;">'+units+'</td>'
-      + '<td style="text-align:right;">'+mOld+'</td>'
-      + '<td style="text-align:right;">'+mNew+'</td>'
-      + '<td style="text-align:right;">'+amtCell+'</td>'
-      + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">'+d.paidDate+'</td>'
-      + '<td>'+pdfLinks+'</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry(\'mwa\',\''+d.month+'\')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">✏️</button></td>'
+      : '<span style="font-family:JetBrains Mono,monospace;color:var(--blue);font-weight:700;">' + _utFmt(d.amount) + '</span>' + trend;
+    var units = m.units    ? '<b style="color:var(--blue);font-family:JetBrains Mono,monospace;">' + _utFmtN(m.units)    + '</b>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var mOld  = m.meterOld ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterOld + '</span>'     : '<span style="color:var(--text3);">&#8212;</span>';
+    var mNew  = m.meterNew ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterNew + '</span>'     : '<span style="color:var(--text3);">&#8212;</span>';
+    var mDate = m.meterDate ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + m.meterDate + '</span>'   : '<span style="color:var(--text3);">&#8212;</span>';
+    var period= m.period    ? '<span style="font-size:10px;color:var(--text2);">' + m.period + '</span>'                        : '<span style="color:var(--text3);">&#8212;</span>';
+    var recDt = (d.paidDate && d.paidDate !== '—') ? '<span style="font-family:JetBrains Mono,monospace;font-size:11px;">' + d.paidDate + '</span>' : '<span style="color:var(--text3);">&#8212;</span>';
+    var mwaUrl = _utDriveLink('MWA', d.yr, d.mo, 'rec');
+    var pdfLinks = mwaUrl
+      ? '<a href="'+mwaUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;">&#129518; Receipt</a>'
+      : '<span style="color:var(--text3);font-size:10px;">&#8212;</span>';
+    var rb = (!m.units && !m.meterDate) ? 'background:var(--shell);' : '';
+    return '<tr style="'+rb+'">'
+      + '<td style="font-weight:700;">' + d.month + '</td>'
+      + '<td>' + recDt + '</td>'
+      + '<td>' + mDate + '</td>'
+      + '<td style="text-align:right;">' + units + '</td>'
+      + '<td style="text-align:right;">' + mOld + '</td>'
+      + '<td style="text-align:right;">' + mNew + '</td>'
+      + '<td style="text-align:right;">' + amtCell + '</td>'
+      + '<td>' + period + '</td>'
+      + '<td style="text-align:center;">' + pdfLinks + '</td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry('mwa',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8149,47 +8168,42 @@ function utEditEntry(type, month) {
 }
 
 function _utField(id, label, val, type, eid) {
-  return '<div class="fr"><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">'+label+'</label>'
-    + '<input type="'+type+'" id="'+eid+'" value="'+(val||'')+'" placeholder="'+label+'" style="width:100%;padding:7px 10px;border:1.5px solid var(--border2);border-radius:6px;font-size:12px;font-family:JetBrains Mono,monospace;" onchange="utAutoCalcUnits(\''+eid+'\')">'
+  var fid = eid || id;
+  return '<div><label style="font-size:11px;color:var(--text2);font-weight:700;display:block;margin-bottom:4px;">'+label+'</label>'
+    + '<input type="'+type+'" id="'+fid+'" value="'+(val||'')+'" placeholder="'+label+'" style="width:100%;padding:7px 10px;border:1.5px solid var(--border2);border-radius:6px;font-size:12px;font-family:JetBrains Mono,monospace;" oninput="utAutoCalcUnits()">'
     + '</div>';
 }
 
-function utAutoCalcUnits(changedId) {
-  // Auto-calculate total units from off+on peak
-  var off = parseFloat(document.getElementById('ut-ef-offpeak') ? document.getElementById('ut-ef-offpeak').value : 0) || 0;
-  var on  = parseFloat(document.getElementById('ut-ef-onpeak')  ? document.getElementById('ut-ef-onpeak').value  : 0) || 0;
+function utAutoCalcUnits() {
+  var gv = function(id){ var el=document.getElementById(id); return el ? (parseFloat(el.value)||0) : 0; };
+  var off = gv('ut-ef-offpeak'), on = gv('ut-ef-onpeak');
   var tot = document.getElementById('ut-ef-totalUnits');
-  if (tot && off + on > 0) tot.value = off + on;
-  // Auto-calc units from meter readings (MWA)
-  var mo = parseFloat(document.getElementById('ut-ef-meterOld') ? document.getElementById('ut-ef-meterOld').value : 0) || 0;
-  var mn = parseFloat(document.getElementById('ut-ef-meterNew') ? document.getElementById('ut-ef-meterNew').value : 0) || 0;
-  var u  = document.getElementById('ut-ef-units');
-  if (u && mn > mo) u.value = mn - mo;
+  if (tot && off+on > 0) tot.value = off+on;
+  var mo = gv('ut-ef-meterOld'), mn = gv('ut-ef-meterNew');
+  var u = document.getElementById('ut-ef-units');
+  if (u && mn > mo) u.value = mn-mo;
 }
 
 function utSaveEntry() {
   var stored = _utLoad();
-  var isMEA = document.getElementById('ut-ef-offpeak') !== null;
-  var data = {
-    period:     (document.getElementById('ut-ef-period')    || {}).value || '',
-    meterDate:  (document.getElementById('ut-ef-meterDate') || {}).value || '',
-    notes:      (document.getElementById('ut-ef-notes')     || {}).value || '',
-  };
+  var g = function(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; };
+  var isMEA = !!document.getElementById('ut-ef-offpeak');
+  var data = { period:g('ut-ef-period'), meterDate:g('ut-ef-meterDate'), notes:g('ut-ef-notes') };
   if (isMEA) {
-    data.offpeak    = (document.getElementById('ut-ef-offpeak')    || {}).value || '';
-    data.onpeak     = (document.getElementById('ut-ef-onpeak')     || {}).value || '';
-    data.totalUnits = (document.getElementById('ut-ef-totalUnits') || {}).value || '';
+    data.offpeak = g('ut-ef-offpeak'); data.onpeak = g('ut-ef-onpeak');
+    var off2=parseFloat(data.offpeak)||0, on2=parseFloat(data.onpeak)||0;
+    if (off2+on2 > 0) data.totalUnits = off2+on2;
   } else {
-    data.meterOld = (document.getElementById('ut-ef-meterOld') || {}).value || '';
-    data.meterNew = (document.getElementById('ut-ef-meterNew') || {}).value || '';
-    data.units    = (document.getElementById('ut-ef-units')    || {}).value || '';
+    data.meterOld = g('ut-ef-meterOld'); data.meterNew = g('ut-ef-meterNew'); data.units = g('ut-ef-units');
+    var mo2=parseFloat(data.meterOld)||0, mn2=parseFloat(data.meterNew)||0;
+    if (mn2 > mo2 && !data.units) data.units = mn2-mo2;
   }
   stored[_utEditKey] = data;
   _utSave(stored);
   document.getElementById('ut-edit-modal').style.display = 'none';
-  if (_utCurrentTab === 'mea') { _utRenderMEA(); _utInitMeaCharts(); }
-  else { _utRenderMWA(); _utInitMwaCharts(); }
-  if (typeof toast === 'function') toast('บันทึกข้อมูลมิเตอร์แล้ว ✅', 'ok');
+  if (_utCurrentTab === 'mea') { _utRenderMEA(); setTimeout(_utInitMeaCharts,50); }
+  else { _utRenderMWA(); setTimeout(_utInitMwaCharts,50); }
+  if (typeof toast === 'function') toast('&#9989; บันทึกข้อมูลมิเตอร์แล้ว', 'ok');
 }
 
 function utAddEntry() {
@@ -8726,6 +8740,68 @@ async function exportMonthlyTM30(){
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'แบบแจ้งที่พัก Inform Accom');
   XLSX.writeFile(wb,'TM30_Monthly_JResidence.xlsx');
   toast('Export TM30 ต่างชาติรายเดือน สำเร็จ ✓','ok');
+}
+
+// ── Import Meter Data ─────────────────────────────────────────
+function utOpenImportModal() {
+  document.getElementById('ut-import-modal').style.display = 'flex';
+  document.getElementById('ut-import-preview').style.display = 'none';
+  document.getElementById('ut-import-result').textContent = '';
+}
+function utPreviewImport() {
+  var txt = document.getElementById('ut-import-json').value.trim();
+  var prev = document.getElementById('ut-import-preview');
+  try {
+    var data = JSON.parse(txt);
+    var keys = Object.keys(data);
+    var mc = keys.filter(function(k){ return k.startsWith('mea'); }).length;
+    var wc = keys.filter(function(k){ return k.startsWith('mwa'); }).length;
+    prev.style.display = 'block';
+    prev.innerHTML = '<span style="color:var(--success);font-weight:700;">&#9989; JSON ถูกต้อง</span> &#8212; รวม <b>'+keys.length+'</b> รายการ &middot; MEA <b>'+mc+'</b> &middot; MWA <b>'+wc+'</b>'
+      + '<div style="margin-top:4px;font-size:10px;color:var(--text3);">keys: '+keys.slice(0,3).join(', ')+(keys.length>3?' ...':'')+'</div>';
+  } catch(e) {
+    prev.style.display = 'block';
+    prev.innerHTML = '<span style="color:var(--danger);">&#10060; JSON ไม่ถูกต้อง: '+e.message+'</span>';
+  }
+}
+function utDoImport() {
+  var txt = document.getElementById('ut-import-json').value.trim();
+  var res = document.getElementById('ut-import-result');
+  try {
+    var incoming = JSON.parse(txt);
+    var stored = _utLoad();
+    var updated = 0, skipped = 0;
+    Object.keys(incoming).forEach(function(key) {
+      var vals = incoming[key];
+      if (!vals || typeof vals !== 'object') return;
+      var normKey = key.replace(/\s/g,'_');
+      var existing = stored[normKey] || {};
+      var changed = false;
+      Object.keys(vals).forEach(function(field) {
+        var v = vals[field];
+        if (v !== null && v !== '' && v !== undefined && !existing[field]) {
+          existing[field] = String(v); changed = true;
+        }
+      });
+      if (existing.offpeak && existing.onpeak && !existing.totalUnits) {
+        var tot=(parseFloat(existing.offpeak)||0)+(parseFloat(existing.onpeak)||0);
+        if (tot > 0) { existing.totalUnits = tot; changed = true; }
+      }
+      if (existing.meterOld && existing.meterNew && !existing.units) {
+        var u=(parseFloat(existing.meterNew)||0)-(parseFloat(existing.meterOld)||0);
+        if (u > 0) { existing.units = u; changed = true; }
+      }
+      if (changed) { stored[normKey] = existing; updated++; } else { skipped++; }
+    });
+    _utSave(stored);
+    _utRenderMEA(); _utRenderMWA();
+    setTimeout(_utInitMeaCharts, 50); setTimeout(_utInitMwaCharts, 100);
+    res.innerHTML = '<span style="color:var(--success);font-weight:700;">&#9989; Import สำเร็จ!</span> อัปเดต <b>'+updated+'</b> รายการ &middot; ข้าม <b>'+skipped+'</b>';
+    setTimeout(function(){ document.getElementById('ut-import-modal').style.display='none'; }, 2500);
+    if (typeof toast === 'function') toast('&#9989; Import มิเตอร์ '+updated+' รายการ', 'ok');
+  } catch(e) {
+    res.innerHTML = '<span style="color:var(--danger);">&#10060; Error: '+e.message+'</span>';
+  }
 }
 
 console.log('✅ J.Residence Billing v4 loaded');
