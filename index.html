@@ -9,6 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1791,6 +1793,8 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   <span style="font-size:11px;color:var(--text3);margin-left:4px;" id="ut-account-label">บัญชี 012076042</span>
   <div style="margin-left:auto;display:flex;gap:6px;">
     <button class="tbtn" onclick="utOpenAllGmail()" style="font-size:11px;background:var(--blue-dim);color:var(--blue);border-color:#aac8f8;">📬 เปิด Gmail</button>
+    <button class="tbtn" onclick="utOpenPdfModal()" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📄 ดึงข้อมูลจาก PDF</button>
+    <button class="tbtn" onclick="utOpenImportModal()" style="font-size:11px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;">📥 Import JSON</button>
     <button class="tbtn acc" onclick="utAddEntry()" style="font-size:11px;">✏️ กรอกข้อมูลมิเตอร์</button>
   </div>
 </div>
@@ -1895,6 +1899,54 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <div class="mftr">
       <button class="btn bg" onclick="document.getElementById('ut-edit-modal').style.display='none'">ยกเลิก</button>
       <button class="btn bp" onclick="utSaveEntry()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- UTILITY IMPORT MODAL -->
+<div class="moverlay" id="ut-import-modal" style="display:none;">
+  <div class="modal" style="max-width:620px;">
+    <div class="mhdr"><span class="mtitle">📥 Import ข้อมูลมิเตอร์ (JSON)</span><button class="mclose" onclick="document.getElementById('ut-import-modal').style.display='none'">×</button></div>
+    <div class="mbdy" style="padding:20px;">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">วาง JSON ข้อมูลมิเตอร์ MEA/MWA (จาก Google Apps Script หรือ export) แล้วกด Import</div>
+      <textarea id="ut-import-json" rows="10" style="width:100%;font-family:'JetBrains Mono',monospace;font-size:11px;border:1.5px solid var(--border2);border-radius:8px;padding:10px;resize:vertical;" placeholder='{"mea_ม.ค._2569":{"offpeak":"5200","onpeak":"3800","amount":"43958.45",...},...}'></textarea>
+      <div id="ut-import-preview" style="display:none;margin-top:8px;padding:8px 12px;background:var(--shell);border-radius:6px;font-size:12px;"></div>
+      <div id="ut-import-result" style="margin-top:8px;font-size:12px;"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn bg" onclick="document.getElementById('ut-import-modal').style.display='none'">ยกเลิก</button>
+      <button class="btn" style="background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;" onclick="utPreviewImport()">👁 Preview</button>
+      <button class="btn bp" onclick="utDoImport()">📥 Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- UTILITY PDF EXTRACT MODAL -->
+<div class="moverlay" id="ut-pdf-modal" style="display:none;">
+  <div class="modal" style="max-width:700px;">
+    <div class="mhdr"><span class="mtitle" id="ut-pdf-title">📄 ดึงข้อมูลจาก PDF</span><button class="mclose" onclick="document.getElementById('ut-pdf-modal').style.display='none'">×</button></div>
+    <div class="mbdy" style="padding:20px;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <label style="flex:1;min-width:200px;padding:20px;border:2px dashed var(--border2);border-radius:10px;text-align:center;cursor:pointer;transition:all .15s;background:var(--shell);" id="ut-pdf-dropzone"
+          ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='var(--gold-light)';"
+          ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--shell)';"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border2)';this.style.background='var(--shell)';utPdfHandleFiles(event.dataTransfer.files);"
+          onclick="document.getElementById('ut-pdf-input').click();">
+          <input type="file" accept=".pdf" multiple style="display:none;" id="ut-pdf-input" onchange="utPdfHandleFiles(this.files)">
+          <div style="font-size:24px;margin-bottom:6px;">📄</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text2);">ลากไฟล์ PDF มาวาง หรือ คลิกเพื่อเลือก</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;">รองรับ: ใบแจ้งหนี้ MEA, ใบเสร็จ MEA, ใบเสร็จ MWA</div>
+        </label>
+      </div>
+      <div id="ut-pdf-status" style="display:none;padding:10px 14px;background:var(--shell);border-radius:8px;margin-bottom:10px;font-size:12px;"></div>
+      <div id="ut-pdf-results" style="display:none;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">ผลการดึงข้อมูล:</div>
+        <div id="ut-pdf-results-body"></div>
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn bg" onclick="document.getElementById('ut-pdf-modal').style.display='none'">ปิด</button>
+      <button class="btn bp" id="ut-pdf-save-btn" style="display:none;" onclick="utPdfSaveAll()">💾 บันทึกทั้งหมด</button>
     </div>
   </div>
 </div>
@@ -9169,6 +9221,302 @@ function utDoImport() {
   } catch(e) {
     res.innerHTML = '<span style="color:var(--danger);">&#10060; Error: '+e.message+'</span>';
   }
+}
+
+// ══════════════════════════════════════════════════════════
+// PDF EXTRACTION — MEA Invoice/Receipt + MWA Receipt
+// ══════════════════════════════════════════════════════════
+var _utPdfExtracted = [];
+
+function utOpenPdfModal() {
+  _utPdfExtracted = [];
+  document.getElementById('ut-pdf-modal').style.display = 'flex';
+  document.getElementById('ut-pdf-status').style.display = 'none';
+  document.getElementById('ut-pdf-results').style.display = 'none';
+  document.getElementById('ut-pdf-save-btn').style.display = 'none';
+  document.getElementById('ut-pdf-input').value = '';
+}
+
+function utPdfHandleFiles(files) {
+  if (!files || !files.length) return;
+  if (!window.pdfjsLib) { toast('pdf.js ยังไม่พร้อม กรุณารอสักครู่','warn'); return; }
+  var statusEl = document.getElementById('ut-pdf-status');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue);">⏳ กำลังอ่าน PDF ' + files.length + ' ไฟล์...</span>';
+  _utPdfExtracted = [];
+  var done = 0;
+  Array.from(files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var typedarray = new Uint8Array(e.target.result);
+      pdfjsLib.getDocument({data:typedarray}).promise.then(function(pdf) {
+        var allText = [];
+        var pagesDone = 0;
+        var numPages = pdf.numPages;
+        for (var p = 1; p <= numPages; p++) {
+          (function(pageNum) {
+            pdf.getPage(pageNum).then(function(page) {
+              page.getTextContent().then(function(textContent) {
+                var pageText = textContent.items.map(function(item) { return item.str; }).join(' ');
+                allText[pageNum-1] = pageText;
+                pagesDone++;
+                if (pagesDone === numPages) {
+                  var fullText = allText.join('\n');
+                  var result = _utParsePdfText(fullText, file.name);
+                  if (result) _utPdfExtracted.push(result);
+                  done++;
+                  if (done === files.length) _utPdfShowResults();
+                }
+              });
+            });
+          })(p);
+        }
+      }).catch(function(err) {
+        done++;
+        statusEl.innerHTML += '<br><span style="color:var(--danger);">❌ ' + file.name + ': ' + err.message + '</span>';
+        if (done === files.length) _utPdfShowResults();
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function _utParsePdfText(text, filename) {
+  // Detect document type
+  var isMEA = /การไฟฟ้านครหลวง|MEA|METROPOLITAN.*ELECTRICITY/i.test(text);
+  var isMWA = /การประปานครหลวง|MWA|METROPOLITAN.*WATERWORKS/i.test(text);
+  var isInvoice = /ใบแจ้งค่าไฟฟ้า|ใบแจ้งหนี้|BILL|INVOICE/i.test(text) && !(/ใบเสร็จรับเงิน|RECEIPT/i.test(text));
+  var isReceipt = /ใบเสร็จรับเงิน|RECEIPT/i.test(text);
+
+  if (isMEA) return _utParseMEA(text, filename, isReceipt);
+  if (isMWA) return _utParseMWA(text, filename);
+  return null;
+}
+
+function _utParseMEA(text, filename, isReceipt) {
+  var result = { type:'mea', source:filename, docType: isReceipt ? 'receipt' : 'invoice', data:{} };
+
+  // Account number
+  var accMatch = text.match(/(?:หมายเลขผู้ใช้ไฟฟ้า|เลขที่ผู้ใช้ไฟฟ้า|CA\s*No\.?|Account)\s*[:\.]?\s*(\d{9,12})/i);
+  if (accMatch) result.data.account = accMatch[1];
+
+  // Amount — ยอดรวม / จำนวนเงินรวม / Total
+  var amtPatterns = [
+    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม|TOTAL\s*AMOUNT|รวมเงิน)[^\d]{0,20}([\d,]+\.?\d*)/i,
+    /(?:ยอดชำระ|AMOUNT\s*DUE|NET\s*AMOUNT)[^\d]{0,20}([\d,]+\.?\d*)/i,
+    /([\d,]+\.\d{2})\s*(?:บาท|BAHT|THB)/i
+  ];
+  for (var ai = 0; ai < amtPatterns.length; ai++) {
+    var amtM = text.match(amtPatterns[ai]);
+    if (amtM) { result.data.amount = amtM[1].replace(/,/g,''); break; }
+  }
+
+  // Off Peak units
+  var offM = text.match(/(?:OFF[\s-]*PEAK|นอกช่วงความต้องการสูง)[^\d]{0,30}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)/i);
+  if (!offM) offM = text.match(/(?:OFF[\s-]*PEAK)[^\d]{0,5}([\d,]+)/i);
+  if (offM) result.data.offpeak = offM[1].replace(/,/g,'');
+
+  // On Peak units
+  var onM = text.match(/(?:ON[\s-]*PEAK|ช่วงความต้องการสูง)[^\d]{0,30}([\d,]+(?:\.\d+)?)\s*(?:หน่วย|unit|kWh)/i);
+  if (!onM) onM = text.match(/(?:ON[\s-]*PEAK)[^\d]{0,5}([\d,]+)/i);
+  if (onM) result.data.onpeak = onM[1].replace(/,/g,'');
+
+  // Meter reading date
+  var mDateM = text.match(/(?:วันที่จดมิเตอร์|วันจดมิเตอร์|METER\s*READ(?:ING)?\s*DATE|วันที่อ่าน)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (mDateM) result.data.meterDate = mDateM[1];
+
+  // Billing period
+  var periodM = text.match(/(?:งวดที่|รอบการใช้|BILLING\s*PERIOD|รอบบิล)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–ถึง\s]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (periodM) result.data.period = periodM[1] + '–' + periodM[2];
+
+  // Bill date / paid date
+  var billDateM = text.match(/(?:วันที่ออกบิล|วันที่พิมพ์|BILL\s*DATE|ISSUE\s*DATE|PRINT\s*DATE)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (billDateM) result.data.paidDate = billDateM[1];
+
+  // Receipt number
+  if (isReceipt) {
+    var rcNoM = text.match(/(?:เลขที่ใบเสร็จ|RECEIPT\s*NO\.?|เลขที่)[^\d]{0,10}([A-Z]?\d{6,15})/i);
+    if (rcNoM) result.data.receiptNo = rcNoM[1];
+  }
+
+  // Try to detect month from text
+  result.monthKey = _utDetectMonth(text, 'mea');
+
+  return result;
+}
+
+function _utParseMWA(text, filename) {
+  var result = { type:'mwa', source:filename, docType:'receipt', data:{} };
+
+  // Account
+  var accM = text.match(/(?:เลขที่ผู้ใช้น้ำ|ทะเบียนผู้ใช้น้ำ|ทะเบียนลูกค้า|CUSTOMER\s*(?:NO|ID)\.?)\s*[:\.]?\s*(\d{6,12})/i);
+  if (accM) result.data.account = accM[1];
+
+  // Amount
+  var amtPatterns = [
+    /(?:จำนวนเงินรวม|ยอดเงินรวม|ยอดรวม|TOTAL|รวมเงิน)[^\d]{0,20}([\d,]+\.?\d*)/i,
+    /([\d,]+\.\d{2})\s*(?:บาท|BAHT|THB)/i
+  ];
+  for (var ai2 = 0; ai2 < amtPatterns.length; ai2++) {
+    var amtM2 = text.match(amtPatterns[ai2]);
+    if (amtM2) { result.data.amount = amtM2[1].replace(/,/g,''); break; }
+  }
+
+  // Water units
+  var unitsM = text.match(/(?:ปริมาณน้ำ|จำนวน(?:น้ำ)?ที่ใช้|CONSUMPTION|USAGE)[^\d]{0,20}([\d,]+(?:\.\d+)?)\s*(?:ลบ\.?ม\.?|ลูกบาศก์เมตร|cu\.?\s*m|m3)/i);
+  if (!unitsM) unitsM = text.match(/([\d,]+)\s*(?:ลบ\.?ม\.?|ลูกบาศก์เมตร)/i);
+  if (unitsM) result.data.units = unitsM[1].replace(/,/g,'');
+
+  // Meter old/new
+  var mOldM = text.match(/(?:เลขมิเตอร์เก่า|มาตรเดิม|PREVIOUS\s*(?:READING|METER))[^\d]{0,15}([\d,]+)/i);
+  if (mOldM) result.data.meterOld = mOldM[1].replace(/,/g,'');
+  var mNewM = text.match(/(?:เลขมิเตอร์ใหม่|มาตรปัจจุบัน|มาตรใหม่|CURRENT\s*(?:READING|METER)|PRESENT\s*(?:READING|METER))[^\d]{0,15}([\d,]+)/i);
+  if (mNewM) result.data.meterNew = mNewM[1].replace(/,/g,'');
+
+  // Meter date
+  var mDateM2 = text.match(/(?:วันที่จดมิเตอร์|วันจดมิเตอร์|METER\s*READ(?:ING)?\s*DATE|วันที่อ่าน)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (mDateM2) result.data.meterDate = mDateM2[1];
+
+  // Billing period
+  var periodM2 = text.match(/(?:งวดที่|รอบบิล|BILLING\s*PERIOD|รอบ)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*[-–ถึง\s]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (periodM2) result.data.period = periodM2[1] + '–' + periodM2[2];
+
+  // Receipt date
+  var rcDateM = text.match(/(?:วันที่ออกใบเสร็จ|วันที่รับชำระ|RECEIPT\s*DATE|PAYMENT\s*DATE|วันที่ชำระ)[^\d]{0,15}(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i);
+  if (rcDateM) result.data.paidDate = rcDateM[1];
+
+  result.monthKey = _utDetectMonth(text, 'mwa');
+  return result;
+}
+
+// Detect which billing month the PDF belongs to
+function _utDetectMonth(text, type) {
+  var thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var thMonthsFull = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var base = type === 'mea' ? _UT_MEA_BASE : _UT_MWA_BASE;
+
+  // Try Thai month + Buddhist year (e.g. มกราคม 2569, ม.ค. 2569)
+  for (var mi = 0; mi < thMonthsFull.length; mi++) {
+    var re1 = new RegExp(thMonthsFull[mi] + '\\s*(25\\d{2})');
+    var re2 = new RegExp(thMonths[mi].replace('.','\\.')  + '\\s*(25\\d{2})');
+    var m1 = text.match(re1);
+    var m2 = text.match(re2);
+    var match = m1 || m2;
+    if (match) {
+      var monthStr = thMonths[mi] + ' ' + match[1];
+      for (var bi = 0; bi < base.length; bi++) {
+        if (base[bi].month === monthStr) return base[bi].month;
+      }
+    }
+  }
+
+  // Try MM/YYYY or YYYY-MM
+  var dateMatch = text.match(/(\d{1,2})[\/\-](\d{4})/);
+  if (dateMatch) {
+    var mm = parseInt(dateMatch[1]);
+    var yyyy = parseInt(dateMatch[2]);
+    if (mm >= 1 && mm <= 12) {
+      var thYr = yyyy > 2500 ? yyyy : yyyy + 543;
+      var label = thMonths[mm-1] + ' ' + thYr;
+      for (var bi2 = 0; bi2 < base.length; bi2++) {
+        if (base[bi2].month === label) return base[bi2].month;
+      }
+    }
+  }
+  return null;
+}
+
+function _utPdfShowResults() {
+  var statusEl = document.getElementById('ut-pdf-status');
+  var resultsEl = document.getElementById('ut-pdf-results');
+  var bodyEl = document.getElementById('ut-pdf-results-body');
+  var saveBtn = document.getElementById('ut-pdf-save-btn');
+
+  if (_utPdfExtracted.length === 0) {
+    statusEl.innerHTML = '<span style="color:var(--warn);">⚠️ ไม่พบข้อมูลที่สามารถดึงได้จาก PDF ที่อัปโหลด</span><br><span style="font-size:10px;color:var(--text3);">ตรวจสอบว่าไฟล์เป็นใบแจ้งหนี้/ใบเสร็จ MEA หรือ MWA</span>';
+    resultsEl.style.display = 'none';
+    saveBtn.style.display = 'none';
+    return;
+  }
+
+  statusEl.innerHTML = '<span style="color:var(--success);">✅ ดึงข้อมูลสำเร็จ ' + _utPdfExtracted.length + ' ไฟล์</span>';
+  resultsEl.style.display = 'block';
+  saveBtn.style.display = '';
+
+  var html = '';
+  _utPdfExtracted.forEach(function(r, idx) {
+    var typeLabel = r.type === 'mea' ? '⚡ MEA' : '💧 MWA';
+    var docLabel = r.docType === 'invoice' ? '📋 Invoice' : '🧾 Receipt';
+    var monthLabel = r.monthKey || '<span style="color:var(--warn);">ไม่ทราบเดือน</span>';
+    var fields = Object.keys(r.data).filter(function(k){return r.data[k];});
+
+    html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;">'
+      + '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--shell);font-size:12px;">'
+      + '<span style="font-weight:700;">' + typeLabel + '</span>'
+      + '<span style="padding:2px 8px;border-radius:4px;background:'+(r.docType==='invoice'?'var(--gold-light)':'var(--sbg)')+';font-size:10px;font-weight:700;">' + docLabel + '</span>'
+      + '<span style="font-weight:700;color:var(--blue);">' + monthLabel + '</span>'
+      + '<span style="margin-left:auto;font-size:10px;color:var(--text3);">📁 ' + r.source + '</span>';
+
+    // Month selector if not detected
+    if (!r.monthKey) {
+      var base = r.type === 'mea' ? _UT_MEA_BASE : _UT_MWA_BASE;
+      html += '<select id="ut-pdf-month-'+idx+'" style="font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:4px;" onchange="_utPdfExtracted['+idx+'].monthKey=this.value;">'
+        + '<option value="">— เลือกเดือน —</option>';
+      base.forEach(function(b) { html += '<option value="'+b.month+'">'+b.month+'</option>'; });
+      html += '</select>';
+    }
+
+    html += '</div><div style="padding:10px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;font-size:11px;">';
+    var fieldLabels = {
+      account:'บัญชี', amount:'ยอดรวม (฿)', offpeak:'Off Peak', onpeak:'On Peak',
+      meterDate:'วันจดมิเตอร์', period:'รอบบิล', paidDate:'วันออกบิล',
+      receiptNo:'เลขใบเสร็จ', units:'หน่วยน้ำ (ลบ.ม.)', meterOld:'มิเตอร์เก่า', meterNew:'มิเตอร์ใหม่'
+    };
+    fields.forEach(function(f) {
+      html += '<div style="padding:4px 8px;background:var(--shell);border-radius:4px;">'
+        + '<span style="color:var(--text3);font-weight:600;">'+(fieldLabels[f]||f)+':</span> '
+        + '<span style="font-family:JetBrains Mono,monospace;font-weight:700;">'+r.data[f]+'</span></div>';
+    });
+    html += '</div></div>';
+  });
+  bodyEl.innerHTML = html;
+}
+
+function utPdfSaveAll() {
+  var stored = _utLoad();
+  var saved = 0, skipped = 0;
+  _utPdfExtracted.forEach(function(r) {
+    if (!r.monthKey) { skipped++; return; }
+    var key = _utKey(r.type, r.monthKey);
+    var existing = stored[key] || {};
+    var changed = false;
+    Object.keys(r.data).forEach(function(field) {
+      if (field === 'account') return; // skip account number
+      var v = r.data[field];
+      if (v !== null && v !== '' && v !== undefined) {
+        // Overwrite with PDF data (more accurate)
+        if (existing[field] !== String(v)) {
+          existing[field] = String(v);
+          changed = true;
+        }
+      }
+    });
+    // Auto-calc totals
+    if (r.type === 'mea' && existing.offpeak && existing.onpeak) {
+      var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
+      if (tot > 0) existing.totalUnits = tot;
+    }
+    if (r.type === 'mwa' && existing.meterOld && existing.meterNew && !existing.units) {
+      var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
+      if (u > 0) existing.units = u;
+    }
+    if (changed) { stored[key] = existing; saved++; } else { skipped++; }
+  });
+  _utSave(stored);
+  _utRenderMEA(); _utRenderMWA();
+  setTimeout(_utInitMeaCharts, 50); setTimeout(_utInitMwaCharts, 100);
+  document.getElementById('ut-pdf-modal').style.display = 'none';
+  toast('✅ บันทึกข้อมูลจาก PDF สำเร็จ ' + saved + ' รายการ', 'ok');
 }
 
 console.log('✅ J.Residence Billing v4 loaded');
