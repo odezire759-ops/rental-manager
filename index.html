@@ -1936,6 +1936,21 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   </div>
 </div><!-- /ut-panel-mwa -->
 
+<!-- PDF Viewer Modal (inline) -->
+<div class="moverlay" id="ut-viewer-modal" style="display:none;">
+  <div class="modal" style="width:95vw;max-width:960px;height:90vh;display:flex;flex-direction:column;">
+    <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="mtitle" id="ut-viewer-title">📄 PDF Viewer</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <a id="ut-viewer-drive-link" href="#" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none;padding:4px 10px;border:1px solid var(--border2);border-radius:4px;">เปิดใน Drive ↗</a>
+        <button class="mclose" onclick="document.getElementById('ut-viewer-modal').style.display='none';document.getElementById('ut-viewer-iframe').src='';">×</button>
+      </div>
+    </div>
+    <div class="mbody" style="flex:1;padding:0;overflow:hidden;">
+      <iframe id="ut-viewer-iframe" style="width:100%;height:100%;border:none;"></iframe>
+    </div>
+  </div>
+</div>
 </div><!-- /sec-utility -->
 
 <!-- UTILITY EDIT MODAL -->
@@ -8400,6 +8415,38 @@ function _utDriveLink(utility, yr, mo, type) {
   return null;
 }
 
+// เปิด PDF ใน inline viewer modal
+function utViewPdf(fileIdOrUrl, title) {
+  var previewUrl, driveUrl;
+  if (fileIdOrUrl && fileIdOrUrl.indexOf('http') === 0) {
+    // URL ตรง
+    previewUrl = fileIdOrUrl.replace('/view','/preview');
+    driveUrl = fileIdOrUrl.replace('/preview','/view');
+  } else if (fileIdOrUrl) {
+    // File ID
+    previewUrl = 'https://drive.google.com/file/d/'+fileIdOrUrl+'/preview';
+    driveUrl = 'https://drive.google.com/file/d/'+fileIdOrUrl+'/view';
+  } else return;
+  document.getElementById('ut-viewer-title').textContent = '📄 ' + (title || 'PDF Viewer');
+  document.getElementById('ut-viewer-iframe').src = previewUrl;
+  document.getElementById('ut-viewer-drive-link').href = driveUrl;
+  document.getElementById('ut-viewer-modal').style.display = 'flex';
+}
+
+// สร้าง HTML สำหรับปุ่ม PDF ที่เปิด inline viewer (ถ้ามี fileId) หรือ link ไป Drive/Gmail
+function _utPdfButton(utility, yr, mo, type, label, style) {
+  var fileId = _UT_DRIVE_FILE_IDS[utility+'_'+yr+'_'+mo+'_'+type];
+  if (fileId) {
+    // มี File ID → เปิด inline viewer
+    return '<button onclick="utViewPdf(\''+fileId+'\',\''+utility+' '+yr+'/'+mo+' '+label+'\')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;'+style+'border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid;font-family:Sarabun,sans-serif;" title="เปิด PDF inline">'+label+'</button>';
+  }
+  var url = _utDriveLink(utility, yr, mo, type);
+  if (url) {
+    return '<a href="'+url+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;'+style+'border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;border:1px solid;" title="เปิดใน Drive">'+label+'</a>';
+  }
+  return '';
+}
+
 // ── Tab switcher ────────────────────────────────────
 function utSwitchTab(tab, btn) {
   _utCurrentTab = tab;
@@ -9592,16 +9639,16 @@ function utPdfSaveAll() {
 // SYNC FROM GOOGLE APPS SCRIPT WEB APP
 // ══════════════════════════════════════════════════════════════
 var _utSyncing = false;
+// Cache สำหรับ PDF ที่ extract แล้ว (ไม่ต้อง extract ซ้ำ)
+var _UT_PDF_CACHE_KEY = 'jres_ut_pdfcache_v1';
+function _utPdfCache(){ try{return JSON.parse(localStorage.getItem(_UT_PDF_CACHE_KEY)||'{}');}catch(e){return {};} }
+function _utPdfCacheSave(c){ try{localStorage.setItem(_UT_PDF_CACHE_KEY,JSON.stringify(c));}catch(e){} }
 
 function utSyncFromGAS(force) {
   if (_utSyncing) return;
+  if (!_UT_GAS_URL) { utConfigGasUrl(); return; }
 
-  if (!_UT_GAS_URL) {
-    utConfigGasUrl();
-    return;
-  }
-
-  // Debounce: ไม่ sync ถี่กว่า 5 นาที (ยกเว้น force)
+  // Debounce 5 นาที (ยกเว้น force)
   if (!force) {
     var lastSync = parseInt(localStorage.getItem(_UT_SYNC_KEY) || '0');
     if (Date.now() - lastSync < _UT_SYNC_MIN_INTERVAL) {
@@ -9611,106 +9658,221 @@ function utSyncFromGAS(force) {
     }
   }
 
-  // ── Abort controller: timeout 30 วินาที ──
-  var controller = new AbortController();
-  var fetchTimeout = setTimeout(function() { controller.abort(); }, 30000);
-
   _utSyncing = true;
-  var btn    = document.getElementById('ut-sync-btn');
+  var btn = document.getElementById('ut-sync-btn');
   var status = document.getElementById('ut-sync-status');
-  if (btn)    { btn.disabled = true; btn.innerHTML = '⏳ กำลัง Sync...'; }
-  if (status)   status.textContent = 'กำลังดึงข้อมูลจาก Drive...';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลัง Sync...'; }
+  if (status) status.textContent = 'กำลังดึงรายชื่อไฟล์จาก Drive...';
 
-  var url = _UT_GAS_URL + (force ? '?refresh=1' : '');
-  console.log('[UT-SYNC] Fetching:', url);
+  // ── ลอง GAS v2 (?action=files) ก่อน → ถ้าไม่ใช่ v2 fallback เป็น v1 ──
+  var actionUrl = _UT_GAS_URL + '?action=files';
+  console.log('[UT-SYNC] Fetching v2:', actionUrl);
 
-  fetch(url, { signal: controller.signal })
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(resp) {
-      console.log('[UT-SYNC] ok:', resp.ok, '| count:', resp.count);
-      if (!resp.ok) {
-        var msg = resp.error || '';
-        if (msg.indexOf('ยังไม่มีข้อมูล') !== -1 || msg.indexOf('extractAndSave') !== -1) {
-          throw new Error('NO_DATA');
-        }
-        throw new Error(msg || 'GAS returned ok:false');
-      }
-      if (!resp.data || typeof resp.data !== 'object') throw new Error('ไม่มี data ใน response');
+  var controller = new AbortController();
+  var fetchTimeout = setTimeout(function(){ controller.abort(); }, 30000);
 
-      var incoming = resp.data;
-      var stored   = _utLoad();
-      var updated  = 0, skipped = 0;
-
-      Object.keys(incoming).forEach(function(key) {
-        var vals = incoming[key];
-        if (!vals || typeof vals !== 'object') return;
-        var normKey  = key.replace(/\s/g, '_');
-        var existing = stored[normKey] || {};
-        var changed  = false;
-
-        // Reject offpeak === onpeak (OCR bug)
-        if (vals.offpeak && vals.onpeak && vals.offpeak === vals.onpeak) {
-          delete vals.offpeak; delete vals.onpeak; delete vals.totalUnits;
-        }
-
-        Object.keys(vals).forEach(function(field) {
-          var v = vals[field];
-          if (v !== null && v !== '' && v !== undefined) {
-            existing[field] = String(v); changed = true;
-          }
-        });
-
-        // Auto-calc totalUnits (MEA)
-        if (existing.offpeak && existing.onpeak && existing.offpeak !== existing.onpeak) {
-          var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
-          if (tot > 0) existing.totalUnits = tot;
-        }
-        // Auto-calc units (MWA)
-        if (existing.meterOld && existing.meterNew && !existing.units) {
-          var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
-          if (u > 0) existing.units = u;
-        }
-
-        if (changed) { stored[normKey] = existing; updated++; } else { skipped++; }
-      });
-
-      _utSave(stored);
-      localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
-
-      _utRenderMEA(); _utRenderMWA();
-      setTimeout(_utInitMeaCharts, 50);
-      setTimeout(_utInitMwaCharts, 100);
-      _utUpdateMwaKpi(stored);
-
-      var syncTime = new Date().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
-      if (status) status.textContent = 'sync: ' + syncTime;
-      toast('✅ Sync สำเร็จ — อัปเดต ' + updated + ' รายการ (ข้าม ' + skipped + ')', 'ok');
-    })
-    .catch(function(err) {
-      if (status) status.textContent = '';
-      console.error('[UT-SYNC] error:', err.name, err.message);
-
-      if (err.name === 'AbortError') {
-        toast('❌ Sync หมดเวลา 30 วิ — GAS ตอบช้าเกินไป ลอง Force sync', 'err');
-      } else if (err.message === 'NO_DATA') {
-        toast('❌ GAS ยังไม่มีข้อมูล — ไปรัน extractAndSave() ใน Apps Script ก่อน', 'err');
-      } else if (err.message.indexOf('Failed to fetch') !== -1 ||
-                 err.message.indexOf('NetworkError')    !== -1) {
-        toast('❌ CORS/Network error — ตรวจสอบ: URL ต้องลงท้าย /exec ไม่ใช่ /dev และ Who has access = Anyone', 'err');
-      } else if (err.message.indexOf('HTTP 4') !== -1 || err.message.indexOf('HTTP 5') !== -1) {
-        toast('❌ GAS ตอบ ' + err.message + ' — Deploy อาจไม่ถูกต้อง', 'err');
+  fetch(actionUrl, { signal: controller.signal })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(resp){
+      // ── ตรวจว่าเป็น v2 (มี mea[] / mwa[] array) หรือ v1 (มี ok/data) ──
+      if (Array.isArray(resp.mea) && Array.isArray(resp.mwa)) {
+        // === GAS v2: pdf.js extraction ===
+        return _utSyncV2(resp, force, status);
+      } else if (resp.ok !== undefined) {
+        // === GAS v1 (legacy): pre-extracted JSON ===
+        return _utSyncV1(resp, status);
       } else {
-        toast('❌ Sync ล้มเหลว: ' + err.message, 'err');
+        throw new Error('รูปแบบ response ไม่ถูกต้อง');
       }
     })
-    .finally(function() {
-      clearTimeout(fetchTimeout);  // ยกเลิก timeout เสมอ
+    .catch(function(err){
+      // Fallback: ลอง v1 format (URL ไม่มี ?action=)
+      if (err.message && (err.message.indexOf('รูปแบบ')!==-1 || err.message.indexOf('HTTP')!==-1)) {
+        console.log('[UT-SYNC] v2 failed, trying v1...');
+        return fetch(_UT_GAS_URL + (force?'?refresh=1':''))
+          .then(function(r){ return r.json(); })
+          .then(function(resp){ return _utSyncV1(resp, status); })
+          .catch(function(e2){ _utSyncError(e2, status); });
+      }
+      _utSyncError(err, status);
+    })
+    .finally(function(){
+      clearTimeout(fetchTimeout);
       _utSyncing = false;
       if (btn) { btn.disabled = false; btn.innerHTML = '🔄 Sync จาก Drive'; }
     });
+}
+
+// ══ V2 Sync: pdf.js client-side extraction ══
+async function _utSyncV2(resp, force, statusEl) {
+  var allFiles = (resp.mea||[]).concat(resp.mwa||[]);
+  if (!allFiles.length) { toast('📭 ยังไม่มีไฟล์ PDF ใน Drive — รัน runFullSetup() ใน GAS ก่อน','warn'); return; }
+
+  var pdfCache = force ? {} : _utPdfCache();
+  var stored = _utLoad();
+  var total = allFiles.length, done = 0, updated = 0, skipped = 0;
+
+  if (statusEl) statusEl.textContent = 'กำลัง extract ' + total + ' ไฟล์ด้วย pdf.js...';
+
+  for (var i = 0; i < allFiles.length; i++) {
+    var f = allFiles[i];
+    done++;
+    if (statusEl) statusEl.textContent = 'extract ' + done + '/' + total + ': ' + f.fileName;
+
+    // ข้ามถ้ามี cache แล้ว (ไม่ใช่ force)
+    if (!force && pdfCache[f.fileId] && pdfCache[f.fileId].monthKey) {
+      var cached = pdfCache[f.fileId];
+      var cKey = _utKey(cached.type, cached.monthKey);
+      if (stored[cKey] && stored[cKey].amount) { skipped++; continue; }
+    }
+
+    try {
+      // ดาวน์โหลด PDF ผ่าน GAS proxy → base64
+      var proxyUrl = f.proxyUrl || (_UT_GAS_URL + '?action=pdf&id=' + f.fileId);
+      var pdfResp = await fetch(proxyUrl);
+      var b64 = await pdfResp.text();
+
+      // ถอดรหัส base64 → pdf.js
+      var binary = atob(b64);
+      var bytes = new Uint8Array(binary.length);
+      for (var b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
+
+      var pdf = await pdfjsLib.getDocument({data:bytes}).promise;
+      var fullText = '';
+      for (var p = 1; p <= pdf.numPages; p++) {
+        var page = await pdf.getPage(p);
+        var content = await page.getTextContent();
+        fullText += content.items.map(function(it){return it.str;}).join(' ') + '\n';
+      }
+
+      // Parse ด้วย parser ที่มีอยู่แล้ว
+      var result = _utParsePdfText(fullText, f.fileName);
+      if (!result || !result.monthKey) { skipped++; continue; }
+
+      // เก็บ fileId / viewerUrl ไว้ใน result
+      result.data._fileId = f.fileId;
+      result.data._previewUrl = f.previewUrl || ('https://drive.google.com/file/d/'+f.fileId+'/preview');
+      result.data._viewerUrl = f.viewerUrl || '';
+      result.data._driveUrl = f.driveUrl || ('https://drive.google.com/file/d/'+f.fileId+'/view');
+      result.data._docType = f.docType || result.docType;
+
+      // บันทึก cache
+      pdfCache[f.fileId] = { type: result.type, monthKey: result.monthKey, docType: result.docType };
+
+      // Merge เข้า stored
+      var storeKey = _utKey(result.type, result.monthKey);
+      var existing = stored[storeKey] || {};
+      var changed = false;
+      Object.keys(result.data).forEach(function(field){
+        if (field === 'account') return;
+        var v = result.data[field];
+        if (v !== null && v !== '' && v !== undefined) {
+          existing[field] = String(v); changed = true;
+        }
+      });
+      // Auto-calc
+      if (existing.offpeak && existing.onpeak && existing.offpeak !== existing.onpeak) {
+        var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
+        if (tot > 0) existing.totalUnits = tot;
+      }
+      if (existing.meterOld && existing.meterNew && !existing.units) {
+        var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
+        if (u > 0) existing.units = u;
+      }
+      // เก็บ Drive File ID สำหรับ link ตาม docType
+      if (f.fileId && result.monthKey) {
+        var base = result.type==='mea' ? _UT_MEA_BASE : _UT_MWA_BASE;
+        var bEntry = base.find(function(x){return x.month===result.monthKey;});
+        if (bEntry) {
+          var dType = (result.docType==='invoice'||f.docType==='invoice') ? 'inv' : 'rec';
+          _UT_DRIVE_FILE_IDS[result.type.toUpperCase()+'_'+bEntry.yr+'_'+bEntry.mo+'_'+dType] = f.fileId;
+        }
+      }
+      if (changed) { stored[storeKey] = existing; updated++; } else { skipped++; }
+    } catch(err) {
+      console.warn('[UT-SYNC] extract error:', f.fileName, err);
+      skipped++;
+    }
+  }
+
+  _utSave(stored);
+  _utPdfCacheSave(pdfCache);
+  // Save Drive File IDs
+  try { localStorage.setItem('jres_utility_fids_v1', JSON.stringify(_UT_DRIVE_FILE_IDS)); } catch(e){}
+  localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
+
+  _utRenderMEA(); _utRenderMWA();
+  setTimeout(_utInitMeaCharts, 50);
+  setTimeout(_utInitMwaCharts, 100);
+  _utUpdateMwaKpi(stored);
+
+  var syncTime = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  if (statusEl) statusEl.textContent = 'sync: ' + syncTime;
+  toast('✅ Sync สำเร็จ — อัปเดต ' + updated + ' รายการ (ข้าม ' + skipped + ')', 'ok');
+}
+
+// ══ V1 Sync: legacy GAS pre-extracted JSON ══
+function _utSyncV1(resp, statusEl) {
+  if (!resp.ok) {
+    var msg = resp.error || '';
+    if (msg.indexOf('ยังไม่มีข้อมูล')!==-1 || msg.indexOf('extractAndSave')!==-1)
+      throw new Error('NO_DATA');
+    throw new Error(msg || 'GAS returned ok:false');
+  }
+  if (!resp.data || typeof resp.data !== 'object') throw new Error('ไม่มี data ใน response');
+
+  var incoming = resp.data;
+  var stored = _utLoad();
+  var updated = 0, skipped = 0;
+
+  Object.keys(incoming).forEach(function(key){
+    var vals = incoming[key];
+    if (!vals || typeof vals !== 'object') return;
+    var normKey = key.replace(/\s/g,'_');
+    var existing = stored[normKey] || {};
+    var changed = false;
+    if (vals.offpeak && vals.onpeak && vals.offpeak === vals.onpeak) {
+      delete vals.offpeak; delete vals.onpeak; delete vals.totalUnits;
+    }
+    Object.keys(vals).forEach(function(field){
+      var v = vals[field];
+      if (v !== null && v !== '' && v !== undefined) { existing[field] = String(v); changed = true; }
+    });
+    if (existing.offpeak && existing.onpeak && existing.offpeak !== existing.onpeak) {
+      var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
+      if (tot > 0) existing.totalUnits = tot;
+    }
+    if (existing.meterOld && existing.meterNew && !existing.units) {
+      var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
+      if (u > 0) existing.units = u;
+    }
+    if (changed) { stored[normKey] = existing; updated++; } else { skipped++; }
+  });
+
+  _utSave(stored);
+  localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
+  _utRenderMEA(); _utRenderMWA();
+  setTimeout(_utInitMeaCharts, 50);
+  setTimeout(_utInitMwaCharts, 100);
+  _utUpdateMwaKpi(stored);
+  var syncTime = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  if (statusEl) statusEl.textContent = 'sync: ' + syncTime;
+  toast('✅ Sync สำเร็จ — อัปเดต ' + updated + ' รายการ (ข้าม ' + skipped + ')', 'ok');
+}
+
+// ══ Error handler ══
+function _utSyncError(err, statusEl) {
+  if (statusEl) statusEl.textContent = '';
+  console.error('[UT-SYNC] error:', err.name, err.message);
+  if (err.name === 'AbortError') {
+    toast('❌ Sync หมดเวลา 30 วิ — ลอง Force sync','err');
+  } else if (err.message === 'NO_DATA') {
+    toast('❌ ยังไม่มีไฟล์ PDF ใน Drive — รัน runFullSetup() ใน Apps Script ก่อน','err');
+  } else if (err.message.indexOf('Failed to fetch')!==-1 || err.message.indexOf('NetworkError')!==-1) {
+    toast('❌ CORS/Network error — URL ต้องลงท้าย /exec และ Who has access = Anyone','err');
+  } else {
+    toast('❌ Sync ล้มเหลว: ' + err.message,'err');
+  }
 }
 
 // ── Config GAS URL ──────────────────────────────────────────
