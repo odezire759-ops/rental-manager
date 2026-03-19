@@ -8068,7 +8068,7 @@ function _utRenderMEA() {
       + '<td style="text-align:right;">' + amtCell + '</td>'
       + '<td style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text2);">' + (d.paidDate||'&#8212;') + '</td>'
       + '<td style="white-space:nowrap;">' + pdfLinks + '</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry('mea',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry(&apos;mea&apos;,&apos;'+d.month+'&apos;)" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8116,7 +8116,7 @@ function _utRenderMWA() {
       + '<td style="text-align:right;">' + amtCell + '</td>'
       + '<td>' + period + '</td>'
       + '<td style="text-align:center;">' + pdfLinks + '</td>'
-      + '<td style="text-align:center;"><button onclick="utEditEntry('mwa',''+d.month+'')" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
+      + '<td style="text-align:center;"><button onclick="utEditEntry(&apos;mwa&apos;,&apos;'+d.month+'&apos;)" style="padding:3px 8px;background:var(--blue-dim);color:var(--blue);border:1px solid #aac8f8;border-radius:4px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;">&#9999;&#65039;</button></td>'
       + '</tr>';
   });
   tb.innerHTML = rows.join('');
@@ -8342,14 +8342,12 @@ function _utInitMwaCharts() {
   window.showSec = function(id, btn) {
     if (_origShowSec) _origShowSec(id, btn);
     if (id === 'utility') {
-      // render tables immediately
       _utRenderMEA();
       _utRenderMWA();
-      // delay chart init ให้ section display:block ก่อน (Chart.js ต้องการ visible canvas)
       setTimeout(function(){
         _utInitMeaCharts();
         _utInitMwaCharts();
-      }, 120);
+      }, 150);
     }
   };
 })();
