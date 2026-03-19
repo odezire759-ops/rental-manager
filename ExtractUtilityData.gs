@@ -357,10 +357,11 @@ function detectMonthKey_(fileName, text, type) {
                       'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
   // Try from filename: MEA_Invoice_ม.ค._2569_...
+  // ใช้ [\s_]* แทน \s* เพราะ filename ใช้ _ เป็น separator
   for (var m = 1; m <= 12; m++) {
     var short = TH_SHORT[m];
     var esc = short.replace(/\./g, '\\.');
-    var re = new RegExp(esc + '\\s*(25\\d{2})');
+    var re = new RegExp(esc + '[\\s_]*(25\\d{2})');
     var match = fileName.match(re);
     if (match) {
       return type + '_' + short + '_' + match[1];
@@ -375,17 +376,36 @@ function detectMonthKey_(fileName, text, type) {
     return type + '_' + TH_SHORT[mo] + '_' + yr;
   }
 
-  // Try from text: Thai full month names
+  // Try from text: Thai full month names + short month names
+  // ใช้ [\s_.]* เพื่อรองรับ OCR ที่อาจมีช่องว่าง/จุด/underscore แทรก
   var TH_FULL = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   for (var m = 1; m <= 12; m++) {
-    var reF = new RegExp(TH_FULL[m] + '\\s*(25\\d{2})');
-    var reS = new RegExp(TH_SHORT[m].replace(/\./g, '\\.') + '\\s*(25\\d{2})');
+    var reF = new RegExp(TH_FULL[m] + '[\\s_.]{0,5}(25\\d{2})');
+    var reS = new RegExp(TH_SHORT[m].replace(/\./g, '\\.') + '[\\s_.]{0,5}(25\\d{2})');
     var mF = text.match(reF);
     var mS = text.match(reS);
     var found = mF || mS;
     if (found) {
       return type + '_' + TH_SHORT[m] + '_' + found[1];
+    }
+  }
+
+  // Fallback: try DD/MM/YYYY patterns in text
+  var dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](25\d{2})/);
+  if (dateMatch) {
+    var dm = parseInt(dateMatch[2]); // month from date
+    if (dm >= 1 && dm <= 12) {
+      return type + '_' + TH_SHORT[dm] + '_' + dateMatch[3];
+    }
+  }
+  // Try Gregorian year → convert to Buddhist
+  var gregMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](20\d{2})/);
+  if (gregMatch) {
+    var gm = parseInt(gregMatch[2]);
+    var gy = parseInt(gregMatch[3]) + 543;
+    if (gm >= 1 && gm <= 12) {
+      return type + '_' + TH_SHORT[gm] + '_' + gy;
     }
   }
 
