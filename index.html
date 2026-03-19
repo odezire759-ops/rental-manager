@@ -394,36 +394,32 @@ body{font-family:'Sarabun',sans-serif;background:var(--shell);color:var(--text);
 .empty{text-align:center;padding:32px;color:var(--text3);font-size:12px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 
+/* ══ CI TYPE CHOOSER ══ */
+#ci-type-daily-card:hover{border-color:var(--blue)!important;background:#f0f7ff!important;transform:translateY(-2px);box-shadow:var(--sh2);}
+#ci-type-monthly-card:hover{border-color:var(--success)!important;background:#f0fdf4!important;transform:translateY(-2px);box-shadow:var(--sh2);}
+
 /* ══ NINJA MODE ══ */
-.ninja-blur{filter:blur(7px)!important;user-select:none!important;transition:filter .25s;}
 body.ninja-mode .kval,
 body.ninja-mode #ds-rev-m,body.ninja-mode #ds-rev-d,body.ninja-mode #ds-occ,body.ninja-mode #ds-pend,
 body.ninja-mode #k-rev,body.ninja-mode #k-paid,body.ninja-mode #k-pend,body.ninja-mode #k-elec,body.ninja-mode #k-water,
 body.ninja-mode #dk-rev,body.ninja-mode #dk-nights,body.ninja-mode #dk-today,body.ninja-mode #dk-avg,
-body.ninja-mode #dk-topsrc-sub,
 body.ninja-mode #tx-income,body.ninja-mode #tx-expense,body.ninja-mode #tx-profit,
 body.ninja-mode #iv-unpaid-count,body.ninja-mode #iv-unpaid-amt,body.ninja-mode #iv-overdue-count,body.ninja-mode #iv-overdue-amt,
 body.ninja-mode #iv-paid-count,body.ninja-mode #iv-paid-amt,body.ninja-mode #iv-total-count,body.ninja-mode #iv-total-amt,
 body.ninja-mode #sl-total-amt,body.ninja-mode #vat-total,body.ninja-mode #net-output,body.ninja-mode #net-input,body.ninja-mode #net-result,
-body.ninja-mode .ramt,body.ninja-mode .gcard-price,body.ninja-mode .dprice,body.ninja-mode .ota-price,
-body.ninja-mode .totrow .val,body.ninja-mode .wi-total,
-body.ninja-mode #wi-total,body.ninja-mode #ci-total-price,body.ninja-mode #btotal,body.ninja-mode #etot{
+body.ninja-mode .ramt,body.ninja-mode .gcard-price,body.ninja-mode .ota-price,
+body.ninja-mode .totrow .val,body.ninja-mode #wi-total,body.ninja-mode #ci-total-price,body.ninja-mode #btotal,body.ninja-mode #etot,
+body.ninja-mode #ms-total,body.ninja-mode #ms-rent,body.ninja-mode #ms-deposit{
   filter:blur(7px)!important;user-select:none!important;transition:filter .25s;
 }
-body.ninja-mode .rname,
-body.ninja-mode .gcard-name,body.ninja-mode .drcard-guest,body.ninja-mode .ota-item .ota-name,
-body.ninja-mode .ota-item .ota-det,body.ninja-mode .floor-tag{
-  filter:blur(5px)!important;user-select:none!important;transition:filter .25s;
+body.ninja-mode .rname,body.ninja-mode .gcard-name,body.ninja-mode .drcard-guest,body.ninja-mode .ota-item .ota-name{
+  filter:blur(5px)!important;user-select:none!important;
 }
-body.ninja-mode #mtbody td:nth-child(3),
-body.ninja-mode #mtbody td:nth-child(5),body.ninja-mode #mtbody td:nth-child(6),body.ninja-mode #mtbody td:nth-child(7),body.ninja-mode #mtbody td:nth-child(9),
-body.ninja-mode #ota-recent-tbody td:nth-child(3),
-body.ninja-mode #ota-recent-tbody td:nth-child(8),
+body.ninja-mode #mtbody td:nth-child(3),body.ninja-mode #mtbody td:nth-child(5),
+body.ninja-mode #mtbody td:nth-child(6),body.ninja-mode #mtbody td:nth-child(7),body.ninja-mode #mtbody td:nth-child(9),
+body.ninja-mode #ota-recent-tbody td:nth-child(3),body.ninja-mode #ota-recent-tbody td:nth-child(8),
 body.ninja-mode #iv-tbody td:nth-child(4),body.ninja-mode #iv-tbody td:nth-child(7),
-body.ninja-mode #iv-unpaid-tbody td:nth-child(2),body.ninja-mode #iv-unpaid-tbody td:nth-child(4),
-body.ninja-mode #btbody td:nth-child(2),body.ninja-mode #btbody td:nth-child(6),
-body.ninja-mode #ci-tbody td:nth-child(4),
-body.ninja-mode #st-tbody td:nth-child(1){
+body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:nth-child(2){
   filter:blur(6px)!important;user-select:none!important;
 }
 </style>
@@ -611,152 +607,376 @@ body.ninja-mode #st-tbody td:nth-child(1){
 <!-- ═══ BOOKING SECTION ═══ -->
 <!-- ═══ CHECK-IN / แจ้งเข้าพัก SECTION ═══ -->
 <div id="sec-checkin" class="sec">
-  <div class="g2">
-    <!-- LEFT: OCR + Form -->
-    <div>
-      <div class="card" style="margin-bottom:14px;">
-        <div class="chdr">
-          <span>🛂 แจ้งเข้าพัก — AI OCR</span>
-          <div class="seg" id="gtype-seg">
-            <button class="sb active" onclick="setGuestType('thai',this)">🇹🇭 คนไทย</button>
-            <button class="sb" onclick="setGuestType('foreign',this)">🌍 ต่างชาติ</button>
+
+  <!-- ── STEP 0: เลือกประเภทก่อน ── -->
+  <div id="ci-type-chooser" style="max-width:680px;margin:0 auto 20px;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">เลือกประเภทการเข้าพัก</div>
+      <div style="font-size:12px;color:var(--text3);">ระบบจะแสดงฟอร์มที่เหมาะสมสำหรับแต่ละประเภท</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div id="ci-type-daily-card" onclick="setCIType('daily')" style="border:2px solid var(--border2);border-radius:var(--r);padding:20px;cursor:pointer;text-align:center;transition:all .2s;background:var(--white);">
+        <div style="font-size:36px;margin-bottom:8px;">📅</div>
+        <div style="font-size:15px;font-weight:700;color:var(--blue);margin-bottom:4px;">รายวัน</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;">Walk-in · Agoda · Traveloka<br>กรอกข้อมูล OCR บัตร/Passport<br>ราคาคำนวณอัตโนมัติ</div>
+      </div>
+      <div id="ci-type-monthly-card" onclick="setCIType('monthly')" style="border:2px solid var(--border2);border-radius:var(--r);padding:20px;cursor:pointer;text-align:center;transition:all .2s;background:var(--white);">
+        <div style="font-size:36px;margin-bottom:8px;">🏠</div>
+        <div style="font-size:15px;font-weight:700;color:var(--success);margin-bottom:4px;">รายเดือน</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;">ทำสัญญาเช่า · กรอกเลขมิเตอร์<br>บันทึกการชำระวันทำสัญญา<br>ข้อมูลผู้เช่าครบถ้วน</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DAILY CHECK-IN PANEL ── -->
+  <div id="ci-panel-daily" style="display:none;">
+    <div class="g2">
+      <div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="chdr">
+            <span>📅 แจ้งเข้าพักรายวัน — AI OCR</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div class="seg" id="gtype-seg">
+                <button class="sb active" onclick="setGuestType('thai',this)">🇹🇭 คนไทย</button>
+                <button class="sb" onclick="setGuestType('foreign',this)">🌍 ต่างชาติ</button>
+              </div>
+              <button onclick="setCIType(null)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--shell);font-size:11px;cursor:pointer;color:var(--text2);">← เปลี่ยนประเภท</button>
+            </div>
+          </div>
+          <div class="cbdy">
+            <!-- OCR Upload -->
+            <div id="ocr-box" style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .15s;background:var(--shell);" onclick="document.getElementById('ocr-file').click();" ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='var(--gold-light)';" ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--shell)';" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleOCRDrop(event);">
+              <div style="font-size:26px;margin-bottom:4px;" id="ocr-icon">📸</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text);" id="ocr-label">ถ่ายรูปหรือลากไฟล์ บัตรประชาชน / Passport</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px;">AI จะอ่านข้อมูลและกรอกฟอร์มอัตโนมัติ</div>
+              <input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none;" onchange="handleOCRFile(this)">
+            </div>
+            <div id="ocr-preview" style="display:none;margin-bottom:14px;text-align:center;">
+              <img id="ocr-img" style="max-width:100%;max-height:180px;border-radius:var(--r);border:1px solid var(--border);">
+              <div id="ocr-status" style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:6px;">🔍 กำลังอ่านข้อมูล...</div>
+            </div>
+            <!-- Thai Guest Form -->
+            <div id="form-thai">
+              <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">ข้อมูลผู้เข้าพัก (คนไทย)</div>
+              <div class="fg">
+                <div class="fr"><label>เลขบัตรประชาชน (13 หลัก)</label><input type="text" id="ci-thai-id" maxlength="13" placeholder="1234567890123"></div>
+                <div class="fr"><label>คำนำหน้า</label><select id="ci-prefix"><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select></div>
+              </div>
+              <div class="fg">
+                <div class="fr"><label>ชื่อ (ไทย)</label><input type="text" id="ci-thai-fname"></div>
+                <div class="fr"><label>นามสกุล (ไทย)</label><input type="text" id="ci-thai-lname"></div>
+              </div>
+              <div class="fg">
+                <div class="fr"><label>วันเกิด</label><input type="date" id="ci-thai-bday"></div>
+                <div class="fr"><label>เบอร์โทร</label><input type="tel" id="ci-thai-phone"></div>
+              </div>
+            </div>
+            <!-- Foreign Guest Form -->
+            <div id="form-foreign" style="display:none;">
+              <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">Guest Information (Foreign / TM30)</div>
+              <div class="fg">
+                <div class="fr"><label>First Name *</label><input type="text" id="ci-fname"></div>
+                <div class="fr"><label>Last Name *</label><input type="text" id="ci-lname"></div>
+              </div>
+              <div class="fg">
+                <div class="fr"><label>Middle Name</label><input type="text" id="ci-mname"></div>
+                <div class="fr"><label>Gender *</label><select id="ci-gender"><option value="M">M — Male</option><option value="F">F — Female</option></select></div>
+              </div>
+              <div class="fg">
+                <div class="fr"><label>Passport No. *</label><input type="text" id="ci-passport"></div>
+                <div class="fr"><label>Nationality * (ICAO)</label><select id="ci-nationality"><option value="">— เลือกสัญชาติ —</option></select></div>
+              </div>
+              <div class="fg">
+                <div class="fr"><label>Birth Date</label><input type="date" id="ci-bday"></div>
+                <div class="fr"><label>Phone</label><input type="tel" id="ci-phone"></div>
+              </div>
+            </div>
+            <!-- Room & Dates -->
+            <div class="fsec">ข้อมูลห้องพัก</div>
+            <div class="fg">
+              <div class="fr"><label>แหล่งที่มา</label>
+                <select id="ci-source">
+                  <option value="Walk-in">🚶 Walk-in</option>
+                  <option value="Agoda">🔴 Agoda</option>
+                  <option value="Traveloka">🔵 Traveloka</option>
+                  <option value="Booking.com">🔵 Booking.com</option>
+                  <option value="Other">⚫ อื่นๆ</option>
+                </select>
+              </div>
+              <div class="fr"><label>ห้องที่เลือก</label>
+                <div class="cdisp" id="ci-room-display" style="font-weight:700;color:var(--blue);">— ยังไม่ได้เลือก —</div>
+                <input type="hidden" id="ci-room">
+              </div>
+            </div>
+            <input type="hidden" id="ci-stay-type" value="daily">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">เลือกห้องว่าง <span id="ci-room-count" style="color:var(--text3);font-weight:500;"></span></div>
+            <div id="ci-room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px;max-height:200px;overflow-y:auto;margin-bottom:12px;padding:2px;"></div>
+            <div class="fg">
+              <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin" onchange="loadCheckinRooms();calcWalkinPrice()"></div>
+              <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout" onchange="calcWalkinPrice()"></div>
+            </div>
+            <!-- Pricing -->
+            <div id="ci-pricing" style="display:none;margin-top:10px;">
+              <div style="background:linear-gradient(135deg,var(--gold-light),#fff8e1);border:1px solid #fcd34d;border-radius:var(--r);padding:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span style="font-size:12px;font-weight:700;color:var(--gold2);">💰 ค่าห้องพัก Walk-in</span>
+                  <span style="font-size:10px;color:var(--text3);">จ-พฤ ฿750 · ศ-อา+หยุด ฿790</span>
+                </div>
+                <div id="ci-price-breakdown" style="font-size:11px;color:var(--text2);margin-bottom:8px;"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:12px;color:var(--text2);font-weight:600;"><span id="ci-nights">0</span> คืน</span>
+                  <span style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;" id="ci-total-price">฿0</span>
+                </div>
+                <div class="fg" style="margin-top:8px;">
+                  <div class="fr"><label>ปรับราคาเอง (฿/คืน)</label><input type="number" id="ci-custom-price" placeholder="ราคาอัตโนมัติ" oninput="calcWalkinPrice()"></div>
+                  <div class="fr"><label>ส่วนลด (฿)</label><input type="number" id="ci-discount" value="0" oninput="calcWalkinPrice()"></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn bp" style="width:100%;margin-top:14px;padding:10px;font-size:13px;" onclick="saveCheckin()">💾 บันทึกแจ้งเข้าพักรายวัน</button>
           </div>
         </div>
-        <div class="cbdy">
-          <!-- OCR Upload -->
-          <div id="ocr-box" style="border:2px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .15s;background:var(--shell);" onclick="document.getElementById('ocr-file').click();" ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='var(--gold-light)';" ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--shell)';" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleOCRDrop(event);">
-            <div style="font-size:28px;margin-bottom:6px;" id="ocr-icon">📸</div>
-            <div style="font-size:13px;font-weight:700;color:var(--text);" id="ocr-label">ถ่ายรูปหรือลากไฟล์ บัตรประชาชน / Passport</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;">AI จะอ่านข้อมูลและกรอกฟอร์มอัตโนมัติ</div>
-            <input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none;" onchange="handleOCRFile(this)">
+      </div>
+      <!-- RIGHT: list -->
+      <div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="chdr">
+            <span>📋 รายการแจ้งเข้าพักล่าสุด</span>
+            <div style="display:flex;gap:6px;">
+              <button class="tbtn" style="font-size:10px;" onclick="syncCheckins()">🔄 Sync</button>
+              <button class="tbtn" style="font-size:10px;" onclick="exportTM30()">📄 TM30</button>
+              <button class="tbtn" style="font-size:10px;" onclick="exportRR1()">📄 รร.1</button>
+            </div>
           </div>
-          <div id="ocr-preview" style="display:none;margin-bottom:14px;text-align:center;">
-            <img id="ocr-img" style="max-width:100%;max-height:200px;border-radius:var(--r);border:1px solid var(--border);">
-            <div id="ocr-status" style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:6px;">🔍 กำลังอ่านข้อมูล...</div>
+          <div style="overflow-x:auto;max-height:500px;overflow-y:auto;">
+            <table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>แหล่งที่มา</th><th>ชื่อ</th><th>เอกสาร</th><th>สัญชาติ</th><th>เข้าพัก</th><th>ออก</th><th>TM30</th><th></th></tr></thead>
+            <tbody id="ci-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table>
           </div>
+        </div>
+        <div class="card">
+          <div class="chdr">📊 สถิติแจ้งเข้าพัก (เดือนนี้)</div>
+          <div class="cbdy" id="ci-stats"><div class="loading">กำลังโหลด...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          <!-- Thai Guest Form -->
-          <div id="form-thai">
-            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">ข้อมูลผู้เข้าพัก (คนไทย)</div>
-            <div class="fg">
-              <div class="fr"><label>เลขบัตรประชาชน (13 หลัก)</label><input type="text" id="ci-thai-id" maxlength="13" placeholder="1234567890123"></div>
-              <div class="fr"><label>คำนำหน้า</label><select id="ci-prefix"><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select></div>
-            </div>
-            <div class="fg">
-              <div class="fr"><label>ชื่อ (ไทย)</label><input type="text" id="ci-thai-fname"></div>
-              <div class="fr"><label>นามสกุล (ไทย)</label><input type="text" id="ci-thai-lname"></div>
-            </div>
-            <div class="fg">
-              <div class="fr"><label>วันเกิด</label><input type="date" id="ci-thai-bday"></div>
-              <div class="fr"><label>เบอร์โทร</label><input type="tel" id="ci-thai-phone"></div>
-            </div>
-          </div>
+  <!-- ── MONTHLY CONTRACT PANEL ── -->
+  <div id="ci-panel-monthly" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
 
-          <!-- Foreign Guest Form -->
-          <div id="form-foreign" style="display:none;">
-            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">Guest Information (Foreign / TM30)</div>
+      <!-- COL 1: ข้อมูลผู้เช่า + สัญญา -->
+      <div>
+
+        <!-- Header card -->
+        <div class="card" style="margin-bottom:14px;border-top:4px solid var(--success);">
+          <div class="chdr" style="background:#f1fdf6;">
+            <span style="color:var(--success);font-weight:700;">🏠 ทำสัญญาผู้เช่ารายเดือน</span>
+            <button onclick="setCIType(null)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--white);font-size:11px;cursor:pointer;color:var(--text2);">← เปลี่ยนประเภท</button>
+          </div>
+          <div class="cbdy">
+
+            <!-- OCR -->
+            <div id="m-ocr-box" style="border:2px dashed var(--border2);border-radius:var(--r);padding:16px;text-align:center;margin-bottom:12px;cursor:pointer;background:var(--shell);transition:all .15s;" onclick="document.getElementById('m-ocr-file').click();" ondragover="event.preventDefault();this.style.borderColor='var(--gold)';this.style.background='var(--gold-light)';" ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--shell)';">
+              <div style="font-size:22px;margin-bottom:3px;">📸</div>
+              <div style="font-size:12px;font-weight:700;color:var(--text);">ถ่ายรูปบัตรประชาชน — AI อ่านอัตโนมัติ</div>
+              <input type="file" id="m-ocr-file" accept="image/*" capture="environment" style="display:none;" onchange="handleMonthlyOCR(this)">
+            </div>
+            <div id="m-ocr-preview" style="display:none;margin-bottom:12px;text-align:center;">
+              <img id="m-ocr-img" style="max-width:100%;max-height:150px;border-radius:var(--r);border:1px solid var(--border);">
+              <div id="m-ocr-status" style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:4px;">🔍 กำลังอ่าน...</div>
+            </div>
+
+            <!-- ส่วนที่ 1: ข้อมูลส่วนตัว -->
+            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">👤 ข้อมูลผู้เช่า</div>
             <div class="fg">
-              <div class="fr"><label>First Name *</label><input type="text" id="ci-fname"></div>
-              <div class="fr"><label>Last Name *</label><input type="text" id="ci-lname"></div>
+              <div class="fr"><label>เลขบัตรประชาชน *</label><input type="text" id="m-thai-id" maxlength="13" placeholder="1234567890123"></div>
+              <div class="fr"><label>คำนำหน้า</label><select id="m-prefix"><option>นาย</option><option>นาง</option><option>นางสาว</option></select></div>
             </div>
             <div class="fg">
-              <div class="fr"><label>Middle Name</label><input type="text" id="ci-mname"></div>
-              <div class="fr"><label>Gender *</label><select id="ci-gender"><option value="M">M — Male</option><option value="F">F — Female</option></select></div>
+              <div class="fr"><label>ชื่อ *</label><input type="text" id="m-fname" placeholder="ชื่อ"></div>
+              <div class="fr"><label>นามสกุล *</label><input type="text" id="m-lname" placeholder="นามสกุล"></div>
             </div>
             <div class="fg">
-              <div class="fr"><label>Passport No. *</label><input type="text" id="ci-passport"></div>
-              <div class="fr"><label>Nationality * (ICAO)</label>
-                <select id="ci-nationality"><option value="">— เลือกสัญชาติ —</option></select>
+              <div class="fr"><label>วันเกิด</label><input type="date" id="m-bday"></div>
+              <div class="fr"><label>เบอร์โทร *</label><input type="tel" id="m-phone" placeholder="08x-xxx-xxxx"></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>เบอร์โทรฉุกเฉิน</label><input type="tel" id="m-phone-emg" placeholder="เบอร์ผู้ติดต่อฉุกเฉิน"></div>
+              <div class="fr"><label>ชื่อผู้ติดต่อฉุกเฉิน</label><input type="text" id="m-emg-name" placeholder="ชื่อ-นามสกุล"></div>
+            </div>
+            <div class="fr"><label>ที่อยู่ปัจจุบัน</label><input type="text" id="m-address" placeholder="บ้านเลขที่ ถนน แขวง เขต จังหวัด"></div>
+            <div class="fg" style="margin-top:6px;">
+              <div class="fr"><label>สถานที่ทำงาน</label><input type="text" id="m-workplace" placeholder="ชื่อบริษัท / หน่วยงาน"></div>
+              <div class="fr"><label>เบอร์ที่ทำงาน</label><input type="tel" id="m-work-phone" placeholder="02-xxx-xxxx"></div>
+            </div>
+
+            <!-- ส่วนที่ 2: ข้อมูลสัญญา -->
+            <div class="fsec">📄 ข้อมูลสัญญาเช่า</div>
+            <div class="fg">
+              <div class="fr"><label>ห้อง *</label>
+                <div class="cdisp" id="m-room-display" style="font-weight:700;color:var(--success);">— ยังไม่ได้เลือก —</div>
+                <input type="hidden" id="m-room">
+              </div>
+              <div class="fr"><label>ประเภทเตียง</label>
+                <select id="m-bed"><option value="6ft">🛏 6 ฟุต</option><option value="5ft">🛏 5 ฟุต</option><option value="twin">🛏🛏 เตียงคู่</option></select>
               </div>
             </div>
+            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">เลือกห้องว่าง (รายเดือน) <span id="m-room-count" style="color:var(--text3);font-weight:500;"></span></div>
+            <div id="m-room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px;max-height:180px;overflow-y:auto;margin-bottom:12px;padding:2px;border:1px solid var(--border);border-radius:var(--rs);padding:6px;background:var(--shell);"></div>
             <div class="fg">
-              <div class="fr"><label>Birth Date</label><input type="date" id="ci-bday"></div>
-              <div class="fr"><label>Phone</label><input type="tel" id="ci-phone"></div>
+              <div class="fr"><label>วันเริ่มสัญญา *</label><input type="date" id="m-start" onchange="calcContractEnd()"></div>
+              <div class="fr"><label>ระยะสัญญา (เดือน)</label><input type="number" id="m-duration" value="12" min="1" max="36" oninput="calcContractEnd()"></div>
             </div>
-          </div>
+            <div class="fg">
+              <div class="fr"><label>วันหมดสัญญา</label><div class="cdisp" id="m-end-display">—</div><input type="hidden" id="m-end"></div>
+              <div class="fr"><label>ค่าเช่า/เดือน (฿) *</label><input type="number" id="m-rent" value="4500" oninput="calcContractSummary()"></div>
+            </div>
+            <!-- สิ่งอำนวยความสะดวก -->
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="m-tv"> 📺 ทีวี</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="m-fridge"> 🧊 ตู้เย็น</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="m-car"> 🚗 จอดรถ</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="m-moto"> 🏍 มอเตอร์ไซค์</label>
+            </div>
+            <div class="fr"><label>หมายเหตุ / เงื่อนไขพิเศษ</label><input type="text" id="m-note" placeholder="เช่น ห้ามเลี้ยงสัตว์, แนะนำโดย..."></div>
 
-          <!-- Common: Room + Dates -->
-          <div class="fsec">ข้อมูลห้องพัก</div>
-          <div class="fg">
-            <div class="fr"><label>ประเภทห้อง</label>
-              <select id="ci-stay-type" onchange="loadCheckinRooms();calcWalkinPrice()">
-                <option value="daily">📅 รายวัน</option>
-                <option value="monthly">🏠 รายเดือน</option>
-              </select>
-            </div>
-            <div class="fr"><label>แหล่งที่มา</label>
-              <select id="ci-source">
-                <option value="Walk-in">🚶 Walk-in</option>
-                <option value="Agoda">🔴 Agoda</option>
-                <option value="Traveloka">🔵 Traveloka</option>
-                <option value="Booking.com">🔵 Booking.com</option>
-                <option value="Other">⚫ อื่นๆ</option>
-              </select>
-            </div>
           </div>
-          <div class="fg">
-            <div class="fr"><label>ห้องที่เลือก</label>
-              <div class="cdisp" id="ci-room-display" style="font-weight:700;color:var(--blue);">— ยังไม่ได้เลือก —</div>
-              <input type="hidden" id="ci-room">
-            </div>
-          </div>
-          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;">เลือกห้องว่าง <span id="ci-room-count" style="color:var(--text3);font-weight:500;"></span></div>
-          <div id="ci-room-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:260px;overflow-y:auto;margin-bottom:12px;padding:2px;">
-            <div class="loading" style="grid-column:1/-1;">กำลังโหลดห้อง...</div>
-          </div>
-          <div class="fg">
-            <div class="fr"><label>วันที่เข้าพัก *</label><input type="date" id="ci-checkin" onchange="loadCheckinRooms();calcWalkinPrice()"></div>
-            <div class="fr"><label>วันที่ออก</label><input type="date" id="ci-checkout" onchange="calcWalkinPrice()"></div>
-          </div>
+        </div>
 
-          <!-- Walk-in Pricing (show only for daily rooms) -->
-          <div id="ci-pricing" style="display:none;margin-top:10px;">
-            <div style="background:linear-gradient(135deg,var(--gold-light),#fff8e1);border:1px solid #fcd34d;border-radius:var(--r);padding:12px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:12px;font-weight:700;color:var(--gold2);">💰 ค่าห้องพัก Walk-in</span>
-                <span style="font-size:10px;color:var(--text3);">จ-พฤ ฿750 · ศ-อา+นักขัตฤกษ์ ฿790</span>
+        <!-- มิเตอร์เริ่มต้น -->
+        <div class="card" style="margin-bottom:14px;">
+          <div class="chdr" style="background:#f0f7ff;">
+            <span style="color:var(--blue);font-weight:700;">⚡ เลขมิเตอร์เริ่มต้น (วันทำสัญญา)</span>
+          </div>
+          <div class="cbdy">
+            <div class="fg">
+              <div class="fr"><label>⚡ มิเตอร์ไฟฟ้า (หน่วย)</label><input type="number" id="m-elec-start" placeholder="เลขมิเตอร์ไฟ"></div>
+              <div class="fr"><label>💧 มิเตอร์น้ำ (หน่วย)</label><input type="number" id="m-water-start" placeholder="เลขมิเตอร์น้ำ"></div>
+            </div>
+            <div class="fg">
+              <div class="fr"><label>เรทค่าไฟ</label>
+                <select id="m-rate-elec">
+                  <option value="apt">🏢 อพาร์ทเม้นท์ (฿8.5/หน่วย)</option>
+                  <option value="gov">🏛 การไฟฟ้า (฿4.3/หน่วย)</option>
+                </select>
               </div>
-              <div id="ci-price-breakdown" style="font-size:11px;color:var(--text2);margin-bottom:8px;"></div>
+              <div class="fr"><label>เรทค่าน้ำ</label>
+                <select id="m-rate-water">
+                  <option value="apt">🏢 อพาร์ทเม้นท์ (฿18/หน่วย)</option>
+                  <option value="gov">🏛 ประปา (฿13.9/หน่วย)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COL 2: การชำระวันทำสัญญา -->
+      <div>
+
+        <div class="card" style="margin-bottom:14px;border-top:4px solid var(--gold);">
+          <div class="chdr" style="background:var(--gold-light);">
+            <span style="color:var(--gold2);font-weight:700;">💰 รายละเอียดการชำระวันทำสัญญา</span>
+          </div>
+          <div class="cbdy">
+
+            <!-- ค่าใช้จ่ายวันทำสัญญา -->
+            <div class="fsec" style="margin-top:0;border-top:none;padding-top:0;">รายการที่ชำระวันนี้</div>
+
+            <div style="background:var(--shell);border-radius:var(--rs);padding:12px;margin-bottom:10px;">
+              <div class="fg3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <div class="fr"><label>💰 ค่าเช่าล่วงหน้า (฿)</label><input type="number" id="m-pay-rent" placeholder="4500" oninput="calcContractSummary()"></div>
+                <div class="fr"><label>🔐 เงินประกัน (฿)</label><input type="number" id="m-pay-deposit" placeholder="9000" oninput="calcContractSummary()"></div>
+                <div class="fr"><label>🏢 ค่าส่วนกลาง (฿)</label><input type="number" id="m-pay-common" value="0" oninput="calcContractSummary()"></div>
+              </div>
+              <div class="fg3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">
+                <div class="fr"><label>💳 ค่าคีย์การ์ด (฿)</label><input type="number" id="m-pay-keycard" value="0" oninput="calcContractSummary()"></div>
+                <div class="fr"><label>📦 ค่าอื่นๆ (฿)</label><input type="number" id="m-pay-other" value="0" oninput="calcContractSummary()"></div>
+                <div class="fr"><label>รายละเอียดอื่นๆ</label><input type="text" id="m-pay-other-desc" placeholder="ระบุรายการ"></div>
+              </div>
+            </div>
+
+            <!-- หักจากเงินจอง -->
+            <div class="fsec">หักลบจากเงินมัดจำ/จองที่ชำระมาแล้ว</div>
+            <div style="background:#fff8e1;border:1px solid #fcd34d;border-radius:var(--rs);padding:10px;margin-bottom:10px;">
+              <div class="fg">
+                <div class="fr"><label>เงินมัดจำที่จ่ายแล้ว (฿)</label><input type="number" id="m-deposit-paid" value="0" oninput="calcContractSummary()" placeholder="0"></div>
+                <div class="fr"><label>วันที่จ่ายมัดจำ</label><input type="date" id="m-deposit-date"></div>
+              </div>
+              <div class="fr"><label>หมายเหตุการจอง</label><input type="text" id="m-deposit-note" placeholder="เช่น โอนมาล่วงหน้า 2000 บาท วันที่ 15/03/69"></div>
+            </div>
+
+            <!-- วิธีชำระ -->
+            <div class="fsec">วิธีชำระและสรุปยอด</div>
+            <div class="fg">
+              <div class="fr"><label>วิธีชำระ</label>
+                <select id="m-pay-method">
+                  <option value="เงินสด">💵 เงินสด</option>
+                  <option value="เงินโอน">🏦 เงินโอน</option>
+                  <option value="ผสม">💵+🏦 ผสม</option>
+                </select>
+              </div>
+              <div class="fr"><label>วันที่ทำสัญญา</label><input type="date" id="m-contract-date"></div>
+            </div>
+
+            <!-- สรุปยอด -->
+            <div id="m-summary-box" style="background:linear-gradient(135deg,#f0fdf4,#e6f9ee);border:2px solid #a5d6a7;border-radius:var(--r);padding:14px;margin-top:10px;">
+              <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:10px;">📊 สรุปยอดชำระวันทำสัญญา</div>
+              <div id="m-summary-rows" style="font-size:12px;color:var(--text2);line-height:2;">
+                <div style="display:flex;justify-content:space-between;"><span>ค่าเช่าล่วงหน้า</span><span class="mono" id="ms-rent">฿0</span></div>
+                <div style="display:flex;justify-content:space-between;"><span>เงินประกัน</span><span class="mono" id="ms-deposit">฿0</span></div>
+                <div style="display:flex;justify-content:space-between;"><span>ค่าส่วนกลาง</span><span class="mono" id="ms-common">฿0</span></div>
+                <div style="display:flex;justify-content:space-between;"><span>ค่าคีย์การ์ด</span><span class="mono" id="ms-keycard">฿0</span></div>
+                <div style="display:flex;justify-content:space-between;"><span>ค่าอื่นๆ</span><span class="mono" id="ms-other">฿0</span></div>
+                <div style="display:flex;justify-content:space-between;color:var(--danger);"><span>หักเงินมัดจำที่จ่ายแล้ว</span><span class="mono" id="ms-paid-deduct">-฿0</span></div>
+                <div style="height:1px;background:#a5d6a7;margin:6px 0;"></div>
+              </div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:12px;color:var(--text2);font-weight:600;"><span id="ci-nights">0</span> คืน</span>
-                <span style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;" id="ci-total-price">฿0</span>
+                <span style="font-size:13px;font-weight:700;color:var(--text);">ยอดรับวันนี้</span>
+                <span style="font-size:26px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;" id="ms-total">฿0</span>
               </div>
-              <div class="fg" style="margin-top:8px;">
-                <div class="fr"><label>ปรับราคาเอง (฿/คืน)</label><input type="number" id="ci-custom-price" placeholder="ราคาอัตโนมัติ" oninput="calcWalkinPrice()"></div>
-                <div class="fr"><label>ส่วนลด (฿)</label><input type="number" id="ci-discount" value="0" oninput="calcWalkinPrice()"></div>
-              </div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="ms-contract-info"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ประวัติการชำระ -->
+        <div class="card" style="margin-bottom:14px;">
+          <div class="chdr">
+            <span>📋 บันทึกการชำระตอนทำสัญญา</span>
+            <button onclick="mAddPayRow()" style="padding:4px 10px;background:#e8f5e9;color:var(--success);border:1px solid #a5d6a7;border-radius:var(--rs);font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;">+ เพิ่มรายการ</button>
+          </div>
+          <div class="cbdy" style="padding:8px;">
+            <div id="m-pay-history" style="max-height:200px;overflow-y:auto;">
+              <div style="font-size:11px;color:var(--text3);text-align:center;padding:16px;">กดปุ่ม "+ เพิ่มรายการ" เพื่อบันทึกรายการชำระ</div>
             </div>
           </div>
-
-          <button class="btn bp" style="width:100%;margin-top:14px;padding:10px;font-size:13px;" onclick="saveCheckin()">💾 บันทึกแจ้งเข้าพัก</button>
         </div>
+
+        <!-- ปุ่มบันทึก -->
+        <button class="btn bp" style="width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,var(--success),#27ae60);border-color:#27ae60;" onclick="saveMonthlyContract()">📝 บันทึกสัญญาผู้เช่ารายเดือน</button>
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;">ระบบจะอัปเดตข้อมูลห้อง + บันทึกเลขมิเตอร์ + สร้างประวัติชำระอัตโนมัติ</div>
+
       </div>
     </div>
 
-    <!-- RIGHT: Guest List + Export -->
-    <div>
-      <div class="card" style="margin-bottom:14px;">
-        <div class="chdr">
-          <span>📋 รายการแจ้งเข้าพักล่าสุด</span>
-          <div style="display:flex;gap:6px;">
-            <button class="tbtn" style="font-size:10px;" onclick="syncCheckins()">🔄 Sync</button>
-            <button class="tbtn" style="font-size:10px;" onclick="exportTM30()">📄 TM30 Excel</button>
-            <button class="tbtn" style="font-size:10px;" onclick="exportRR1()">📄 รร.1 Excel</button>
-          </div>
-        </div>
-        <div style="overflow-x:auto;max-height:500px;overflow-y:auto;">
-          <table class="dtbl"><thead><tr><th>ห้อง</th><th>ประเภท</th><th>แหล่งที่มา</th><th>ชื่อ</th><th>เอกสาร</th><th>สัญชาติ</th><th>เข้าพัก</th><th>ออก</th><th>TM30</th><th></th></tr></thead>
-          <tbody id="ci-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table>
-        </div>
+    <!-- รายการสัญญาล่าสุด -->
+    <div class="card" style="margin-top:14px;">
+      <div class="chdr">
+        <span>📋 รายการสัญญาผู้เช่ารายเดือนล่าสุด</span>
+        <button class="tbtn" onclick="loadMonthlyContracts()" style="font-size:10px;">🔄</button>
       </div>
-
-      <div class="card">
-        <div class="chdr">📊 สถิติแจ้งเข้าพัก (เดือนนี้)</div>
-        <div class="cbdy" id="ci-stats">
-          <div class="loading">กำลังโหลด...</div>
-        </div>
+      <div style="overflow-x:auto;">
+        <table class="dtbl"><thead><tr>
+          <th>ห้อง</th><th>ชื่อผู้เช่า</th><th>เบอร์โทร</th><th>เริ่มสัญญา</th><th>หมดสัญญา</th><th>ค่าเช่า</th><th>ประกัน</th><th>มิเตอร์ไฟ</th><th>มิเตอร์น้ำ</th><th>วันที่ทำสัญญา</th>
+        </tr></thead>
+        <tbody id="m-contracts-tbody"><tr><td colspan="10" class="loading">กำลังโหลด...</td></tr></tbody></table>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -4228,10 +4448,13 @@ function showSec(id,btn){
   if(id==='invoice'){loadCustList();loadInvoices();loadInvFilterMonths();loadQuotations();}
   if(id==='report'){loadReport();}
   if(id==='monthly'&&mData.length){updateMonthlyKPI(mData);renderFloors(mData,'floor-container','monthly');}
-  if(id==='checkin'){loadCheckins();loadNationalities();loadCheckinStats();loadCheckinRooms();
-    const t=new Date().toISOString().split('T')[0];
+  if(id==='checkin'){
+    // reset to type chooser
+    setCIType(null);
+    loadCheckins();loadNationalities();loadCheckinStats();
+    var t=new Date().toISOString().split('T')[0];
     if(!document.getElementById('ci-checkin').value)document.getElementById('ci-checkin').value=t;
-    if(!document.getElementById('ci-checkout').value){const tmr=new Date(Date.now()+86400000).toISOString().split('T')[0];document.getElementById('ci-checkout').value=tmr;}
+    if(!document.getElementById('ci-checkout').value){var tmr=new Date(Date.now()+86400000).toISOString().split('T')[0];document.getElementById('ci-checkout').value=tmr;}
     calcWalkinPrice();
   }
 }
@@ -8112,22 +8335,326 @@ function toggleNinja(){
     btn.style.borderColor = _ninjaOn ? 'rgba(212,160,23,.7)' : 'rgba(255,255,255,.25)';
     btn.style.color = _ninjaOn ? '#f0c040' : '#fff';
   }
-  // ซ่อน/แสดงค่าใน KPI bar ด้วย
   document.querySelectorAll('.kval,.ksub').forEach(function(el){
     el.style.filter = _ninjaOn ? 'blur(7px)' : '';
     el.style.userSelect = _ninjaOn ? 'none' : '';
   });
-  // ซ่อน/แสดงยอดเงินใน floor stats
   document.querySelectorAll('.floor-stats .fb').forEach(function(el){
     el.style.filter = _ninjaOn ? 'blur(6px)' : '';
     el.style.userSelect = _ninjaOn ? 'none' : '';
   });
   toast(_ninjaOn ? '🥷 Ninja Mode เปิดแล้ว — ข้อมูลถูกซ่อน' : '👁 แสดงข้อมูลทั้งหมด', 'ok');
 }
-// Shortcut: Ctrl+K / Cmd+K
 document.addEventListener('keydown', function(e){
   if((e.ctrlKey||e.metaKey) && e.key==='k'){ e.preventDefault(); toggleNinja(); }
 });
+
+// ══ CHECK-IN TYPE SELECTOR ══
+var _ciType = null;
+var _mPayRows = [];
+var _mSelectedRoom = '';
+
+function setCIType(type){
+  _ciType = type;
+  document.getElementById('ci-type-chooser').style.display = (!type) ? '' : 'none';
+  document.getElementById('ci-panel-daily').style.display = (type==='daily') ? '' : 'none';
+  document.getElementById('ci-panel-monthly').style.display = (type==='monthly') ? '' : 'none';
+
+  // highlight selected card when returning to chooser
+  if(!type){
+    ['daily','monthly'].forEach(function(t){
+      var c = document.getElementById('ci-type-'+t+'-card');
+      if(c){ c.style.borderColor='var(--border2)'; c.style.background='var(--white)'; }
+    });
+    return;
+  }
+
+  // update chooser cards style
+  var selCard = document.getElementById('ci-type-'+type+'-card');
+  if(selCard){
+    selCard.style.borderColor = type==='daily'?'var(--blue)':'var(--success)';
+    selCard.style.background = type==='daily'?'#f0f7ff':'#f0fdf4';
+  }
+
+  if(type==='daily'){
+    // set hidden field + load rooms
+    document.getElementById('ci-stay-type').value='daily';
+    var t=new Date().toISOString().split('T')[0];
+    if(!document.getElementById('ci-checkin').value) document.getElementById('ci-checkin').value=t;
+    if(!document.getElementById('ci-checkout').value){var tm=new Date(Date.now()+86400000).toISOString().split('T')[0];document.getElementById('ci-checkout').value=tm;}
+    loadCheckinRooms();
+    calcWalkinPrice();
+    document.getElementById('ci-pricing').style.display='';
+  }
+  if(type==='monthly'){
+    // set contract date to today
+    var today=new Date().toISOString().split('T')[0];
+    if(!document.getElementById('m-contract-date').value) document.getElementById('m-contract-date').value=today;
+    if(!document.getElementById('m-start').value) document.getElementById('m-start').value=today;
+    calcContractEnd();
+    loadMonthlyRoomGrid();
+    loadMonthlyContracts();
+    _mPayRows=[];
+    renderMPayHistory();
+  }
+}
+
+// auto-calc contract end date
+function calcContractEnd(){
+  var start=document.getElementById('m-start').value;
+  var dur=parseInt(document.getElementById('m-duration').value)||12;
+  if(!start){document.getElementById('m-end-display').textContent='—';return;}
+  var d=new Date(start+'T00:00:00');
+  d.setMonth(d.getMonth()+dur);
+  d.setDate(d.getDate()-1);
+  var endStr=d.toISOString().split('T')[0];
+  document.getElementById('m-end').value=endStr;
+  document.getElementById('m-end-display').textContent=fmtD(endStr)+' ('+dur+' เดือน)';
+  calcContractSummary();
+}
+
+// calc contract payment summary
+function calcContractSummary(){
+  var rent=Number(document.getElementById('m-pay-rent').value)||0;
+  var dep=Number(document.getElementById('m-pay-deposit').value)||0;
+  var com=Number(document.getElementById('m-pay-common').value)||0;
+  var key=Number(document.getElementById('m-pay-keycard').value)||0;
+  var oth=Number(document.getElementById('m-pay-other').value)||0;
+  var paid=Number(document.getElementById('m-deposit-paid').value)||0;
+  var total=rent+dep+com+key+oth-paid;
+  var fmt=function(n){return'฿'+Math.round(n).toLocaleString('th-TH');};
+  document.getElementById('ms-rent').textContent=fmt(rent);
+  document.getElementById('ms-deposit').textContent=fmt(dep);
+  document.getElementById('ms-common').textContent=fmt(com);
+  document.getElementById('ms-keycard').textContent=fmt(key);
+  document.getElementById('ms-other').textContent=fmt(oth);
+  document.getElementById('ms-paid-deduct').textContent='-'+fmt(paid);
+  document.getElementById('ms-total').textContent=fmt(Math.max(0,total));
+  var monthlyRent=Number(document.getElementById('m-rent').value)||0;
+  var dur=parseInt(document.getElementById('m-duration').value)||12;
+  var endDate=document.getElementById('m-end').value;
+  document.getElementById('ms-contract-info').textContent=
+    (monthlyRent?'ค่าเช่า '+fmt(monthlyRent)+'/เดือน':'')+(dur?' · สัญญา '+dur+' เดือน':'')+(endDate?' · ถึง '+fmtD(endDate):'');
+}
+
+// load vacant monthly rooms into grid
+async function loadMonthlyRoomGrid(){
+  var grid=document.getElementById('m-room-grid');
+  grid.innerHTML='<div class="loading" style="grid-column:1/-1;">กำลังโหลด...</div>';
+  var{data}=await sb.from('monthly_charges').select('room,tenant_name,room_type,status').eq('month',curMonth).eq('building','เจเรสซิเดนซ์').order('room');
+  var rooms=data||[];
+  var vacant=rooms.filter(function(r){return r.room_type!=='daily'&&(!r.tenant_name||!r.tenant_name.trim());});
+  if(!vacant.length){grid.innerHTML='<div style="color:var(--text3);font-size:11px;padding:12px;grid-column:1/-1;">ไม่มีห้องว่างรายเดือน</div>';return;}
+  document.getElementById('m-room-count').textContent='('+vacant.length+' ห้องว่าง)';
+  grid.innerHTML=vacant.map(function(r){
+    return '<div style="padding:8px 4px;border:1.5px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;" data-room="'+r.room+'" onclick="selectMonthlyRoom(\''+r.room+'\',this)">'+
+      '<div style="font-size:14px;font-weight:800;color:var(--success);font-family:\'JetBrains Mono\',monospace;">'+r.room+'</div>'+
+      '<div style="font-size:9px;color:var(--text3);margin-top:1px;">ว่าง</div></div>';
+  }).join('');
+}
+
+function selectMonthlyRoom(room, el){
+  _mSelectedRoom=room;
+  document.getElementById('m-room').value=room;
+  document.getElementById('m-room-display').textContent='ห้อง '+room;
+  document.getElementById('m-room-display').style.color='var(--success)';
+  document.querySelectorAll('#m-room-grid [data-room]').forEach(function(c){
+    c.style.borderColor='var(--border2)';c.style.background='var(--white)';
+  });
+  if(el){el.style.borderColor='var(--success)';el.style.background='#f0fdf4';}
+  // auto-fill monthly rent from mData
+  var r=mData.find(function(x){return x.room===room;});
+  if(r&&r.rent){document.getElementById('m-rent').value=r.rent;calcContractSummary();}
+}
+
+// Monthly OCR
+async function handleMonthlyOCR(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    var base64=e.target.result.split(',')[1];
+    var mediaType=file.type||'image/jpeg';
+    document.getElementById('m-ocr-img').src=e.target.result;
+    document.getElementById('m-ocr-preview').style.display='block';
+    document.getElementById('m-ocr-box').style.display='none';
+    document.getElementById('m-ocr-status').textContent='🔍 AI กำลังอ่านข้อมูล...';
+    try{
+      var res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+            {type:'text',text:'อ่านบัตรประชาชนไทยในรูปนี้ ส่งกลับ JSON เท่านั้น ไม่ต้องมี markdown:\n{"id_number":"เลข 13 หลัก","prefix":"คำนำหน้า","first_name":"ชื่อภาษาไทย","last_name":"นามสกุลภาษาไทย","birth_date":"YYYY-MM-DD"}'}
+          ]}]
+        })
+      });
+      var data=await res.json();
+      var text=data.content?.map(function(c){return c.text||'';}).join('')||'';
+      var parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+      if(parsed.id_number) document.getElementById('m-thai-id').value=parsed.id_number;
+      if(parsed.prefix) document.getElementById('m-prefix').value=parsed.prefix;
+      if(parsed.first_name) document.getElementById('m-fname').value=parsed.first_name;
+      if(parsed.last_name) document.getElementById('m-lname').value=parsed.last_name;
+      if(parsed.birth_date) document.getElementById('m-bday').value=parsed.birth_date;
+      document.getElementById('m-ocr-status').innerHTML='<span style="color:var(--success);">✅ อ่านข้อมูลสำเร็จ — กรุณาตรวจสอบ</span>';
+    }catch(err){
+      document.getElementById('m-ocr-status').innerHTML='<span style="color:var(--danger);">❌ อ่านไม่สำเร็จ — กรุณากรอกเอง</span>';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// Payment history rows for monthly contract
+var _mPayRowId=0;
+function mAddPayRow(){
+  var id='mpr_'+(++_mPayRowId);
+  var today=new Date().toISOString().split('T')[0];
+  _mPayRows.push({id:id,date:today,desc:'',amount:0,method:'เงินสด'});
+  renderMPayHistory();
+}
+function renderMPayHistory(){
+  var el=document.getElementById('m-pay-history');
+  if(!_mPayRows.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px;">กดปุ่ม "+ เพิ่มรายการ" เพื่อบันทึกรายการชำระ</div>';
+    return;
+  }
+  el.innerHTML=_mPayRows.map(function(r){
+    return '<div style="display:grid;grid-template-columns:110px 1fr 90px 80px 30px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">'
+      +'<input type="date" value="'+r.date+'" onchange="_mPayRows.find(function(x){return x.id===\''+r.id+'\';}).date=this.value" style="padding:4px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-family:\'Sarabun\',sans-serif;">'
+      +'<input type="text" value="'+r.desc+'" placeholder="รายการ เช่น ค่าเช่า+ประกัน" onchange="_mPayRows.find(function(x){return x.id===\''+r.id+'\';}).desc=this.value" style="padding:4px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-family:\'Sarabun\',sans-serif;">'
+      +'<input type="number" value="'+r.amount+'" placeholder="0" onchange="_mPayRows.find(function(x){return x.id===\''+r.id+'\';}).amount=Number(this.value)" style="padding:4px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;text-align:right;font-family:\'Sarabun\',sans-serif;">'
+      +'<select onchange="_mPayRows.find(function(x){return x.id===\''+r.id+'\';}).method=this.value" style="padding:4px;border:1px solid var(--border2);border-radius:var(--rs);font-size:11px;font-family:\'Sarabun\',sans-serif;"><option>เงินสด</option><option>เงินโอน</option></select>'
+      +'<button onclick="_mPayRows=_mPayRows.filter(function(x){return x.id!==\''+r.id+'\';});renderMPayHistory();" style="background:#ffebee;color:#c62828;border:none;border-radius:var(--rs);cursor:pointer;font-size:13px;padding:2px 4px;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+// Save monthly contract
+async function saveMonthlyContract(){
+  var fname=document.getElementById('m-fname').value.trim();
+  var lname=document.getElementById('m-lname').value.trim();
+  var phone=document.getElementById('m-phone').value.trim();
+  var room=document.getElementById('m-room').value.trim();
+  var start=document.getElementById('m-start').value;
+  var end=document.getElementById('m-end').value;
+  var rent=Number(document.getElementById('m-rent').value)||0;
+  if(!fname||!lname){toast('กรุณากรอกชื่อ-นามสกุล','err');return;}
+  if(!phone){toast('กรุณากรอกเบอร์โทร','err');return;}
+  if(!room){toast('กรุณาเลือกห้อง','err');return;}
+  if(!start){toast('กรุณาระบุวันเริ่มสัญญา','err');return;}
+  if(!rent){toast('กรุณาระบุค่าเช่า','err');return;}
+  if(!confirm('ยืนยันทำสัญญา\n\nห้อง: '+room+'\nผู้เช่า: '+document.getElementById('m-prefix').value+fname+' '+lname+'\nค่าเช่า: ฿'+rent.toLocaleString()+'/เดือน\nสัญญา: '+fmtD(start)+' → '+fmtD(end)+'\n\nดำเนินการ?'))return;
+  var fullName=document.getElementById('m-prefix').value+fname+' '+lname;
+  var dur=parseInt(document.getElementById('m-duration').value)||12;
+  // 1) update monthly_charges
+  var mc=mData.find(function(r){return r.room===room;});
+  var roomType=(mc&&mc.room_type)||'monthly';
+  var elecStart=parseFloat(document.getElementById('m-elec-start').value)||null;
+  var waterStart=parseFloat(document.getElementById('m-water-start').value)||null;
+  var{error:e1}=await sb.from('monthly_charges').upsert({
+    month:curMonth,room:room,building:'เจเรสซิเดนซ์',room_type:'monthly',
+    tenant_name:fullName,rent:rent,status:'pending',
+    phone:phone||null,
+    elec_rate_type:document.getElementById('m-rate-elec').value,
+    water_rate_type:document.getElementById('m-rate-water').value,
+    bed_type:document.getElementById('m-bed').value,
+    contract_months:dur,contract_end:end||null,
+    has_tv:document.getElementById('m-tv').checked,
+    has_fridge:document.getElementById('m-fridge').checked,
+    has_car:document.getElementById('m-car').checked,
+    has_motorcycle:document.getElementById('m-moto').checked,
+    elec_old:elecStart,elec_new:elecStart,
+    water_old:waterStart,water_new:waterStart,
+    elec_cost:0,water_cost:0,total:rent
+  },{onConflict:'month,room'});
+  if(e1){toast('Error monthly_charges: '+e1.message,'err');return;}
+  // 2) save to monthly_contracts table (if exists, else log)
+  var contractData={
+    building:'เจเรสซิเดนซ์',room:room,
+    tenant_name:fullName,
+    thai_id:document.getElementById('m-thai-id').value||null,
+    phone:phone,
+    phone_emergency:document.getElementById('m-phone-emg').value||null,
+    emergency_contact:document.getElementById('m-emg-name').value||null,
+    address:document.getElementById('m-address').value||null,
+    workplace:document.getElementById('m-workplace').value||null,
+    workplace_phone:document.getElementById('m-work-phone').value||null,
+    start_date:start,end_date:end,contract_months:dur,
+    rent:rent,
+    pay_rent:Number(document.getElementById('m-pay-rent').value)||0,
+    pay_deposit:Number(document.getElementById('m-pay-deposit').value)||0,
+    pay_common:Number(document.getElementById('m-pay-common').value)||0,
+    pay_keycard:Number(document.getElementById('m-pay-keycard').value)||0,
+    pay_other:Number(document.getElementById('m-pay-other').value)||0,
+    pay_other_desc:document.getElementById('m-pay-other-desc').value||null,
+    deposit_paid:Number(document.getElementById('m-deposit-paid').value)||0,
+    deposit_paid_date:document.getElementById('m-deposit-date').value||null,
+    deposit_note:document.getElementById('m-deposit-note').value||null,
+    pay_method:document.getElementById('m-pay-method').value,
+    contract_date:document.getElementById('m-contract-date').value||new Date().toISOString().split('T')[0],
+    elec_start:elecStart,water_start:waterStart,
+    note:document.getElementById('m-note').value||null,
+    pay_history:_mPayRows.length?JSON.stringify(_mPayRows):null,
+    start_month:curMonth
+  };
+  var{error:e2}=await sb.from('monthly_contracts').insert(contractData);
+  if(e2) console.warn('monthly_contracts insert:',e2.message,'— table may not exist yet');
+  // 3) log
+  await sb.from('room_logs').insert({building:'เจเรสซิเดนซ์',room:room,
+    log_type:'contract_start',status:'occupied',
+    description:'ทำสัญญาใหม่: '+fullName+' · ค่าเช่า ฿'+rent.toLocaleString()+'/เดือน · สัญญา '+dur+' เดือน',cost:0});
+  toast('✅ บันทึกสัญญาผู้เช่า "'+fullName+'" ห้อง '+room+' สำเร็จ','ok');
+  // reset form fields
+  ['m-thai-id','m-fname','m-lname','m-phone','m-phone-emg','m-emg-name','m-address','m-workplace','m-work-phone','m-elec-start','m-water-start','m-pay-rent','m-pay-deposit','m-pay-common','m-pay-keycard','m-pay-other','m-pay-other-desc','m-deposit-paid','m-deposit-note','m-note','m-bday'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  _mSelectedRoom='';
+  document.getElementById('m-room').value='';
+  document.getElementById('m-room-display').textContent='— ยังไม่ได้เลือก —';
+  document.getElementById('m-room-display').style.color='var(--success)';
+  _mPayRows=[];renderMPayHistory();
+  calcContractSummary();
+  await loadMonth(curMonth);
+  loadMonthlyRoomGrid();
+  loadMonthlyContracts();
+}
+
+// Load monthly contracts list
+async function loadMonthlyContracts(){
+  var tb=document.getElementById('m-contracts-tbody');
+  if(!tb)return;
+  var{data,error}=await sb.from('monthly_contracts').select('*').eq('building','เจเรสซิเดนซ์').order('created_at',{ascending:false}).limit(30);
+  if(error){
+    // table doesn't exist yet — show from monthly_charges instead
+    var{data:mc}=await sb.from('monthly_charges').select('room,tenant_name,phone,contract_months,contract_end,rent,elec_old,water_old').eq('building','เจเรสซิเดนซ์').eq('month',curMonth).not('tenant_name','is',null).order('room');
+    if(!mc||!mc.length){tb.innerHTML='<tr><td colspan="10" class="empty">ยังไม่มีข้อมูล</td></tr>';return;}
+    tb.innerHTML=mc.map(function(r){
+      return '<tr><td class="mono" style="font-weight:800;">'+r.room+'</td>'
+        +'<td>'+( r.tenant_name||'—')+'</td>'
+        +'<td style="font-size:11px;">'+(r.phone||'—')+'</td>'
+        +'<td>—</td><td class="mono" style="font-size:11px;">'+(r.contract_end?fmtD(r.contract_end):'—')+'</td>'
+        +'<td class="mono">฿'+(r.rent||0).toLocaleString()+'</td>'
+        +'<td>—</td>'
+        +'<td class="mono">'+(r.elec_old||'—')+'</td>'
+        +'<td class="mono">'+(r.water_old||'—')+'</td>'
+        +'<td>—</td></tr>';
+    }).join('');
+    return;
+  }
+  if(!data||!data.length){tb.innerHTML='<tr><td colspan="10" class="empty">ยังไม่มีสัญญา</td></tr>';return;}
+  tb.innerHTML=(data||[]).map(function(r){
+    return '<tr>'
+      +'<td class="mono" style="font-weight:800;">'+r.room+'</td>'
+      +'<td style="font-weight:600;">'+r.tenant_name+'</td>'
+      +'<td style="font-size:11px;">'+(r.phone||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(r.start_date?fmtD(r.start_date):'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(r.end_date?fmtD(r.end_date):'—')+'</td>'
+      +'<td class="mono">฿'+(r.rent||0).toLocaleString()+'</td>'
+      +'<td class="mono">฿'+(r.pay_deposit||0).toLocaleString()+'</td>'
+      +'<td class="mono">'+(r.elec_start||'—')+'</td>'
+      +'<td class="mono">'+(r.water_start||'—')+'</td>'
+      +'<td class="mono" style="font-size:11px;">'+(r.contract_date?fmtD(r.contract_date):'—')+'</td>'
+      +'</tr>';
+  }).join('');
+}
 
 console.log('✅ J.Residence Billing v4 loaded');
 </script>
