@@ -1232,10 +1232,13 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
 
 <!-- ═══ STAFF — MANAGE LINE STAFF ═══ -->
 <div id="sec-staff" class="sec">
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
     <div class="card" style="padding:12px 16px;border-left:4px solid var(--blue);"><div style="font-size:10px;color:var(--text3);font-weight:600;">LINE Users ทั้งหมด</div><div id="st-total" style="font-size:22px;font-weight:800;color:var(--blue);font-family:'JetBrains Mono',monospace;">—</div></div>
     <div class="card" style="padding:12px 16px;border-left:4px solid var(--gold);"><div style="font-size:10px;color:var(--text3);font-weight:600;">พนักงาน (Staff)</div><div id="st-staff" style="font-size:22px;font-weight:800;color:var(--gold2);font-family:'JetBrains Mono',monospace;">—</div></div>
     <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">ผู้เช่า (Tenant)</div><div id="st-tenant" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid #7b1fa2;"><div style="font-size:10px;color:var(--text3);font-weight:600;">⏱ ชั่วโมงทำงาน (เดือนนี้)</div><div id="hr-total-hours" style="font-size:22px;font-weight:800;color:#7b1fa2;font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--danger);"><div style="font-size:10px;color:var(--text3);font-weight:600;">💰 ค่าจ้างรวม (เดือนนี้)</div><div id="hr-total-wage" style="font-size:22px;font-weight:800;color:var(--danger);font-family:'JetBrains Mono',monospace;">—</div></div>
+    <div class="card" style="padding:12px 16px;border-left:4px solid var(--success);"><div style="font-size:10px;color:var(--text3);font-weight:600;">👥 Active เดือนนี้</div><div id="hr-active-count" style="font-size:22px;font-weight:800;color:var(--success);font-family:'JetBrains Mono',monospace;">—</div><div id="hr-kpi-month" style="font-size:10px;color:var(--text3);">—</div></div>
   </div>
 
   <!-- Add Staff -->
@@ -1264,6 +1267,39 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <div style="overflow-x:auto;">
       <table class="dtbl"><thead><tr><th>ชื่อ</th><th>ชื่อเล่น</th><th>เบอร์โทร</th><th>Role</th><th>สถานะ</th><th>อัพเดตล่าสุด</th><th></th></tr></thead>
       <tbody id="st-tbody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ═══ HR Attendance Section ═══ -->
+  <div class="card" style="margin-top:14px;border-top:4px solid #7b1fa2;">
+    <div class="chdr" style="background:#f9f0ff;">
+      <span style="color:#7b1fa2;font-weight:700;">⏱ ข้อมูลเข้า-ออกพนักงาน (HR Attendance)</span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <select id="hr-month-sel" onchange="hrRender()" style="padding:5px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;font-family:'Sarabun',sans-serif;"></select>
+        <span style="font-size:10px;color:var(--text3);">ข้อมูลจาก LINE Bot</span>
+      </div>
+    </div>
+
+    <!-- พนักงาน Card Grid -->
+    <div id="hr-staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:14px;"></div>
+
+    <!-- Monthly Detail Table -->
+    <div style="padding:0 14px 14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">📊 ตารางสรุปรายเดือน</div>
+      <div style="overflow-x:auto;">
+        <table class="dtbl" id="hr-table">
+          <thead><tr>
+            <th>พนักงาน</th><th>สถานที่</th><th>วันที่เข้างาน</th><th>ชั่วโมงรวม</th><th>ค่าจ้าง/วัน</th><th>ค่าจ้างรวม</th><th>เชื่อม LINE</th>
+          </tr></thead>
+          <tbody id="hr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div style="padding:0 14px 14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">📈 ชั่วโมงทำงานรายเดือน (ทุกคน)</div>
+      <div style="position:relative;height:180px;"><canvas id="hr-trend-chart"></canvas></div>
     </div>
   </div>
 
@@ -4256,7 +4292,7 @@ function renderReport(months,yr){
             '<div style="flex:1;min-width:0;">'+
               '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">'+
                 '<span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+c.name+'</span>'+
-                '<span style="font-weight:800;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;margin-left:8px;">'+fmt(c.total)+' <span style="font-size:9px;color:var(--text3);">('+c.count+' ใบ)</span></span>'+
+                '<span style="font-weight:800;font-family:JetBrains Mono,monospace;white-space:nowrap;margin-left:8px;">'+fmt(c.total)+' <span style="font-size:9px;color:var(--text3);">('+c.count+' ใบ)</span></span>'+
               '</div>'+
               '<div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">'+
                 '<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#1976d2,#42a5f5);border-radius:3px;"></div>'+
@@ -8670,7 +8706,7 @@ async function loadMonthlyRoomGrid(){
   if(!vacant.length){grid.innerHTML='<div style="color:var(--text3);font-size:11px;padding:10px;grid-column:1/-1;">ไม่มีห้องว่าง</div>';return;}
   grid.innerHTML=vacant.map(function(r){
     return '<div style="padding:7px 4px;border:1.5px solid var(--border2);border-radius:var(--rs);background:var(--white);text-align:center;cursor:pointer;transition:all .12s;" data-room="'+r.room+'" onclick="selectMonthlyRoom(\''+r.room+'\',this)">'+
-      '<div style="font-size:13px;font-weight:800;color:var(--success);font-family:\'JetBrains Mono\',monospace;">'+r.room+'</div>'+
+      '<div style="font-size:13px;font-weight:800;color:var(--success);font-family:JetBrains Mono,monospace;">'+r.room+'</div>'+
       '<div style="font-size:9px;color:var(--text3);">ว่าง</div></div>';
   }).join('');
 }
@@ -8993,5 +9029,183 @@ function utDoImport() {
 console.log('✅ J.Residence Billing v4 loaded');
 </script>
 
+<script>
+// ══════════════════════════════════════════════════════════
+// HR ATTENDANCE DATA (from Hr.xlsx via LINE Bot)
+// ══════════════════════════════════════════════════════════
+var _HR_DATA = {"records": [{"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2025-10", "days": 14, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 7350, "site": "S.House"}, {"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2025-11", "days": 29, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 15225, "site": "S.House"}, {"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2025-12", "days": 29, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 15225, "site": "S.House"}, {"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2026-01", "days": 31, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 16275, "site": "S.House"}, {"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2026-02", "days": 28, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 14700, "site": "S.House"}, {"user_id": "U132253f8e485021cbc114662fba91233", "year_month": "2026-03", "days": 18, "hours": 0.0, "display_name": "วิไล", "daily_wage": 525, "wage_total": 9450, "site": "S.House"}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "year_month": "2025-10", "days": 15, "hours": 0.0, "display_name": "จอนี้(กิ)", "daily_wage": 500, "wage_total": 7500, "site": "J.Residence"}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "year_month": "2025-11", "days": 6, "hours": 0.0, "display_name": "จอนี้(กิ)", "daily_wage": 500, "wage_total": 3000, "site": "J.Residence"}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "year_month": "2026-01", "days": 6, "hours": 0.0, "display_name": "จอนี้(กิ)", "daily_wage": 500, "wage_total": 3000, "site": "J.Residence"}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "year_month": "2026-02", "days": 12, "hours": 0.0, "display_name": "จอนี้(กิ)", "daily_wage": 500, "wage_total": 6000, "site": "J.Residence"}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "year_month": "2026-03", "days": 10, "hours": 0.0, "display_name": "จอนี้(กิ)", "daily_wage": 500, "wage_total": 5000, "site": "J.Residence"}, {"user_id": "U4ee7a2460330750ca45eeb1fa7fb76b3", "year_month": "2025-10", "days": 16, "hours": 0.0, "display_name": "DON", "daily_wage": 500, "wage_total": 8000, "site": "J.Residence"}, {"user_id": "U4ee7a2460330750ca45eeb1fa7fb76b3", "year_month": "2025-11", "days": 19, "hours": 0.0, "display_name": "DON", "daily_wage": 500, "wage_total": 9500, "site": "J.Residence"}, {"user_id": "U4ee7a2460330750ca45eeb1fa7fb76b3", "year_month": "2025-12", "days": 3, "hours": 0.0, "display_name": "DON", "daily_wage": 500, "wage_total": 1500, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2025-10", "days": 14, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 7280, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2025-11", "days": 27, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 14040, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2025-12", "days": 28, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 14560, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2026-01", "days": 34, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 17680, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2026-02", "days": 27, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 14040, "site": "J.Residence"}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "year_month": "2026-03", "days": 18, "hours": 0.0, "display_name": "😊khammuen😊", "daily_wage": 520, "wage_total": 9360, "site": "J.Residence"}, {"user_id": "U5b7b676a8383f2859bd49e6e3f1a7d75", "year_month": "2026-02", "days": 4, "hours": 0.0, "display_name": "🐼 สมชาย🐼", "daily_wage": 450, "wage_total": 1800, "site": "J.Residence"}, {"user_id": "U5b7b676a8383f2859bd49e6e3f1a7d75", "year_month": "2026-03", "days": 21, "hours": 0.0, "display_name": "🐼 สมชาย🐼", "daily_wage": 450, "wage_total": 9450, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2025-10", "days": 13, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 6500, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2025-11", "days": 16, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 8000, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2025-12", "days": 23, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 11500, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2026-01", "days": 24, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 12000, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2026-02", "days": 22, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 11000, "site": "J.Residence"}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "year_month": "2026-03", "days": 18, "hours": 0.0, "display_name": "วัน วัน", "daily_wage": 500, "wage_total": 9000, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2025-10", "days": 14, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 6720, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2025-11", "days": 24, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 11520, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2025-12", "days": 29, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 13920, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2026-01", "days": 27, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 12960, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2026-02", "days": 28, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 13440, "site": "J.Residence"}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "year_month": "2026-03", "days": 18, "hours": 0.0, "display_name": "เล็ก", "daily_wage": 480, "wage_total": 8640, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2025-10", "days": 13, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 6500, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2025-11", "days": 28, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 14000, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2025-12", "days": 26, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 13000, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2026-01", "days": 29, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 14500, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2026-02", "days": 39, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 19500, "site": "J.Residence"}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "year_month": "2026-03", "days": 7, "hours": 0.0, "display_name": "Da", "daily_wage": 500, "wage_total": 3500, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2025-10", "days": 11, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 5280, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2025-11", "days": 25, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 12000, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2025-12", "days": 26, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 12480, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2026-01", "days": 24, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 11520, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2026-02", "days": 23, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 11040, "site": "J.Residence"}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "year_month": "2026-03", "days": 17, "hours": 0.0, "display_name": "vilaiporn srimookda", "daily_wage": 480, "wage_total": 8160, "site": "J.Residence"}], "months": ["2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03"], "employees": [{"user_id": "U132253f8e485021cbc114662fba91233", "display_name": "วิไล", "daily_wage": 525}, {"user_id": "Ubb1058c5e92d6df6744b5aaabf544ca7", "display_name": "Da", "daily_wage": 500}, {"user_id": "U53b89ee656a0c12281567ad0530a9c48", "display_name": "😊khammuen😊", "daily_wage": 520}, {"user_id": "U5c87e935a28c638a0c3a4fc792f42952", "display_name": "วัน วัน", "daily_wage": 500}, {"user_id": "U64bfbdbf49e68b6e7885245a2f461983", "display_name": "Phai Leakhena", "daily_wage": 480}, {"user_id": "Ue3f0846fb2cc20424409eadf1c6cf05d", "display_name": "vilaiporn srimookda", "daily_wage": 480}, {"user_id": "U4ee7a2460330750ca45eeb1fa7fb76b3", "display_name": "DON", "daily_wage": 500}, {"user_id": "U277ad82e26d027a490e6ab21fa8cb642", "display_name": "จอนี้(กิ)", "daily_wage": 500}, {"user_id": "U5b7b676a8383f2859bd49e6e3f1a7d75", "display_name": "🐼 สมชาย🐼", "daily_wage": 450}]};
+
+var _hrChart = null;
+var _hrCurrentMonth = '';
+
+function hrInit() {
+  var months = _HR_DATA.months;
+  var sel = document.getElementById('hr-month-sel');
+  if (!sel) return;
+  sel.innerHTML = months.map(function(m) {
+    var label = _hrMonthLabel(m);
+    return '<option value="'+m+'">'+label+'</option>';
+  }).join('');
+  // default = latest month
+  _hrCurrentMonth = months[months.length-1];
+  sel.value = _hrCurrentMonth;
+  hrRender();
+  hrUpdateKPI();
+}
+
+function _hrMonthLabel(m) {
+  var thM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var parts = m.split('-');
+  var mm = parseInt(parts[1])-1;
+  var yy = (parseInt(parts[0])+543)%100;
+  return thM[mm]+' '+yy;
+}
+
+function _hrGetLineUser(userId) {
+  // match กับ line_sessions ที่โหลดไว้แล้ว (from loadStaffList)
+  // ใช้ userId match กับ line_user_id
+  return userId;
+}
+
+function hrRender() {
+  var sel = document.getElementById('hr-month-sel');
+  if (!sel) return;
+  _hrCurrentMonth = sel.value;
+  var month = _hrCurrentMonth;
+  var recs = _HR_DATA.records.filter(function(r){ return r.year_month === month; });
+
+  // ── Card Grid ──
+  var grid = document.getElementById('hr-staff-grid');
+  var emps = _HR_DATA.employees;
+
+  if (!recs.length) {
+    if (grid) grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">ไม่มีข้อมูลเดือนนี้</div>';
+  } else {
+    if (grid) grid.innerHTML = recs.map(function(r) {
+      var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
+      var wage = emp.daily_wage || r.daily_wage || 0;
+      var wageTotal = r.days * wage;
+      var pct = Math.min(100, Math.round(r.days/26*100));
+      var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
+      var hoursDisplay = r.hours > 0 ? r.hours.toFixed(1)+' ชม.' : r.days+' วัน';
+      return '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;border-top:3px solid #7b1fa2;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+          +'<div style="font-size:15px;font-weight:800;color:var(--text);">'+r.display_name+'</div>'
+          +'<span style="background:'+siteColor+';color:#fff;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;">'+r.site+'</span>'
+        +'</div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">'
+          +'<span style="color:var(--text3);">📅 วันทำงาน</span><b>'+r.days+' วัน</b>'
+        +'</div>'
+        +(r.hours>0 ? '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span style="color:var(--text3);">⏱ ชั่วโมง</span><b>'+r.hours.toFixed(1)+'</b></div>' : '')
+        +(wage>0 ? '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span style="color:var(--text3);">💵 ค่าจ้าง/วัน</span><b>฿'+wage.toLocaleString()+'</b></div>' : '')
+        +(wage>0 ? '<div style="background:linear-gradient(135deg,#f3e8ff,#ede0ff);border-radius:6px;padding:8px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;font-weight:700;color:#6b21a8;">💰 รวม</span><span style="font-size:18px;font-weight:800;color:#7b1fa2;font-family:JetBrains Mono,monospace;">฿'+wageTotal.toLocaleString()+'</span></div>' : '')
+        +'<div style="margin-top:8px;background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:#7b1fa2;border-radius:4px;"></div></div>'
+        +'<div style="font-size:9px;color:var(--text3);text-align:right;margin-top:2px;">'+pct+'% ของ 26 วัน</div>'
+      +'</div>';
+    }).join('');
+  }
+
+  // ── Table ──
+  var tb = document.getElementById('hr-tbody');
+  if (tb) {
+    var total_wage = 0, total_days = 0;
+    tb.innerHTML = recs.map(function(r) {
+      var emp = emps.find(function(e){ return e.user_id === r.user_id; }) || {};
+      var wage = emp.daily_wage || r.daily_wage || 0;
+      var wageTotal = r.days * wage;
+      total_wage += wageTotal; total_days += r.days;
+      var siteColor = r.site === 'J.Residence' ? 'var(--blue)' : '#e65100';
+      // check if linked to LINE
+      var linked = '—';
+      return '<tr>'
+        +'<td style="font-weight:700;">'+r.display_name+'</td>'
+        +'<td><span style="background:'+siteColor+'20;color:'+siteColor+';padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+r.site+'</span></td>'
+        +'<td class="mono" style="text-align:center;font-weight:700;color:#7b1fa2;">'+r.days+' วัน</td>'
+        +'<td class="mono" style="text-align:center;">'+(r.hours>0?r.hours.toFixed(1)+' ชม.':'—')+'</td>'
+        +'<td class="mono" style="text-align:right;">'+(wage>0?'฿'+wage.toLocaleString():'—')+'</td>'
+        +'<td class="mono" style="text-align:right;font-weight:700;color:#7b1fa2;">'+(wageTotal>0?'฿'+wageTotal.toLocaleString():'—')+'</td>'
+        +'<td style="text-align:center;font-size:10px;">🔗 LINE</td>'
+        +'</tr>';
+    }).join('')
+    + (recs.length > 0 ? '<tr style="background:#f3e8ff;font-weight:700;"><td>รวม '+recs.length+' คน</td><td></td><td class="mono" style="text-align:center;color:#7b1fa2;">'+total_days+' วัน</td><td></td><td></td><td class="mono" style="text-align:right;color:#7b1fa2;font-size:14px;">฿'+total_wage.toLocaleString()+'</td><td></td></tr>' : '');
+  }
+
+  // ── Trend Chart ──
+  hrRenderTrend();
+  hrUpdateKPI();
+}
+
+function hrRenderTrend() {
+  var months = _HR_DATA.months;
+  var emps = _HR_DATA.employees;
+  // สร้าง dataset per employee
+  var empIds = emps.map(function(e){ return e.user_id; });
+  var colors = ['#7b1fa2','#1565c0','#2e7d32','#c62828','#e65100','#00838f','#558b2f','#ad1457','#6a1b9a'];
+
+  var datasets = emps.map(function(emp, i) {
+    return {
+      label: emp.display_name,
+      data: months.map(function(m) {
+        var rec = _HR_DATA.records.find(function(r){ return r.user_id===emp.user_id && r.year_month===m; });
+        return rec ? rec.days : 0;
+      }),
+      borderColor: colors[i % colors.length],
+      backgroundColor: colors[i % colors.length]+'22',
+      tension: 0.3,
+      pointRadius: 4,
+      fill: false
+    };
+  });
+
+  var c = document.getElementById('hr-trend-chart');
+  if (!c || !window.Chart) return;
+  if (_hrChart) { try{_hrChart.destroy();}catch(e){} }
+  _hrChart = new Chart(c, {
+    type: 'line',
+    data: {
+      labels: months.map(_hrMonthLabel),
+      datasets: datasets
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, padding:8, font:{size:10} } },
+        tooltip: { backgroundColor:'#fff', borderColor:'#e0e0e0', borderWidth:1, titleColor:'#333', bodyColor:'#666' }
+      },
+      scales: {
+        x: { grid:{color:'#f0f0f0'}, ticks:{font:{size:10}} },
+        y: { grid:{color:'#f0f0f0'}, ticks:{font:{size:10}}, title:{display:true,text:'วันทำงาน',font:{size:10}} }
+      }
+    }
+  });
+}
+
+function hrUpdateKPI() {
+  var month = _hrCurrentMonth;
+  var recs = _HR_DATA.records.filter(function(r){ return r.year_month === month; });
+  var emps = _HR_DATA.employees;
+  var totalHours = recs.reduce(function(a,r){ return a+r.hours; }, 0);
+  var totalWage = recs.reduce(function(a,r){
+    var emp = emps.find(function(e){ return e.user_id===r.user_id; })||{};
+    return a+(r.days*(emp.daily_wage||r.daily_wage||0));
+  }, 0);
+  var s = function(id,v){ var el=document.getElementById(id); if(el)el.textContent=v; };
+  s('hr-total-hours', totalHours>0 ? totalHours.toFixed(0)+' ชม.' : recs.reduce(function(a,r){return a+r.days;},0)+' วัน');
+  s('hr-total-wage', totalWage>0 ? '฿'+totalWage.toLocaleString() : '—');
+  s('hr-active-count', recs.length+' คน');
+  s('hr-kpi-month', _hrMonthLabel(month));
+}
+
+// Hook เข้า showSec
+(function(){
+  var _origSS = window.showSec;
+  window.showSec = function(id, btn) {
+    if (_origSS) _origSS(id, btn);
+    if (id === 'staff') {
+      setTimeout(hrInit, 100);
+    }
+  };
+})();
+</script>
 </body>
 </html>
