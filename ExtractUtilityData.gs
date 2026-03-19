@@ -149,14 +149,18 @@ function processUtilityFolder_(utilityFolder, type, result, stats) {
         try {
           var data = extractPdfData_(file, type);
           if (data && data.key) {
-            // Merge with existing (invoice + receipt for same month)
+            // Validate: reject if offpeak === onpeak (OCR bug — likely total/2)
+            if (data.values.offpeak && data.values.onpeak && data.values.offpeak === data.values.onpeak) {
+              Logger.log('    ⚠ offpeak === onpeak (' + data.values.offpeak + ') — rejected (OCR bug)');
+              delete data.values.offpeak;
+              delete data.values.onpeak;
+              delete data.values.totalUnits;
+            }
+
+            // Merge with existing — OVERWRITE with new values
             var existing = result[data.key] || {};
             for (var k in data.values) {
-              if (data.values[k] && !existing[k]) {
-                existing[k] = data.values[k];
-              }
-              // Prefer receipt amount over invoice amount
-              if (k === 'amount' && data.isReceipt && data.values[k]) {
+              if (data.values[k]) {
                 existing[k] = data.values[k];
               }
             }

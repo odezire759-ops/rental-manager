@@ -1794,6 +1794,8 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
   <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
     <span id="ut-sync-status" style="font-size:10px;color:var(--text3);"></span>
     <button class="tbtn" id="ut-sync-btn" onclick="utSyncFromGAS()" style="font-size:11px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);color:#2e7d32;border:1px solid #a5d6a7;font-weight:700;">🔄 Sync จาก Drive</button>
+    <button class="tbtn" onclick="utSyncFromGAS(true)" style="font-size:11px;color:var(--warn);border-color:var(--warn);" title="Force re-extract จาก PDF">🔄 Force</button>
+    <button class="tbtn" onclick="utResetData()" style="font-size:11px;color:var(--danger);border-color:var(--danger);" title="ล้างข้อมูลทั้งหมดแล้ว sync ใหม่">🗑 Reset</button>
     <button class="tbtn" onclick="utOpenAllGmail()" style="font-size:11px;background:var(--blue-dim);color:var(--blue);border-color:#aac8f8;">📬 เปิด Gmail</button>
     <button class="tbtn" onclick="utOpenPdfModal()" style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;">📄 ดึงข้อมูลจาก PDF</button>
     <button class="tbtn" onclick="utOpenImportModal()" style="font-size:11px;background:var(--sbg);color:var(--success);border:1px solid #a5d6a7;">📥 Import JSON</button>
@@ -8263,25 +8265,25 @@ var _UT_MWA_EMAILS = {
 };
 
 // ── Base billing data (amounts from K PLUS) ────────
-// amounts ตรงตามเดือนบนใบแจ้งหนี้ MEA (ประจำเดือน X)
-// K PLUS จ่ายเดือน X+1 แต่บิลเป็นของเดือน X
+// amounts = null — ให้ข้อมูลมาจาก PDF extraction ทั้งหมด
+// base data เก็บแค่โครงสร้างเดือน + yr/mo สำหรับ render
 var _UT_MEA_BASE = [
-  { month:'ธ.ค. 2567',  yr:'2567', mo:'12', paidDate:'—', amount:44574.64 },
-  { month:'ม.ค. 2568',  yr:'2568', mo:'01', paidDate:'—', amount:39230.96 },
-  { month:'ก.พ. 2568',  yr:'2568', mo:'02', paidDate:'—', amount:51746.42 },
-  { month:'มี.ค. 2568', yr:'2568', mo:'03', paidDate:'—', amount:68931.45 },
-  { month:'เม.ย. 2568', yr:'2568', mo:'04', paidDate:'—', amount:72644.43 },
-  { month:'พ.ค. 2568',  yr:'2568', mo:'05', paidDate:'—', amount:71799.08 },
-  { month:'มิ.ย. 2568', yr:'2568', mo:'06', paidDate:'—', amount:75304.81 },
-  { month:'ก.ค. 2568',  yr:'2568', mo:'07', paidDate:'—', amount:59396.75 },
-  { month:'ส.ค. 2568',  yr:'2568', mo:'08', paidDate:'—', amount:58866.97 },
-  { month:'ก.ย. 2568',  yr:'2568', mo:'09', paidDate:'—', amount:null },
-  { month:'ต.ค. 2568',  yr:'2568', mo:'10', paidDate:'—', amount:null },
-  { month:'พ.ย. 2568',  yr:'2568', mo:'11', paidDate:'—', amount:null },
-  { month:'ธ.ค. 2568',  yr:'2568', mo:'12', paidDate:'—', amount:43958.45 },
-  { month:'ม.ค. 2569',  yr:'2569', mo:'01', paidDate:'—', amount:40520.97 },
-  { month:'ก.พ. 2569',  yr:'2569', mo:'02', paidDate:'—', amount:null },
-  { month:'มี.ค. 2569', yr:'2569', mo:'03', paidDate:'—', amount:null },
+  { month:'ธ.ค. 2567',  yr:'2567', mo:'12' },
+  { month:'ม.ค. 2568',  yr:'2568', mo:'01' },
+  { month:'ก.พ. 2568',  yr:'2568', mo:'02' },
+  { month:'มี.ค. 2568', yr:'2568', mo:'03' },
+  { month:'เม.ย. 2568', yr:'2568', mo:'04' },
+  { month:'พ.ค. 2568',  yr:'2568', mo:'05' },
+  { month:'มิ.ย. 2568', yr:'2568', mo:'06' },
+  { month:'ก.ค. 2568',  yr:'2568', mo:'07' },
+  { month:'ส.ค. 2568',  yr:'2568', mo:'08' },
+  { month:'ก.ย. 2568',  yr:'2568', mo:'09' },
+  { month:'ต.ค. 2568',  yr:'2568', mo:'10' },
+  { month:'พ.ย. 2568',  yr:'2568', mo:'11' },
+  { month:'ธ.ค. 2568',  yr:'2568', mo:'12' },
+  { month:'ม.ค. 2569',  yr:'2569', mo:'01' },
+  { month:'ก.พ. 2569',  yr:'2569', mo:'02' },
+  { month:'มี.ค. 2569', yr:'2569', mo:'03' },
 ];
 
 var _UT_MWA_BASE = [
@@ -8600,6 +8602,18 @@ var _utTooltip = {
   callbacks: { label: function(ctx) { return ' ' + (ctx.parsed.y ? ctx.parsed.y.toLocaleString('th-TH') : '—'); } }
 };
 
+// Build year data array [ม.ค., ก.พ., ..., ธ.ค.] from localStorage
+function _utYearData(stored, yr) {
+  var TH_SHORT = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var arr = [];
+  for (var m = 1; m <= 12; m++) {
+    var key = _utKey('mea', TH_SHORT[m] + ' ' + yr);
+    var d = stored[key] || {};
+    arr.push(d.amount ? parseFloat(d.amount) : null);
+  }
+  return arr;
+}
+
 function _utInitMeaCharts() {
   if (!window.Chart) return;
   ['ut-mea-main-chart','ut-mea-year-chart'].forEach(function(id) {
@@ -8611,7 +8625,7 @@ function _utInitMeaCharts() {
   var amounts = _UT_MEA_BASE.map(function(d){
     var k = _utKey('mea',d.month); var mc = stored[k]||{};
     // ใช้ localStorage ก่อน ถ้าไม่มีใช้ base data (ยอดจาก K PLUS)
-    return mc.amount ? parseFloat(mc.amount) : (d.amount || null);
+    return mc.amount ? parseFloat(mc.amount) : null;
   });
   var offPeaks = _UT_MEA_BASE.map(function(d){
     var k = _utKey('mea',d.month); var m = stored[k]||{};
@@ -8649,9 +8663,9 @@ function _utInitMeaCharts() {
     data:{
       labels:['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
       datasets:[
-        {label:'2567',data:[null,null,null,null,null,null,null,null,null,null,null,44574.64],borderColor:'rgba(212,160,23,0.4)',borderDash:[4,4],pointBackgroundColor:'#d4a017',tension:0.3,pointRadius:3,backgroundColor:'transparent'},
-        {label:'2568',data:[39230.96,51746.42,68931.45,72644.43,71799.08,75304.81,59396.75,58866.97,null,null,null,43958.45],borderColor:'#d4a017',fill:true,backgroundColor:'rgba(212,160,23,0.07)',tension:0.3,pointRadius:3,pointBackgroundColor:'#d4a017'},
-        {label:'2569',data:[40520.97,null,null,null,null,null,null,null,null,null,null,null],borderColor:'var(--blue)',tension:0.3,pointRadius:5,pointBackgroundColor:'var(--blue)',backgroundColor:'transparent'}
+        {label:'2567',data:_utYearData(stored,'2567'),borderColor:'rgba(212,160,23,0.4)',borderDash:[4,4],pointBackgroundColor:'#d4a017',tension:0.3,pointRadius:3,backgroundColor:'transparent'},
+        {label:'2568',data:_utYearData(stored,'2568'),borderColor:'#d4a017',fill:true,backgroundColor:'rgba(212,160,23,0.07)',tension:0.3,pointRadius:3,pointBackgroundColor:'#d4a017'},
+        {label:'2569',data:_utYearData(stored,'2569'),borderColor:'var(--blue)',tension:0.3,pointRadius:5,pointBackgroundColor:'var(--blue)',backgroundColor:'transparent'}
       ]
     },
     options:{
@@ -9206,9 +9220,10 @@ function utDoImport() {
       var normKey = key.replace(/\s/g,'_');
       var existing = stored[normKey] || {};
       var changed = false;
+      // OVERWRITE mode: import data replaces existing
       Object.keys(vals).forEach(function(field) {
         var v = vals[field];
-        if (v !== null && v !== '' && v !== undefined && !existing[field]) {
+        if (v !== null && v !== '' && v !== undefined) {
           existing[field] = String(v); changed = true;
         }
       });
@@ -9582,18 +9597,24 @@ function utSyncFromGAS(force) {
         var existing = stored[normKey] || {};
         var changed = false;
 
+        // Validate: reject if offpeak === onpeak (OCR bug)
+        if (vals.offpeak && vals.onpeak && vals.offpeak === vals.onpeak) {
+          delete vals.offpeak;
+          delete vals.onpeak;
+          delete vals.totalUnits;
+        }
+
+        // OVERWRITE mode: extraction data replaces existing
         Object.keys(vals).forEach(function(field) {
           var v = vals[field];
           if (v !== null && v !== '' && v !== undefined) {
-            if (!existing[field] || existing[field] !== String(v)) {
-              existing[field] = String(v);
-              changed = true;
-            }
+            existing[field] = String(v);
+            changed = true;
           }
         });
 
         // Auto-calc
-        if (existing.offpeak && existing.onpeak) {
+        if (existing.offpeak && existing.onpeak && existing.offpeak !== existing.onpeak) {
           var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
           if (tot > 0) existing.totalUnits = tot;
         }
@@ -9636,6 +9657,19 @@ function utSyncFromGAS(force) {
 }
 
 // ── Config GAS URL ──────────────────────────────────────────
+// ── Reset all utility data ─────────────────────────────
+function utResetData() {
+  if (!confirm('🗑 ล้างข้อมูล MEA/MWA ทั้งหมด?\n\n→ ลบ localStorage utility data\n→ ลบ sync timestamp\n→ ข้อมูลจาก PDF extraction จะหายหมด\n\nจะต้อง Sync หรือ Import ใหม่')) return;
+  localStorage.removeItem(_UT_STORE);
+  localStorage.removeItem(_UT_SYNC_KEY);
+  _utRenderMEA(); _utRenderMWA();
+  setTimeout(_utInitMeaCharts, 50);
+  setTimeout(_utInitMwaCharts, 100);
+  var s = document.getElementById('ut-sync-status');
+  if (s) s.textContent = '';
+  toast('🗑 ล้างข้อมูลสาธารณูปโภคแล้ว — กด Sync เพื่อดึงข้อมูลใหม่', 'ok');
+}
+
 function utConfigGasUrl() {
   var current = _UT_GAS_URL || '';
   var url = prompt(
