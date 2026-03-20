@@ -11466,43 +11466,6 @@ window._utInitMwaCharts=function(){ setTimeout(rebuildMwaChart,50); };
   console.log('[DB] อัปเดต Supabase สำเร็จ');
 })();
 
-// ────────────────────────────────────────────────────────────────────────────
-//  Hook showSec + MutationObserver
-// ────────────────────────────────────────────────────────────────────────────
-(function(){
-  var orig=window.showSec;
-  window.showSec=function(id,btn){
-    if(orig) orig.apply(this,arguments);
-    if(id==='utility'){
-      [200,600,1200,2000,3500].forEach(function(ms){
-        setTimeout(function(){rewriteMea();rewriteMwa();},ms);
-      });
-    }
-  };
-})();
 
-function watchTable(id,fn){
-  var tb=document.getElementById(id);
-  if(!tb){setTimeout(function(){watchTable(id,fn);},500);return;}
-  var obs=new MutationObserver(function(){
-    clearTimeout(obs._t);
-    obs._t=setTimeout(fn,100);
-  });
-  obs.observe(tb,{childList:true});
-}
-
-if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',function(){
-    watchTable('ut-mea-tbody',rewriteMea);
-    watchTable('ut-mwa-tbody',rewriteMwa);
-  });
-}else{
-  watchTable('ut-mea-tbody',rewriteMea);
-  watchTable('ut-mwa-tbody',rewriteMwa);
-}
-
-console.log('✅ MEA+MWA Patch loaded');
-})();
-</script>
 </body>
 </html>
