@@ -3025,11 +3025,13 @@ async function loadOTACards(){
       const ppn=nights>0?Math.round(Number(b.total_amount||0)/nights):750;
       return `<div class="ota-item ${cls}">
       ${srcBadge(b.source)}
-      <div class="ota-name">${b.guest_name}</div>
+      <div class="ota-name">${b.guest_name}${b.room?` <span style="font-size:10px;color:var(--blue);font-weight:800;font-family:'JetBrains Mono',monospace;">ห้อง ${b.room}</span>`:''}</div>
       <div class="ota-det">${b.room_type||'Room'} · ${fmtD(b.check_in)} → ${fmtD(b.check_out)} · ${nights} คืน</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
         <span class="ota-price" style="float:none;margin:0;">฿${Number(b.total_amount||0).toLocaleString()}</span>
-        ${cls==='ota-co'?`<button onclick="extendStay('${b.id}','${b.check_out}',${ppn})" style="padding:3px 8px;border:1px solid var(--success);border-radius:4px;background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">🔄 อยู่ต่อ +1</button>`:''}
+        <div style="display:flex;gap:4px;">
+        ${cls==='ota-co'?`<button onclick="extendStay('${b.id}','${b.check_out}',${ppn})" style="padding:3px 8px;border:1px solid var(--success);border-radius:4px;background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">🔄 อยู่ต่อ</button><button onclick="quickCheckout('${b.room||''}','${b.id}')" style="padding:3px 8px;border:1px solid var(--danger);border-radius:4px;background:#ffebee;color:#c62828;font-size:10px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;">🚪 Out</button>`:''}
+        </div>
       </div>
     </div>`;
     }).join('');
@@ -3185,6 +3187,7 @@ async function renderDailyCards(){
           <div style="display:flex;gap:4px;">
             <button onclick="extendStay('${b.id}','${b.check_out}',${pricePerNight})" style="padding:5px 10px;border:1px solid var(--success);border-radius:var(--rs);background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;" title="ขยายอยู่ต่อ +1 คืน">🔄 อยู่ต่อ</button>
             <button onclick="extendStayCustom('${b.id}','${b.check_out}',${pricePerNight})" style="padding:5px 10px;border:1px solid var(--blue);border-radius:var(--rs);background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;" title="เลือกวันที่ออก">📅 เลือกวัน</button>
+            <button onclick="quickCheckout('${b.room||''}','${b.id}')" style="padding:5px 10px;border:1px solid var(--danger);border-radius:var(--rs);background:#ffebee;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;" title="Checkout วันนี้">🚪 Checkout</button>
           </div>
         </div>
       </div>
@@ -3388,7 +3391,7 @@ async function renderDailyRoomCards(){
   
   // Get bookings for today to check occupancy
   const today=curDailyDate||new Date().toISOString().split('T')[0];
-  const{data:todayBookings}=await sb.from('ota_bookings').select('room,guest_name,source,check_in,check_out,total_amount').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED');
+  const{data:todayBookings}=await sb.from('ota_bookings').select('id,room,guest_name,source,check_in,check_out,total_amount').lte('check_in',today).gt('check_out',today).neq('status','CANCELLED');
   const guestMap={};(todayBookings||[]).forEach(b=>{if(b.room)guestMap[b.room]=b;});
   
   // Get last log for each room
@@ -3428,7 +3431,8 @@ async function renderDailyRoomCards(){
         </div>
         ${log?`<div style="font-size:9px;color:var(--text3);margin-bottom:6px;">📋 ${log.description||log.log_type} · ${new Date(log.logged_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'})}</div>`:''}
         <div class="drcard-acts">
-          <button onclick="openRoomLog('${r.room}')">📋 บันทึก</button>
+          ${guest?`<button onclick="quickCheckout('${r.room}','${guest.id}')" style="background:#ffebee;color:#c62828;border-color:#ef9a9a;font-weight:800;">🚪 Checkout</button>`:`<button onclick="openQuickWalkin('${r.room}')" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;">🚶 Walk-in</button>`}
+          <button onclick="openRoomLog('${r.room}')">📋</button>
           <button onclick="quickStatus('${r.room}','cleaning')">🧹</button>
           <button onclick="quickStatus('${r.room}','ready')">✅</button>
           <button onclick="quickStatus('${r.room}','repairing')">🔧</button>
@@ -5691,14 +5695,25 @@ async function deleteCheckin(id,name){
   await loadMonth(curMonth);
 }
 
-// Quick Checkout from dashboard card
+// Quick Checkout from any context (dashboard, daily, checkout strip)
 async function quickCheckout(room,bookingId){
-  const guest=todayGuestMap[room];
-  if(!guest){toast('ไม่พบข้อมูลแขก','err');return;}
+  // Try todayGuestMap first, then look up from DB
+  let guest=todayGuestMap[room];
+  if(!guest && bookingId){
+    const{data:b}=await sb.from('ota_bookings').select('id,room,guest_name,source,check_in,check_out,total_amount').eq('id',bookingId).single();
+    if(b) guest=b;
+  }
+  if(!guest){
+    // Last resort: search by room
+    const today=new Date().toISOString().split('T')[0];
+    const{data:bs}=await sb.from('ota_bookings').select('id,room,guest_name,source,check_in,check_out,total_amount').eq('room',room).lte('check_in',today).gte('check_out',today).neq('status','CANCELLED').limit(1);
+    if(bs&&bs.length) guest=bs[0];
+  }
+  if(!guest){toast('ไม่พบข้อมูลแขกห้อง '+room,'err');return;}
   const today=new Date().toISOString().split('T')[0];
   if(!confirm(`🚪 Checkout ห้อง ${room}\n👤 ${guest.guest_name}\n\n✓ ตั้งวันออก = วันนี้ (${fmtD(today)})\n✓ เปลี่ยนสถานะ → 🧹 ทำความสะอาด\n✓ อัพเดตทุกตาราง`))return;
   // 1) Update ota_bookings
-  await sb.from('ota_bookings').update({check_out:today}).eq('id',bookingId);
+  await sb.from('ota_bookings').update({check_out:today}).eq('id',guest.id||bookingId);
   // 2) Update guest_checkins ด้วย
   await sb.from('guest_checkins').update({check_out:today}).eq('room',room).eq('building','เจเรสซิเดนซ์').lte('check_in',today).or(`check_out.gt.${today},check_out.is.null`);
   // 3) Set room to cleaning
