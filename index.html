@@ -11146,6 +11146,236 @@ function hrExportPerson() {
   console.log('✅ Utility Supabase connector loaded');
 })();
 </script>
+<script // ══════════════════════════════════════════════════════════════════════════════
+//  MEA TABLE PATCH  v2
+//  🔹 วันจดมิเตอร์ กพ 2569 = 31/01/69
+//  🔹 ลบ column: เอกสาร PDF, แก้ไข
+//  🔹 เพิ่ม column: ช่องทางชำระเงิน (styled badge)
+//  🔹 ชำระเงินวันสุดท้าย — badge สวยงาม
+//  เพิ่ม <script src="mea-patch.js"></script> ก่อน </body>
+// ══════════════════════════════════════════════════════════════════════════════
+(function () {
 
+// ── ช่องทางชำระเงิน MEA (จากรูปภาพ) ─────────────────────────────
+var CHANNELS = {
+  'ธ.ค. 2567':'', 'ม.ค. 2568':'', 'ก.พ. 2568':'',
+  'มี.ค. 2568':'ธ.กสิกรไทย',  'เม.ย. 2568':'ธ.กสิกรไทย',
+  'พ.ค. 2568':'',              'มิ.ย. 2568':'ธ.กสิกรไทย',
+  'ก.ค. 2568':'ธ.กสิกรไทย',   'ส.ค. 2568':'ธ.กสิกรไทย',
+  'ก.ย. 2568':'ธ.กสิกรไทย',   'ต.ค. 2568':'ธนาคารกรุงไทย',
+  'พ.ย. 2568':'ธนาคารกรุงไทย','ธ.ค. 2568':'ธนาคารกรุงไทย',
+  'ม.ค. 2569':'ธ.กสิกรไทย',   'ก.พ. 2569':'ธ.กสิกรไทย',
+  'มี.ค. 2569':'',
+};
+
+// ── วันจดมิเตอร์ที่แก้ไข ─────────────────────────────────────────
+var METER_FIX = { 'ก.พ. 2569': '31/01/69' };
+
+// ── Badge: วันสุดท้าย ──────────────────────────────────────────────
+function dueBadge(d) {
+  if (!d || d === '—') return '<span style="color:#bbb;font-size:11px;">—</span>';
+  return '<span style="display:inline-block;background:linear-gradient(135deg,#fff8e1,#ffe082);'
+    + 'color:#e65100;border:1px solid #ffc107;border-radius:6px;padding:3px 10px;'
+    + 'font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;">'
+    + '📅\u00a0' + d + '</span>';
+}
+
+// ── Badge: ช่องทางชำระเงิน ────────────────────────────────────────
+function chBadge(ch) {
+  if (!ch) return '<span style="color:#bbb;font-size:10px;">—</span>';
+  var isK = ch.indexOf('กสิกร') >= 0;
+  var isKT = ch.indexOf('กรุงไทย') >= 0;
+  var bg    = isK ? '#e8f5e9' : isKT ? '#e3f2fd' : '#f5f5f5';
+  var color = isK ? '#2e7d32' : isKT ? '#1565c0' : '#555';
+  var bdr   = isK ? '#a5d6a7' : isKT ? '#90caf9' : '#ddd';
+  var icon  = isK ? '🟩' : isKT ? '🟦' : '🏦';
+  return '<span style="display:inline-block;background:' + bg + ';color:' + color
+    + ';border:1px solid ' + bdr + ';border-radius:6px;padding:3px 10px;'
+    + 'font-size:11px;font-weight:700;white-space:nowrap;">' + icon + '\u00a0' + ch + '</span>';
+}
+
+// ── เซต header ────────────────────────────────────────────────────
+function fixThead() {
+  var tb = document.getElementById('ut-mea-tbody');
+  if (!tb) return;
+  var tbl = tb.closest('table');
+  if (!tbl) return;
+  var thead = tbl.querySelector('thead tr');
+  if (!thead) return;
+  thead.innerHTML =
+    '<th style="min-width:90px;">รอบบิล</th>'
+    + '<th style="min-width:90px;text-align:center;">วันจดมิเตอร์</th>'
+    + '<th style="min-width:72px;text-align:right;">Off Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>'
+    + '<th style="min-width:72px;text-align:right;">On Peak<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>'
+    + '<th style="min-width:72px;text-align:right;">รวม<br><span style="font-size:9px;font-weight:400;">(หน่วย)</span></th>'
+    + '<th style="min-width:110px;text-align:right;">ยอดรวม (฿)</th>'
+    + '<th style="min-width:140px;text-align:center;">ชำระเงินวันสุดท้าย</th>'
+    + '<th style="min-width:150px;text-align:center;">ช่องทางชำระเงิน</th>';
+}
+
+// ── เขียน rows ใหม่ (จัดการทั้ง Supabase 11-cell และ old 9-cell) ─
+function rewriteRows() {
+  var tb = document.getElementById('ut-mea-tbody');
+  if (!tb) return;
+  fixThead();
+
+  var rows = tb.querySelectorAll('tr');
+  if (!rows.length) return;
+
+  rows.forEach(function (row) {
+    var cells = row.cells;
+    if (cells.length < 7) return;
+
+    var billMonth = (cells[0].textContent || '').trim();
+
+    /* ══ Supabase connector generates 11 cells ══
+       [0] bill_month
+       [1] invoice_no  ← ผิด ควรเป็น meter_date
+       [2] offpeak
+       [3] onpeak
+       [4] total_units
+       [5] amount
+       [6] meter_date  ← ค่าจริง
+       [7] payment_due_date
+       [8] paid_date   ← ลบ
+       [9] payment_channel
+       [10] PDF links  ← ลบ
+    */
+    if (cells.length >= 10) {
+      // ดึงข้อมูลที่ต้องการก่อนลบ cell
+      var meterDate = (cells[6].textContent || '').trim();
+      var dueDate   = (cells[7].textContent || '').trim();
+      var rawChannel= (cells[9].textContent || '').trim();
+
+      // แก้ไข meter_date ถ้ามีใน METER_FIX
+      if (METER_FIX[billMonth]) meterDate = METER_FIX[billMonth];
+
+      // ถ้า Supabase มีช่องทางชำระเงิน ใช้เลย ไม่งั้นใช้ hardcode
+      var channel = rawChannel || CHANNELS[billMonth] || '';
+
+      // ── แก้ cell[1]: เปลี่ยนจาก invoice_no เป็น meter_date ──
+      cells[1].innerHTML = meterDate
+        ? '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:600;">' + meterDate + '</span>'
+        : '<span style="color:#bbb;">—</span>';
+      cells[1].style.textAlign = 'center';
+
+      // ── ลบ cell จากท้ายไปหน้า (เหลือแค่ 6 cells: 0-5) ──
+      while (row.cells.length > 6) row.deleteCell(row.cells.length - 1);
+
+      // ── เพิ่ม cell[6]: ชำระเงินวันสุดท้าย ──
+      var td6 = row.insertCell(6);
+      td6.style.textAlign = 'center';
+      td6.innerHTML = dueBadge(dueDate);
+
+      // ── เพิ่ม cell[7]: ช่องทางชำระเงิน ──
+      var td7 = row.insertCell(7);
+      td7.style.textAlign = 'center';
+      td7.innerHTML = chBadge(channel);
+
+    } else if (cells.length === 9) {
+      /* ══ localStorage mode (9 cells) ══
+         [0] bill_month [1] meter_date [2] off [3] on [4] total [5] amount
+         [6] paidDate   [7] pdfLinks   [8] editBtn
+      */
+      var billMonthLS = (cells[0].textContent || '').trim();
+      var meterDateLS = (cells[1].textContent || '').trim();
+      var dueDateLS   = (cells[6].textContent || '').trim();
+      var channelLS   = CHANNELS[billMonthLS] || '';
+
+      // แก้ meter_date
+      if (METER_FIX[billMonthLS]) {
+        meterDateLS = METER_FIX[billMonthLS];
+        cells[1].innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:600;">' + meterDateLS + '</span>';
+        cells[1].style.textAlign = 'center';
+      }
+
+      // ลบ editBtn (cell[8]) และ pdfLinks (cell[7])
+      row.deleteCell(8);
+      row.deleteCell(7);
+
+      // แก้ dueDateCell (ตอนนี้กลายเป็น cell[6])
+      row.cells[6].style.textAlign = 'center';
+      row.cells[6].innerHTML = dueBadge(dueDateLS);
+
+      // เพิ่ม channel cell
+      var tdCh = row.insertCell(7);
+      tdCh.style.textAlign = 'center';
+      tdCh.innerHTML = chBadge(channelLS);
+    }
+  });
+}
+
+// ── Override _utRenderMEA เพื่อดัก localStorage mode ─────────────
+(function patchRenderFn() {
+  var orig = window._utRenderMEA;
+  window._utRenderMEA = function () {
+    if (orig) orig.apply(this, arguments);
+    setTimeout(rewriteRows, 50);
+  };
+})();
+
+// ── Hook showSec ──────────────────────────────────────────────────
+(function patchShowSec() {
+  var origSS = window.showSec;
+  window.showSec = function (id, btn) {
+    if (origSS) origSS.apply(this, arguments);
+    if (id === 'utility') {
+      fixThead();
+      // Supabase loads async — เช็คหลายรอบ
+      [300, 800, 1500, 2500, 4000].forEach(function (ms) {
+        setTimeout(rewriteRows, ms);
+      });
+    }
+  };
+})();
+
+// ── MutationObserver สำหรับ Supabase async ────────────────────────
+function watchTable() {
+  var tb = document.getElementById('ut-mea-tbody');
+  if (!tb) { setTimeout(watchTable, 500); return; }
+  fixThead();
+  var obs = new MutationObserver(function () {
+    clearTimeout(obs._t);
+    obs._t = setTimeout(function () { fixThead(); rewriteRows(); }, 80);
+  });
+  obs.observe(tb, { childList: true, subtree: false });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', watchTable);
+} else {
+  watchTable();
+}
+
+// ── อัปเดต Supabase (แก้ meter_date กพ 2569) ─────────────────────
+(async function updateSupabase() {
+  var SU = 'https://xjfzaarabsxngazzthpf.supabase.co';
+  var SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqZnphYXJhYnN4bmdhenp0aHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDE2OTYsImV4cCI6MjA4OTA3NzY5Nn0.BUeCnbwYSDYgTh1SIpzWGE5LqsCz-q84vP0MuMo718M';
+  try {
+    // แก้ไข meter_date สำหรับ กพ 2569 ใน Supabase
+    var res = await fetch(SU + '/rest/v1/utility_bills?utility=eq.MEA&yr=eq.2569&mo=eq.02&doc_type=eq.invoice', {
+      method: 'PATCH',
+      headers: {
+        'apikey': SK,
+        'Authorization': 'Bearer ' + SK,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ meter_date: '31/01/69' })
+    });
+    if (res.ok) {
+      console.log('✅ Supabase updated: meter_date กพ 2569 = 31/01/69');
+    } else {
+      var err = await res.text();
+      console.warn('⚠ Supabase update failed:', err);
+    }
+  } catch (e) {
+    console.warn('⚠ Supabase update error:', e);
+  }
+})();
+
+console.log('✅ MEA Patch v2 loaded');
+
+})();</script>
 </body>
 </html>
