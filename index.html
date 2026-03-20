@@ -471,7 +471,7 @@ body.ninja-mode #ci-tbody td:nth-child(4),body.ninja-mode #m-contracts-tbody td:
     <button class="nbtn" onclick="showSec('report',this)">📈 รายงาน</button>
     <button class="nbtn" onclick="showSec('utility',this)">⚡ สาธารณูปโภค</button>
   </div>
-  <div class="hright"><span id="hdate"></span><button id="ninjaBtn" onclick="toggleNinja()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;transition:all .2s;">🥷 Ninja Mode</button><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><div class="hbadge">● LIVE</div></div>
+  <div class="hright"><span id="hdate"></span><button id="ninjaBtn" onclick="toggleNinja()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;transition:all .2s;">🥷 Ninja Mode</button><button onclick="openPaySettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">⚙ ตั้งค่าธนาคาร</button><button onclick="openApiSettings()" style="padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;display:flex;align-items:center;gap:5px;">🔑 API Key</button><div class="hbadge">● LIVE</div></div>
 </div>
 
 <!-- ══ KPI BAR ══ -->
@@ -5151,6 +5151,11 @@ async function processOCR(file){
     document.getElementById('ocr-box').style.display='none';
     
     try{
+      const apiKey=localStorage.getItem('jres_anthropic_key')||'';
+      if(!apiKey){
+        document.getElementById('ocr-status').innerHTML='<span style="color:var(--danger);">❌ ยังไม่ได้ตั้งค่า API Key — กดปุ่ม 🔑 API Key ที่ด้านบนขวาก่อน</span>';
+        return;
+      }
       const prompt=curGuestType==='thai'
         ?`อ่านบัตรประชาชนไทยในรูปนี้ ส่งกลับ JSON เท่านั้น ไม่ต้องมี markdown:
 {"id_number":"เลข 13 หลัก","prefix":"คำนำหน้า","first_name":"ชื่อภาษาไทย","last_name":"นามสกุลภาษาไทย","birth_date":"YYYY-MM-DD","gender":"M หรือ F"}`
@@ -5159,7 +5164,12 @@ async function processOCR(file){
 
       const res=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':apiKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',
           max_tokens:1000,
@@ -5170,6 +5180,10 @@ async function processOCR(file){
         })
       });
       const data=await res.json();
+      if(data.error){
+        document.getElementById('ocr-status').innerHTML='<span style="color:var(--danger);">❌ API Error: '+(data.error.message||'Unknown')+'</span>';
+        return;
+      }
       const text=data.content?.map(c=>c.text||'').join('')||'';
       const clean=text.replace(/```json|```/g,'').trim();
       const parsed=JSON.parse(clean);
@@ -5182,6 +5196,54 @@ async function processOCR(file){
     }
   };
   reader.readAsDataURL(file);
+}
+
+// ═══ API Key Settings Modal ═══
+function openApiSettings(){
+  var ex=document.getElementById('_apiModal');
+  if(ex)ex.remove();
+  var currentKey=localStorage.getItem('jres_anthropic_key')||'';
+  var masked=currentKey?'sk-ant-...'+currentKey.slice(-8):'ยังไม่ได้ตั้งค่า';
+  var ov=document.createElement('div');
+  ov.id='_apiModal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Sarabun,sans-serif;';
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  ov.innerHTML=
+    '<div style="background:#fff;border-radius:14px;width:500px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,.35);">'+
+      '<div style="background:linear-gradient(135deg,#0f1419,#1e3a5f);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;">'+
+        '<span style="color:#fff;font-size:15px;font-weight:700;">🔑 ตั้งค่า API Key</span>'+
+        '<button onclick="document.getElementById(\'_apiModal\').remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>'+
+      '</div>'+
+      '<div style="padding:20px;">'+
+        '<div style="margin-bottom:16px;">'+
+          '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">Anthropic API Key</div>'+
+          '<div style="font-size:11px;color:#999;margin-bottom:8px;">ใช้สำหรับ AI OCR อ่านบัตรประชาชน/Passport · เก็บในเบราว์เซอร์เท่านั้น ไม่ส่งไปที่อื่น</div>'+
+          '<div style="font-size:11px;color:var(--blue);margin-bottom:10px;">สถานะ: <b>'+(currentKey?'✅ ตั้งค่าแล้ว ('+masked+')':'❌ ยังไม่ได้ตั้งค่า')+'</b></div>'+
+          '<input type="password" id="_api_key_input" placeholder="sk-ant-api03-..." value="'+currentKey+'" style="width:100%;padding:10px 12px;border:1.5px solid #dde3ea;border-radius:8px;font-size:13px;font-family:JetBrains Mono,monospace;">'+
+          '<div style="font-size:10px;color:#aaa;margin-top:6px;">รับ key ได้ที่ <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue);">console.anthropic.com</a></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;">'+
+          '<button onclick="document.getElementById(\'_apiModal\').remove()" style="flex:1;padding:10px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">ยกเลิก</button>'+
+          '<button onclick="_saveApiKey()" style="flex:2;padding:10px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 บันทึก</button>'+
+          (currentKey?'<button onclick="_clearApiKey()" style="padding:10px 16px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🗑</button>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+}
+function _saveApiKey(){
+  var key=document.getElementById('_api_key_input').value.trim();
+  if(!key){toast('กรุณากรอก API Key','err');return;}
+  if(!key.startsWith('sk-ant-')){toast('API Key ต้องขึ้นต้นด้วย sk-ant-','err');return;}
+  localStorage.setItem('jres_anthropic_key',key);
+  document.getElementById('_apiModal').remove();
+  toast('✅ บันทึก API Key สำเร็จ','ok');
+}
+function _clearApiKey(){
+  if(!confirm('ลบ API Key?'))return;
+  localStorage.removeItem('jres_anthropic_key');
+  document.getElementById('_apiModal').remove();
+  toast('🗑 ลบ API Key แล้ว','ok');
 }
 
 function fillFormFromOCR(d){
@@ -9159,12 +9221,18 @@ async function handleMonthlyOCR(input){
       ?'อ่านบัตรประชาชนไทยในรูปนี้ ส่งกลับ JSON เท่านั้น ไม่ต้องมี markdown:\n{"id_number":"เลข 13 หลัก","prefix":"คำนำหน้า","first_name":"ชื่อภาษาไทย","last_name":"นามสกุลภาษาไทย","birth_date":"YYYY-MM-DD"}'
       :'Read this passport image. Return JSON only, no markdown:\n{"first_name":"","middle_name":"","last_name":"","passport_no":"","nationality":"ICAO 3-letter code","birth_date":"YYYY-MM-DD","gender":"M or F","passport_expiry":"YYYY-MM-DD"}';
     try{
-      var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      var apiKey=localStorage.getItem('jres_anthropic_key')||'';
+      if(!apiKey){
+        document.getElementById('m-ocr-status').innerHTML='<span style="color:var(--danger);">❌ ยังไม่ได้ตั้งค่า API Key — กดปุ่ม 🔑 API Key ที่ด้านบนขวา</span>';
+        return;
+      }
+      var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
           messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:prompt}]}]
         })
       });
       var data=await res.json();
+      if(data.error){document.getElementById('m-ocr-status').innerHTML='<span style="color:var(--danger);">❌ '+data.error.message+'</span>';return;}
       var text=(data.content||[]).map(function(c){return c.text||'';}).join('');
       var parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
       if(_mGuestType==='thai'){
