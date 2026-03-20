@@ -3546,51 +3546,38 @@ function renderTopRooms(data){
 async function refreshAvailRooms(){
   const ci=document.getElementById('bci').value,co=document.getElementById('bco').value;
   if(!ci||!co)return;calcBT();
-  
-  // 1) Get daily bookings that overlap
+  // 1) bookings table
   const{data:dailyBooked}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',co);
   const dailyBookedSet=new Set((dailyBooked||[]).map(x=>x.room));
-  
-  // 2) Get all rooms for this month to check room_type
+  // 2) FIX: ota_bookings — ตรวจห้องที่มีแขกในช่วงวันที่เลือก
+  const{data:otaBooked}=await sb.from('ota_bookings').select('room').lt('check_in',co).gt('check_out',ci).neq('status','CANCELLED');
+  (otaBooked||[]).forEach(x=>{if(x.room)dailyBookedSet.add(x.room);});
+  // 3) monthly_charges
   const ciMonth=ci.substring(0,7);
   const{data:monthlyData}=await sb.from('monthly_charges').select('room,tenant_name,room_type').eq('month',ciMonth).eq('building','เจเรสซิเดนซ์');
   const roomInfo={};(monthlyData||[]).forEach(r=>roomInfo[r.room]=r);
-  
-  // 3) Classify rooms
-  const dailyTypeRooms=[];  // room_type='daily' → can book daily
-  const monthlyRooms=[];    // room_type='monthly' or has tenant → NOT for daily booking
-  
+  const dailyTypeRooms=[];const monthlyRooms=[];
   ALL_ROOMS.forEach(room=>{
     const info=roomInfo[room];
-    if(info&&info.room_type==='daily'){
-      dailyTypeRooms.push(room);
-    } else {
-      monthlyRooms.push(room);
-    }
+    if(info&&info.room_type==='daily')dailyTypeRooms.push(room);
+    else monthlyRooms.push(room);
   });
-  
-  // 4) Available = daily type rooms that are NOT already booked
   const avail=dailyTypeRooms.filter(r=>!dailyBookedSet.has(r));
   const dailyBookedRooms=dailyTypeRooms.filter(r=>dailyBookedSet.has(r));
-  
   const fmt=(d)=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});
   document.getElementById('avail-date-range').textContent=`${fmt(ci)} – ${fmt(co)}`;
-  
-  // Right panel
   document.getElementById('avail-rooms-status').innerHTML=`
     <div style="margin-bottom:12px;">
       <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">✓ ว่าง — จองรายวันได้ (${avail.length} ห้อง)</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px;">${avail.length?avail.map(r=>`<span style="background:var(--sbg);color:var(--success);border:1px solid var(--success);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" onclick="selectBRoom('${r}')">${r}</span>`).join(''):'<span style="color:var(--text3);font-size:11px;">ไม่มีห้องว่าง</span>'}</div>
     </div>
-    ${dailyBookedRooms.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px;">✗ จองรายวันแล้ว (${dailyBookedRooms.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${dailyBookedRooms.map(r=>`<span style="background:var(--dbg);color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}
+    ${dailyBookedRooms.length?`<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px;">✗ มีแขก/จองแล้ว (${dailyBookedRooms.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${dailyBookedRooms.map(r=>`<span style="background:var(--dbg);color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">${r}</span>`).join('')}</div></div>`:''}
     <div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;">🏠 ห้องรายเดือน (${monthlyRooms.length} ห้อง)</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${monthlyRooms.slice(0,30).map(r=>`<span style="background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;">${r}</span>`).join('')}${monthlyRooms.length>30?`<span style="color:var(--text3);font-size:11px;">+${monthlyRooms.length-30} ห้อง</span>`:''}</div>
     <div style="font-size:10px;color:var(--text3);margin-top:6px;">💡 ต้องตั้งห้องเป็น "📅 รายวัน" ในแท็บรายเดือนก่อนจึงจะจองรายวันได้</div></div>`;
-  
-  // Left panel: show only daily-type rooms
   document.getElementById('brooms').innerHTML=dailyTypeRooms.length?dailyTypeRooms.map(r=>{
     const isB=dailyBookedSet.has(r),isS=r===selRoom;
-    return `<div class="broom${isB?' booked':''}${isS?' selected':''}" data-room="${r}" ${!isB?`onclick="selectBRoom('${r}')"`:''}><div class="bnum">${r}</div><div class="bstat">${isB?'จองแล้ว':'ว่าง'}</div></div>`;
-  }).join(''):'<div class="empty" style="grid-column:1/-1;">ยังไม่มีห้องที่ตั้งเป็น "📅 รายวัน"<br><span style="font-size:11px;">ไปที่แท็บ "รายเดือน" แล้วกดปุ่ม 📅 ที่การ์ดห้องเพื่อตั้งเป็นห้องรายวัน</span></div>';
+    return `<div class="broom${isB?' booked':''}${isS?' selected':''}" data-room="${r}" ${!isB?`onclick="selectBRoom('${r}')"`:''}><div class="bnum">${r}</div><div class="bstat">${isB?'มีแขก':'ว่าง'}</div></div>`;
+  }).join(''):'<div class="empty" style="grid-column:1/-1;">ยังไม่มีห้องที่ตั้งเป็น "📅 รายวัน"</div>';
 }
 function selectBRoom(r){selRoom=r;document.querySelectorAll('.broom').forEach(el=>{el.classList.toggle('selected',el.dataset.room===r);});}
 function calcBT(){
@@ -4974,60 +4961,54 @@ async function loadCheckinRooms(){
   document.getElementById('ci-room').value='';
   document.getElementById('ci-room-display').textContent='— ยังไม่ได้เลือก —';
   document.getElementById('ci-room-display').style.color='var(--text3)';
-  
-  // Get all rooms for current month
   const{data:allRooms}=await sb.from('monthly_charges').select('room,room_type,tenant_name,status').eq('month',curMonth).eq('building','เจเรสซิเดนซ์').order('room');
   if(!allRooms||!allRooms.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1;">ไม่พบข้อมูลห้อง</div>';return;}
-  
-  // Get active bookings for overlap check (daily rooms)
   const ci=document.getElementById('ci-checkin').value||new Date().toISOString().split('T')[0];
+  const co=document.getElementById('ci-checkout').value||ci;
+  // 1) bookings table
   const{data:activeBookings}=await sb.from('bookings').select('room').gte('check_out',ci).lte('check_in',ci);
   const bookedDailySet=new Set((activeBookings||[]).map(x=>x.room));
-  
-  // Get existing check-ins for today (to avoid double check-in)
+  // 2) guest_checkins table
   const{data:todayCheckins}=await sb.from('guest_checkins').select('room').eq('building','เจเรสซิเดนซ์').eq('check_in',ci);
   const checkedInSet=new Set((todayCheckins||[]).map(x=>x.room));
-  
+  // 3) FIX: ota_bookings table — ตรวจว่าห้องมีแขกอยู่ไหม
+  const{data:otaActive}=await sb.from('ota_bookings').select('room').lte('check_in',ci).gt('check_out',ci).neq('status','CANCELLED');
+  const otaOccupiedSet=new Set((otaActive||[]).map(x=>x.room).filter(Boolean));
   let rooms=[];
   if(stayType==='daily'){
-    // Show only rooms with room_type='daily' that are not booked
-    rooms=allRooms.filter(r=>r.room_type==='daily').map(r=>({
-      room:r.room,
-      available:!bookedDailySet.has(r.room)&&!checkedInSet.has(r.room),
-      reason:bookedDailySet.has(r.room)?'จองแล้ว':checkedInSet.has(r.room)?'เช็คอินแล้ว':'ว่าง'
-    }));
+    rooms=allRooms.filter(r=>r.room_type==='daily').map(r=>{
+      const isBooked=bookedDailySet.has(r.room);
+      const isCheckedIn=checkedInSet.has(r.room);
+      const isOtaOccupied=otaOccupiedSet.has(r.room);
+      const isUnavailable=isBooked||isCheckedIn||isOtaOccupied;
+      let reason='ว่าง';
+      if(isOtaOccupied)reason='มีแขกอยู่';
+      else if(isBooked)reason='จองแล้ว';
+      else if(isCheckedIn)reason='เช็คอินแล้ว';
+      return{room:r.room,available:!isUnavailable,reason};
+    });
   }else{
-    // Show only rooms with room_type='monthly' (or default) that have no tenant
     rooms=allRooms.filter(r=>r.room_type!=='daily').map(r=>{
       const hasTenant=r.tenant_name&&r.tenant_name.trim();
-      return{
-        room:r.room,
-        available:!hasTenant,
-        reason:hasTenant?r.tenant_name:'ว่าง'
-      };
+      return{room:r.room,available:!hasTenant,reason:hasTenant?r.tenant_name:'ว่าง'};
     });
   }
-  
   const availCount=rooms.filter(r=>r.available).length;
   document.getElementById('ci-room-count').textContent=`(${availCount} ว่าง / ${rooms.length} ห้อง)`;
-  
   if(!rooms.length){
     grid.innerHTML=`<div class="empty" style="grid-column:1/-1;">${stayType==='daily'?'ไม่มีห้องรายวัน — ไปตั้งที่แท็บรายเดือน':'ไม่มีห้องรายเดือนว่าง'}</div>`;
     return;
   }
-  
-  // Sort: available first, then by room number
   rooms.sort((a,b)=>{
     if(a.available&&!b.available)return -1;
     if(!a.available&&b.available)return 1;
     return a.room.localeCompare(b.room,undefined,{numeric:true});
   });
-  
   grid.innerHTML=rooms.map(r=>{
     if(!r.available){
       return `<div style="padding:8px 4px;border:1px solid var(--border);border-radius:var(--rs);background:#f8f8f8;text-align:center;opacity:.45;cursor:not-allowed;">
         <div style="font-size:14px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;">${r.room}</div>
-        <div style="font-size:8px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.reason}</div>
+        <div style="font-size:8px;color:${r.reason==='มีแขกอยู่'?'var(--danger)':'var(--text3)'};margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.reason}</div>
       </div>`;
     }
     return `<div class="ci-rcard ci-${stayType}" onclick="selectCIRoom('${r.room}',this)" data-room="${r.room}">
@@ -5213,8 +5194,6 @@ async function saveCheckin(){
   const checkIn=document.getElementById('ci-checkin').value;
   if(!room){toast('กรุณาเลือกห้อง','err');return;}
   if(!checkIn){toast('กรุณาระบุวันที่เข้าพัก','err');return;}
-  
-  // Validate name + phone
   if(curGuestType==='thai'){
     if(!document.getElementById('ci-thai-fname').value.trim()){toast('กรุณากรอกชื่อ','err');return;}
     if(!document.getElementById('ci-thai-phone').value.trim()){toast('กรุณากรอกเบอร์โทร','err');return;}
@@ -5222,43 +5201,29 @@ async function saveCheckin(){
     if(!document.getElementById('ci-fname').value.trim()){toast('กรุณากรอก First Name','err');return;}
     if(!document.getElementById('ci-passport').value.trim()){toast('กรุณากรอก Passport No.','err');return;}
   }
-  
+  // FIX: ตรวจว่าห้องนี้มีแขกอยู่แล้วใน ota_bookings หรือไม่
+  const{data:existingOta}=await sb.from('ota_bookings').select('id,guest_name').eq('room',room).lte('check_in',checkIn).gt('check_out',checkIn).neq('status','CANCELLED').limit(1);
+  if(existingOta&&existingOta.length>0){toast(`ห้อง ${room} มีแขก "${existingOta[0].guest_name}" อยู่แล้ว — ต้อง checkout ก่อน`,'err');return;}
   const selectedSource=document.getElementById('ci-source').value;
-  // Default checkout to next day if not provided
   let checkOut=document.getElementById('ci-checkout').value;
-  if(!checkOut){
-    const nextDay=new Date(checkIn);nextDay.setDate(nextDay.getDate()+1);
-    checkOut=nextDay.toISOString().split('T')[0];
-  }
-  const rec={
-    building:'เจเรสซิเดนซ์',
-    room,
-    guest_type:curGuestType,
-    check_in:checkIn,
-    check_out:checkOut,
-    source:selectedSource
-  };
-  
-  // Add pricing for daily stays
+  if(!checkOut){const nextDay=new Date(checkIn);nextDay.setDate(nextDay.getDate()+1);checkOut=nextDay.toISOString().split('T')[0];}
+  const rec={building:'เจเรสซิเดนซ์',room,guest_type:curGuestType,check_in:checkIn,check_out:checkOut,source:selectedSource};
   const stayType=document.getElementById('ci-stay-type').value;
   if(stayType==='daily'){
     const nights=Math.max(1,Math.round((new Date(checkOut)-new Date(checkIn))/86400000));
     const totalEl=document.getElementById('ci-total-price');
     const totalText=totalEl?totalEl.textContent.replace(/[฿,]/g,''):'0';
-    rec.nights=nights;
-    rec.total_price=parseFloat(totalText)||0;
+    rec.nights=nights;rec.total_price=parseFloat(totalText)||0;
     rec.price_per_night=nights>0?Math.round(rec.total_price/nights):0;
     rec.discount=parseFloat(document.getElementById('ci-discount').value)||0;
   }
-  
   if(curGuestType==='thai'){
     rec.thai_id_number=document.getElementById('ci-thai-id').value||null;
     rec.thai_prefix=document.getElementById('ci-prefix').value;
     rec.thai_first_name=document.getElementById('ci-thai-fname').value;
     rec.thai_last_name=document.getElementById('ci-thai-lname').value;
     rec.birth_date=document.getElementById('ci-thai-bday').value||null;
-    rec.phone=document.getElementById('ci-thai-phone').value||null;
-    rec.gender=null;
+    rec.phone=document.getElementById('ci-thai-phone').value||null;rec.gender=null;
     if(!rec.thai_first_name){toast('กรุณากรอกชื่อ','err');return;}
   }else{
     rec.first_name=document.getElementById('ci-fname').value;
@@ -5270,50 +5235,34 @@ async function saveCheckin(){
     rec.birth_date=document.getElementById('ci-bday').value||null;
     rec.phone=document.getElementById('ci-phone').value||null;
   }
-  
   const{error}=await sb.from('guest_checkins').insert(rec);
   if(error){toast('Error: '+error.message,'err');return;}
-  
-  // For daily stays: also create ota_bookings record so dashboard/daily views update
   if(stayType==='daily'){
     const guestName=curGuestType==='thai'
       ?`${rec.thai_prefix||''}${rec.thai_first_name||''} ${rec.thai_last_name||''}`.trim()
       :`${rec.first_name||''} ${rec.last_name||''}`.trim();
     const nights=rec.nights||Math.max(1,Math.round((new Date(checkOut)-new Date(checkIn))/86400000));
     const totalAmt=rec.total_price||0;
-    
     await sb.from('ota_bookings').insert({
-      source:selectedSource,
-      booking_id:(selectedSource==='Walk-in'?'WI-':'CI-')+Date.now(),
-      status:'CONFIRMED',
-      guest_name:guestName,
-      check_in:checkIn,
-      check_out:checkOut,
-      room_type:'Deluxe - Room Only',
-      total_amount:totalAmt,
-      commission:0,
-      room:room,
-      bed_type:(mData.find(x=>x.room===room)||{}).bed_type||'6ft'
+      source:selectedSource,booking_id:(selectedSource==='Walk-in'?'WI-':'CI-')+Date.now(),
+      status:'CONFIRMED',guest_name:guestName,check_in:checkIn,check_out:checkOut,
+      room_type:'Deluxe - Room Only',total_amount:totalAmt,commission:0,
+      room:room,bed_type:(mData.find(x=>x.room===room)||{}).bed_type||'6ft'
     });
-    
-    // Update room status to occupied
+    // FIX: อัพเดตสถานะห้อง
     await sb.from('monthly_charges').update({room_status:'occupied'}).eq('room',room).eq('month',curMonth);
   }
-  
   toast('บันทึกแจ้งเข้าพักสำเร็จ ✓','ok');
-  
-  // Reset form
   ['ci-thai-id','ci-thai-fname','ci-thai-lname','ci-thai-phone','ci-fname','ci-lname','ci-mname','ci-passport','ci-phone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('ci-room').value='';
-  ciSelectedRoom='';
+  document.getElementById('ci-room').value='';ciSelectedRoom='';
   document.getElementById('ci-room-display').textContent='— ยังไม่ได้เลือก —';
   document.getElementById('ci-room-display').style.color='var(--text3)';
   document.getElementById('ocr-preview').style.display='none';
   document.getElementById('ocr-box').style.display='';
   document.getElementById('ci-custom-price').value='';
   document.getElementById('ci-discount').value='0';
+  // FIX: Reload room grid ทันที
   loadCheckins();loadCheckinStats();loadCheckinRooms();
-  // Refresh dashboard/daily if they were open
   await loadMonth(curMonth);
 }
 
@@ -5656,13 +5605,11 @@ async function saveQuickWalkin(){
   const co=document.getElementById('wi-checkout').value;
   if(!name){toast('กรุณากรอกชื่อลูกค้า','err');return;}
   if(!ci||!co){toast('กรุณากรอกวันที่เข้า-ออก','err');return;}
-  
   const totalText=document.getElementById('wi-total').textContent.replace(/[฿,]/g,'');
   const totalAmt=parseFloat(totalText)||0;
   const nights=Math.max(1,Math.round((new Date(co)-new Date(ci))/86400000));
   const roomData=mData.find(x=>x.room===room)||{};
-  
-  // Insert into ota_bookings
+  // 1) Insert into ota_bookings
   const{error:e1}=await sb.from('ota_bookings').insert({
     source:'Walk-in',booking_id:'WI-'+Date.now(),status:'CONFIRMED',
     guest_name:name,check_in:ci,check_out:co,
@@ -5671,14 +5618,22 @@ async function saveQuickWalkin(){
     phone:phone||null
   });
   if(e1){toast('Error: '+e1.message,'err');return;}
-  
-  // Update room status
+  // 2) FIX: Insert into guest_checkins ด้วย — เพื่อให้หน้าแจ้งเข้าพักเห็น
+  await sb.from('guest_checkins').insert({
+    building:'เจเรสซิเดนซ์',room:room,guest_type:'thai',
+    check_in:ci,check_out:co,source:'Walk-in',
+    thai_first_name:name.split(' ')[0]||name,
+    thai_last_name:name.split(' ').slice(1).join(' ')||'',
+    phone:phone||null,nights:nights,total_price:totalAmt,
+    price_per_night:nights>0?Math.round(totalAmt/nights):0
+  });
+  // 3) Update room status
   await sb.from('monthly_charges').update({room_status:'occupied'}).eq('room',room).eq('month',curMonth);
-  
   closeM('wimod');
   toast(`ห้อง ${room} — ${name} เช็คอินสำเร็จ ✓ ฿${totalAmt.toLocaleString()}`,'ok');
   await loadMonth(curMonth);
   if(activeSec==='daily'){await renderDailyCards();loadOTACards();loadRecentOTABookings();await renderAvailTable();await renderDailyRoomCards();}
+  if(activeSec==='checkin'){loadCheckins();loadCheckinRooms();}
 }
 
 // ══════════════════════════════════
@@ -5716,22 +5671,24 @@ async function editCheckin(id){
 }
 
 async function deleteCheckin(id,name){
-  if(!confirm(`ลบรายการ "${name}"?\nดำเนินการนี้ไม่สามารถย้อนกลับได้`))return;
-  
-  // Get record first to clean up ota_bookings too
-  const{data:r}=await sb.from('guest_checkins').select('room,check_in,source').eq('id',id).single();
-  
+  if(!confirm(`ลบรายการ "${name}"?\n\n⚠️ จะลบทั้ง guest_checkins + ota_bookings\nห้องจะกลับเป็น "ว่าง"\n\nดำเนินการนี้ไม่สามารถย้อนกลับได้`))return;
+  const{data:r}=await sb.from('guest_checkins').select('room,check_in,check_out,source').eq('id',id).single();
   const{error}=await sb.from('guest_checkins').delete().eq('id',id);
   if(error){toast('Error: '+error.message,'err');return;}
-  
-  // Also remove from ota_bookings
   if(r){
-    await sb.from('ota_bookings').delete().eq('room',r.room).eq('check_in',r.check_in).eq('source',r.source||'Walk-in');
-    await sb.from('monthly_charges').update({room_status:'ready'}).eq('room',r.room).eq('month',curMonth);
+    // ลบจาก ota_bookings ด้วย
+    await sb.from('ota_bookings').delete().eq('room',r.room).eq('check_in',r.check_in).in('source',[r.source||'Walk-in','Walk-in']);
+    // ตรวจว่ายังมีแขกอื่นในห้องนี้ไหม
+    const today=new Date().toISOString().split('T')[0];
+    const{data:remaining}=await sb.from('ota_bookings').select('id').eq('room',r.room).lte('check_in',today).gt('check_out',today).neq('status','CANCELLED').limit(1);
+    if(!remaining||remaining.length===0){
+      await sb.from('monthly_charges').update({room_status:'ready'}).eq('room',r.room).eq('month',curMonth);
+    }
   }
-  
-  toast('ลบสำเร็จ ✓','ok');
-  loadCheckins();loadCheckinStats();await loadMonth(curMonth);
+  toast('ลบสำเร็จ ✓ — ห้อง '+(r?r.room:'')+' อัพเดตแล้ว','ok');
+  loadCheckins();loadCheckinStats();
+  if(activeSec==='checkin')loadCheckinRooms();
+  await loadMonth(curMonth);
 }
 
 // Quick Checkout from dashboard card
@@ -5739,18 +5696,19 @@ async function quickCheckout(room,bookingId){
   const guest=todayGuestMap[room];
   if(!guest){toast('ไม่พบข้อมูลแขก','err');return;}
   const today=new Date().toISOString().split('T')[0];
-  if(!confirm(`Checkout ห้อง ${room}\n${guest.guest_name}\n\nตั้งวันออก = วันนี้ (${fmtD(today)})\nเปลี่ยนสถานะ → 🧹 ทำความสะอาด`))return;
-  
-  // Update checkout date to today
+  if(!confirm(`🚪 Checkout ห้อง ${room}\n👤 ${guest.guest_name}\n\n✓ ตั้งวันออก = วันนี้ (${fmtD(today)})\n✓ เปลี่ยนสถานะ → 🧹 ทำความสะอาด\n✓ อัพเดตทุกตาราง`))return;
+  // 1) Update ota_bookings
   await sb.from('ota_bookings').update({check_out:today}).eq('id',bookingId);
-  // Set room to cleaning
+  // 2) Update guest_checkins ด้วย
+  await sb.from('guest_checkins').update({check_out:today}).eq('room',room).eq('building','เจเรสซิเดนซ์').lte('check_in',today).or(`check_out.gt.${today},check_out.is.null`);
+  // 3) Set room to cleaning
   await sb.from('monthly_charges').update({room_status:'cleaning'}).eq('room',room).eq('month',curMonth);
-  // Log
+  // 4) Log
   await sb.from('room_logs').insert({building:'เจเรสซิเดนซ์',room,log_type:'status_change',status:'cleaning',description:`Checkout ${guest.guest_name} → ทำความสะอาด`});
-  
-  toast(`ห้อง ${room} Checkout สำเร็จ → 🧹 ทำความสะอาด`,'ok');
+  toast(`ห้อง ${room} — ${guest.guest_name} Checkout สำเร็จ ✓ → 🧹 ทำความสะอาด`,'ok');
   await loadMonth(curMonth);
-  if(activeSec==='daily'){await renderDailyCards();loadOTACards();await renderDailyRoomCards();}
+  if(activeSec==='daily'){await renderDailyCards();loadOTACards();loadRecentOTABookings();await renderAvailTable();await renderDailyRoomCards();}
+  if(activeSec==='checkin'){loadCheckins();loadCheckinRooms();}
 }
 
 // Edit guest from dashboard room card
