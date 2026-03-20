@@ -8451,6 +8451,26 @@ async function _utSaveToSupabase(type, month, localData) {
     await sb.from('utility_bills').upsert(row, {onConflict:'utility,bill_month,doc_type'});
   } catch(e) { console.error('Utility save error:', e); }
 }
+
+// Batch sync all changed entries to Supabase
+async function _utBatchSyncToSupabase(stored) {
+  try {
+    var keys = Object.keys(stored);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var parts = k.split('_');
+      var type = parts[0];
+      if (type !== 'mea' && type !== 'mwa') continue;
+      var month = parts.slice(1).join('_').replace(/_/g,' ');
+      var data = stored[k];
+      if (data && data.amount) {
+        await _utSaveToSupabase(type, month, data);
+      }
+    }
+    console.log('✅ Batch sync to Supabase:', keys.length, 'entries');
+  } catch(e) { console.error('Batch sync error:', e); }
+}
+
 function _utKey(type, month) { return type + '_' + month.replace(/\s/g,'_'); }
 
 // ── Formatters ──────────────────────────────────────
@@ -9419,6 +9439,7 @@ function utDoImport() {
       if (changed) { stored[normKey] = existing; updated++; } else { skipped++; }
     });
     _utSave(stored);
+    _utBatchSyncToSupabase(stored);
     _utRenderMEA(); _utRenderMWA();
     setTimeout(_utInitMeaCharts, 50); setTimeout(_utInitMwaCharts, 100);
     res.innerHTML = '<span style="color:var(--success);font-weight:700;">&#9989; Import สำเร็จ!</span> อัปเดต <b>'+updated+'</b> รายการ &middot; ข้าม <b>'+skipped+'</b>';
@@ -9699,17 +9720,15 @@ function utPdfSaveAll() {
     var existing = stored[key] || {};
     var changed = false;
     Object.keys(r.data).forEach(function(field) {
-      if (field === 'account') return; // skip account number
+      if (field === 'account') return;
       var v = r.data[field];
       if (v !== null && v !== '' && v !== undefined) {
-        // Overwrite with PDF data (more accurate)
         if (existing[field] !== String(v)) {
           existing[field] = String(v);
           changed = true;
         }
       }
     });
-    // Auto-calc totals
     if (r.type === 'mea' && existing.offpeak && existing.onpeak) {
       var tot = (parseFloat(existing.offpeak)||0) + (parseFloat(existing.onpeak)||0);
       if (tot > 0) existing.totalUnits = tot;
@@ -9718,13 +9737,18 @@ function utPdfSaveAll() {
       var u = (parseFloat(existing.meterNew)||0) - (parseFloat(existing.meterOld)||0);
       if (u > 0) existing.units = u;
     }
-    if (changed) { stored[key] = existing; saved++; } else { skipped++; }
+    if (changed) {
+      stored[key] = existing;
+      saved++;
+      // ★ Save to Supabase ด้วย
+      _utSaveToSupabase(r.type, r.monthKey, existing);
+    } else { skipped++; }
   });
   _utSave(stored);
   _utRenderMEA(); _utRenderMWA();
   setTimeout(_utInitMeaCharts, 50); setTimeout(_utInitMwaCharts, 100);
   document.getElementById('ut-pdf-modal').style.display = 'none';
-  toast('✅ บันทึกข้อมูลจาก PDF สำเร็จ ' + saved + ' รายการ', 'ok');
+  toast('✅ บันทึกข้อมูลจาก PDF → Supabase สำเร็จ ' + saved + ' รายการ', 'ok');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -9888,6 +9912,7 @@ async function _utSyncV2(resp, force, statusEl) {
   }
 
   _utSave(stored);
+  _utBatchSyncToSupabase(stored);
   _utPdfCacheSave(pdfCache);
   // Save Drive File IDs
   try { localStorage.setItem('jres_utility_fids_v1', JSON.stringify(_UT_DRIVE_FILE_IDS)); } catch(e){}
@@ -9942,6 +9967,7 @@ function _utSyncV1(resp, statusEl) {
   });
 
   _utSave(stored);
+  _utBatchSyncToSupabase(stored);
   localStorage.setItem(_UT_SYNC_KEY, String(Date.now()));
   _utRenderMEA(); _utRenderMWA();
   setTimeout(_utInitMeaCharts, 50);
