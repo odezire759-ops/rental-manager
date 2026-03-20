@@ -5234,7 +5234,7 @@ function openApiSettings(){
 function _saveApiKey(){
   var key=document.getElementById('_api_key_input').value.trim();
   if(!key){toast('กรุณากรอก API Key','err');return;}
-  if(!key.startsWith('sk-ant-')){toast('API Key ต้องขึ้นต้นด้วย sk-ant-','err');return;}
+  if(!key.startsWith('sk-')){toast('API Key ต้องขึ้นต้นด้วย sk-','err');return;}
   localStorage.setItem('jres_anthropic_key',key);
   document.getElementById('_apiModal').remove();
   toast('✅ บันทึก API Key สำเร็จ','ok');
